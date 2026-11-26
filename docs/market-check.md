@@ -37,7 +37,7 @@ The parts already exist; the market check joins them:
 | M5b | **Search visibility**: where the store and its rivals stand for up to 10 words a market, monthly (7.3). | Built, deployed at `f3e7ba0` (26 November 2026): migration `20261126122344_daily_thor_girl.sql`, advisors INFO only |
 | M5c | **Speed**: the store's and its rivals' speed as their visitors meet it, from the Chrome UX Report (7.4). | Built (26 November 2026): migration `20261126134157_opposite_zombie.sql` |
 | M5d | **Service prices**: a rival's published service prices kept by hand with their page and checked there by code, like M4 (7.5). | Built, deployed at `b574b68` (26 November 2026): migration `20261126112637_absent_magma.sql`, advisors INFO only |
-| M5e | **Enquiries as the conversion**: forms, bookings and appointments per country where a store has no orders (7.6). | Spec |
+| M5e | **Enquiries as the conversion**: messages sent through the site's forms per country where a store has no shop (7.6). | Built (26 November 2026): migration `20261126142507_fresh_bulldozer.sql` |
 
 ## 3. M1: your markets side by side (built)
 
@@ -288,11 +288,21 @@ pages (their terms, and most are behind a sign-in), anything behind a sign-in, a
 - **The platform.** Kaizena Flow's prices are its plans: other platforms' plan prices are kept beside them on Platform → Plans (M4), so
   its own store's Markets page has no service prices.
 
-### 7.6 M5e: enquiries as the conversion
+### 7.6 M5e: enquiries as the conversion (built 26 November 2026)
 
-For a store without a shop, M1's countries count enquiries (forms sent, bookings, appointments booked) where a shop counts orders, so a weak
-or strong market is found the same way and with the same minimums (`MIN_VISITS`, `MIN_ORDERS` as enquiries). Kaizena Flow's own store's
-sign-ups stay M1b's, parked.
+- **What an enquiry is.** A message sent through one of the site's forms (a page's email form, D93), whatever it asks. Not a newsletter
+  sign-up, which is no enquiry, nor a quote, a booking or an appointment, which are the shop's and counted as orders where it is on.
+- **How it meets a country.** A form's send keeps no country and its visitor key is not the visit's. So the form's route marks the
+  sender's visit for the day (`markVisitEnquiry()`, `visits.enquiry_at`, the first of the day) with the same key and checks as a cart that
+  meets its visit and a search that finds it (`attachVisitToCart()`, `visitKeyOf()`): the store counts visits, not a robot, no privacy
+  signal; nothing is marked when no visit of the day was counted. Kaizena Flow's own pages count on its own store's visits.
+- **What changes in M1.** For a store without a shop (`measure` = `enquiries`), each country's conversion is the visits that sent an
+  enquiry over its visits, compared with the rest with M1's own test and minimums (`MIN_VISITS` visits on each side, `MIN_ORDERS`
+  enquiries in the rest): a country that *asks less* or *asks more*, its estimate in enquiries. The countries' table says *Enquiry rate*,
+  and the note under it what an enquiry is. A store with a shop keeps orders, whatever its forms receive.
+- **What it cannot count.** Enquiries before it was built, a visitor who sends a privacy signal, and days without visit counting, as
+  conversion by orders already cannot.
+- **Kaizena Flow's own store** counts its site's contact messages the same way; its sign-ups by country stay M1b's, parked.
 
 ## 8. Guardrails, for every step
 

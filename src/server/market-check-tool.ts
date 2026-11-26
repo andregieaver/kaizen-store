@@ -40,7 +40,9 @@ export async function marketCheckTool({ store }: Ctx, { days }: OwnerToolInput<"
   const notCounted = check.coverage.counting ? "no day of the period was counted" : "visit counting is off (Analytics → Settings)";
   return {
     period: periodWords(period),
-    basis: `${BASIS} Visits and conversion are counted as on the Traffic page; orders are those placed in each country.`,
+    basis: `${BASIS} Visits and conversion are counted as on the Traffic page; orders are those placed in each country.${
+      check.measure === "enquiries" ? " The store has no shop: conversion counts the visits that sent a message through one of its site's forms (an enquiry)." : ""
+    }`,
     countries: check.markets.map((m) => ({
       country: m.name,
       code: m.code,

@@ -21,6 +21,7 @@ import { storeFiles, takeFile, type SentFile, type TakenFile } from "./form-file
 import { startFormPayment } from "./form-payments";
 import { recordFormSent } from "./experiments";
 import { issueSignupCode } from "./discounts";
+import { markVisitEnquiry } from "./analytics-visits";
 import { houseStoreId } from "./house-customers";
 import { log } from "./log";
 import { joinList } from "./marketing-subscribers";
@@ -193,7 +194,13 @@ const answerBlocks = (answers: Answer[]): EmailBlock[] => answers.map((answer) =
 const pageLine = (m: Messages, owner: FormOwner, path: string): EmailBlock => ({ type: "paragraph", text: `${m.form.page}: ${owner.origin}${path}` });
 
 /** A visitor's message or sign-up: checked, counted, and emailed (or, for a sign-up, sent for the visitor to confirm). */
-export async function submitForm(request: FormRequest, visitor: string, files: Record<string, SentFile> = {}): Promise<{ status: number; body: FormResponse }> {
+export async function submitForm(
+  request: FormRequest,
+  visitor: string,
+  files: Record<string, SentFile> = {},
+  /** The request's headers, to mark the sender's visit for the day as an enquiry (D905 M5e); none in tests that do not count visits. */
+  visitHeaders?: Headers,
+): Promise<{ status: number; body: FormResponse }> {
   const v = t(request.lang);
   const found = await findForm(request.store, request.block);
   if (!found) return { status: 404, body: { ok: false, error: v.form.failed } };
@@ -238,6 +245,11 @@ export async function submitForm(request: FormRequest, visitor: string, files: R
     `);
     // A test of this form counts it once the site has accepted the answer (D148, phase 11).
     if (owner.storeId) await recordFormSent(owner.storeId, block.id);
+    // An enquiry on the sender's visit for the day (D905 M5e): Kaizena Flow's own pages count on its own store's visits.
+    if (visitHeaders) {
+      const enquiryStore = owner.storeId ?? (await houseStoreId());
+      if (enquiryStore) await markVisitEnquiry(enquiryStore, visitHeaders);
+    }
     const answers = [...checked.answers, ...(block.consent ? [{ label: o.form.consent, value: `${block.consent} (${o.form.yes})` }] : [])];
     const subject = block.subject || o.form.messageSubject(owner.name);
     // A store's message goes to its support inbox while the desk is on (D382), and its recipients are emailed too unless the owner chose the inbox alone.

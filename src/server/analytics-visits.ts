@@ -4,6 +4,7 @@ import { createHmac } from "node:crypto";
 
 import { sql } from "drizzle-orm";
 import { headers } from "next/headers";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { classifyChannel, cleanContent } from "@/lib/analytics-traffic";
@@ -23,7 +24,9 @@ import {
   visitBody,
 } from "@/lib/visit-record";
 
+import { log } from "./log";
 import { visitStoreOf } from "./store-facts";
+import { col, typedRow, typedRows } from "./typed-rows";
 
 type Row = Record<string, unknown>;
 type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
@@ -342,6 +345,34 @@ export async function attachVisitToCart(tx: Tx, storeId: string, cartId: string,
     });
   } catch (error) {
     console.warn(`[visits] a cart could not be tied to its visit: ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+/**
+ * Marks the day's visit of the visitor sending an enquiry through one of the site's forms (D905, market check M5e): a message or a quote,
+ * kept on the visit as `enquiry_at`, the first of the day. The same key and checks as `attachVisitToCart()` (the store counts visits, not a
+ * robot, no privacy signal); nothing is stored when no visit of the store's day was counted. It never stops a form: a failure is logged.
+ */
+export async function markVisitEnquiry(storeId: string, h: Headers, now: Date = new Date()): Promise<boolean> {
+  try {
+    const secret = visitSecret();
+    if (!secret || isBot(h.get("user-agent")) || wantsPrivacy(h)) return false;
+    const store = await typedRow(z.object({ time_zone: col.text }), sql`select time_zone from commerce.stores where id = ${storeId}::uuid and visit_counting`);
+    if (!store) return false;
+    const day = storeDayKey(now, store.time_zone);
+    const visitor = visitorHash(storeId, addressOf(h), h.get("user-agent"), day, secret);
+    const rows = await typedRows(
+      z.object({ marked: col.int }),
+      sql`
+        update commerce.visits set enquiry_at = ${now.toISOString()}::timestamptz
+        where store_id = ${storeId}::uuid and day = ${day}::date and visitor = ${visitor} and enquiry_at is null
+        returning 1 as marked
+      `,
+    );
+    return rows.length > 0;
+  } catch (error) {
+    log("warn", "visits.enquiry_not_marked", { store: storeId }, error);
     return false;
   }
 }

@@ -10,6 +10,7 @@ import {
   MARKET_TERMS,
   MIN_MISSES,
   marketFindings,
+  type ConversionMeasure,
   type MarketCheckFacts,
   type MarketFacts,
   type MarketFinding,
@@ -176,6 +177,7 @@ export async function marketCheck(store: Store, period: AnalyticsPeriod, options
   const geoRows = new Map((geo?.countries ?? []).map((r) => [r.code, r]));
   const codes = new Set<string>([...sold.keys(), ...visitRows.keys(), ...geoRows.keys(), ...searches.markets.keys()]);
   const counted = traffic.coverage.counting && traffic.coverage.days > 0;
+  const measure: ConversionMeasure = sells ? "orders" : "enquiries";
 
   const markets: MarketFacts[] = [...codes].map((code) => {
     const visit = visitRows.get(code);
@@ -188,7 +190,8 @@ export async function marketCheck(store: Store, period: AnalyticsPeriod, options
       name: countryName(code, locale),
       sells: sold.has(code),
       visits: counted ? (visit?.sessions ?? 0) : null,
-      visitOrders: counted ? (visit?.orders ?? 0) : null,
+      // Conversion's numerator: orders with a shop, else the visits that sent an enquiry through a form (D905 M5e).
+      visitOrders: counted ? (measure === "orders" ? (visit?.orders ?? 0) : (traffic.enquiries.get(code) ?? 0)) : null,
       orders: sells ? (sale?.orders ?? 0) : null,
       revenueMinor: sells ? (sale?.revenueMinor ?? 0) : null,
       searches: searches.empty ? null : (search?.searches ?? 0),
@@ -209,7 +212,7 @@ export async function marketCheck(store: Store, period: AnalyticsPeriod, options
       a.name.localeCompare(b.name),
   );
 
-  const facts: MarketCheckFacts = { markets, products, demand: searches.demand, rivalOffers: offers, rivalSites: sites, published, rivalServices: services, searchTerms, siteSpeeds };
+  const facts: MarketCheckFacts = { markets, products, demand: searches.demand, rivalOffers: offers, rivalSites: sites, published, rivalServices: services, searchTerms, siteSpeeds, measure };
   return {
     ...facts,
     findings: marketFindings(facts, now),

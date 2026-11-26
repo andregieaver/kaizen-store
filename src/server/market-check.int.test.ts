@@ -185,6 +185,22 @@ describe("the market check's facts (D900 M1)", () => {
     ]);
   });
 
+  it("counts the visits that sent an enquiry as a store without a shop's conversion (D905 M5e)", async () => {
+    // Forty of Norway's visits sent a message through a form, four of Germany's.
+    for (const [market, n] of [["NO", 40], ["DE", 4]] as const) {
+      await db().execute(sql`
+        update commerce.visits set enquiry_at = '2026-09-10T12:00:00Z'::timestamptz
+        where id in (select id from commerce.visits where store_id = ${store.id}::uuid and market_code = ${market} order by id limit ${n})`);
+    }
+    const check = await marketCheck({ ...store, features: [] } as unknown as Store, PERIOD, { now: NOW });
+    expect(check.measure).toBe("enquiries");
+    expect(check.markets.find((m) => m.code === "DE")).toMatchObject({ visits: 1000, visitOrders: 4, orders: null });
+    expect(check.findings.find((f) => f.kind === "weak_market")).toMatchObject({ measure: "enquiries", market: "DE", orders: 4, restOrders: 40, gap: 36 });
+    // With a shop, orders stay the measure whatever was enquired.
+    expect((await marketCheck(store, PERIOD, { now: NOW })).measure).toBe("orders");
+    await db().execute(sql`update commerce.visits set enquiry_at = null where store_id = ${store.id}::uuid`);
+  });
+
   it("says what it cannot know: no visits while counting is off, no searches older than 90 days", async () => {
     const off = await marketCheck({ ...store, visitCounting: false } as Store, PERIOD, { now: NOW });
     expect(off.markets.every((m) => m.visits === null && m.visitOrders === null)).toBe(true);

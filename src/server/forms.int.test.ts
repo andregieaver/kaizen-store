@@ -239,4 +239,26 @@ describe("forms (D93)", () => {
     const [count] = await db().execute<Row>(sql`select count(*)::int as n from commerce.form_submissions where visitor = ${`visitor-a-${run}`}`);
     expect(count.n).toBe(0);
   });
+
+  it("marks the sender's counted visit for the day as an enquiry, a newsletter sign-up never (D905 M5e)", async () => {
+    process.env.SETTINGS_ENCRYPTION_KEY ??= Buffer.alloc(32, 7).toString("base64");
+    const { visitSecret } = await import("./analytics-visits");
+    const { storeDayKey, visitorHash } = await import("@/lib/visit-hash");
+    await db().execute(sql`update commerce.stores set visit_counting = true where id = ${storeId}::uuid`);
+    const [zone] = await db().execute<Row>(sql`select time_zone from commerce.stores where id = ${storeId}::uuid`);
+    const day = storeDayKey(new Date(), String(zone.time_zone));
+    const ua = "Mozilla/5.0 (X11; Linux x86_64) Chrome/126.0";
+    const sender = (ip: string) => new Headers({ "user-agent": ua, "x-forwarded-for": ip });
+    for (const ip of ["203.0.113.21", "203.0.113.22"]) {
+      await db().execute(sql`
+        insert into commerce.visits (store_id, day, visitor, market_code, device, channel, landing_path)
+        values (${storeId}::uuid, ${day}::date, ${visitorHash(storeId, ip, ua, day, visitSecret()!)}, 'NO', 'desktop', 'direct', '/')`);
+    }
+    const sent = await forms.submitForm(request(`contact-${run}`, { name: "Kari", mail: `enq-${run}@example.com`, msg: "Hei" }), `visitor-q-${run}`, {}, sender("203.0.113.21"));
+    expect(sent.status).toBe(200);
+    await forms.submitForm(request(`news-${run}`, { email: `enq-news-${run}@example.com` }, { lang: "en" }), `visitor-r-${run}`, {}, sender("203.0.113.22"));
+    const marked = await db().execute<Row>(sql`select enquiry_at is not null as enquiry from commerce.visits where store_id = ${storeId}::uuid and day = ${day}::date order by visitor`);
+    expect(marked.map((r) => r.enquiry).sort()).toEqual([false, true]);
+    await db().execute(sql`update commerce.stores set visit_counting = false where id = ${storeId}::uuid`);
+  });
 });

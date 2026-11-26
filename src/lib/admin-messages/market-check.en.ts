@@ -30,6 +30,8 @@ export const marketCheckEn = {
     untranslated: "Language",
     unpriced: "Prices",
   },
+  /** The kinds' labels where conversion counts enquiries (D905 M5e). */
+  kindsEnquiries: { weak_market: "Asks less", strong_market: "Asks more" },
   makePlan: "Make a plan",
   makePlanFor: ": {text}",
   open: {
@@ -53,6 +55,10 @@ export const marketCheckEn = {
     weak_market:
       "Visitors in {market} buy less: {rate} of visits end in an order, against {rest} in your other countries. At that rate it would have had about {gap} more orders.",
     strong_market: "Visitors in {market} buy more: {rate} of visits end in an order, against {rest} in your other countries. It may be worth more of your marketing.",
+    weakEnquiries:
+      "Visitors in {market} ask less: {rate} of visits end in an enquiry, against {rest} in your other countries. At that rate it would have had about {gap} more enquiries.",
+    strongEnquiries:
+      "Visitors in {market} ask more: {rate} of visits end in an enquiry, against {rest} in your other countries. It may be worth more of your marketing.",
     unmet_demand: "Shoppers searched for “{term}” {n} times and found nothing{where}.",
     unmetIn: ", most of them in {market}",
     rival_cheaper: "{rival} sells {product} for {theirs} in {market}, and you ask {yours}: {gap} more.",
@@ -106,6 +112,7 @@ export const marketCheckEn = {
     country: "Country",
     visits: "Visits",
     conversion: "Conversion",
+    enquiryRate: "Enquiry rate",
     orders: "Orders",
     revenue: "Revenue",
     aov: "Average order",
@@ -117,6 +124,8 @@ export const marketCheckEn = {
     notCounted: "Not counted",
     notApplicable: "—",
     compared: "A country is compared with the rest only when both have at least {visits} visits and the rest at least {orders} orders, and the difference is too large to be chance.",
+    comparedEnquiries:
+      "A country is compared with the rest only when both have at least {visits} visits and the rest at least {orders} enquiries, and the difference is too large to be chance. An enquiry is a message sent through one of your site's forms.",
   },
   rivals: {
     title: "Your rivals",
@@ -285,8 +294,8 @@ export const marketCheckEn = {
     partial: "Visits are counted from {date}: conversion covers only those days.",
     searchesClamped: "Searches are kept 90 days, so they are counted from {date}.",
     searchesEmpty: "No searches from this period are kept any more: searches are kept 90 days.",
-    house: "Kaizena Flow sells plans, not goods: orders and prices by country do not apply. Sign-ups are not counted by country yet.",
-    noShop: "The shop is off, so orders and prices by country are not shown.",
+    house: "Kaizena Flow sells plans, not goods: conversion counts the messages sent through its site's forms, and prices by country do not apply. Sign-ups are not counted by country yet.",
+    noShop: "The shop is off: conversion counts the messages sent through your site's forms, and orders and prices by country are not shown.",
   },
 };
 

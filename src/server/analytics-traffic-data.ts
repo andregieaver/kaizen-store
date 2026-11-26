@@ -418,8 +418,11 @@ function marketSegments(store: Store, sessions: ReadonlyMap<string, number>, ord
     .sort((a, b) => (b.sessions ?? 0) - (a.sessions ?? 0) || b.revenueMinor - a.revenueMinor || a.key.localeCompare(b.key));
 }
 
-/** The Traffic page's countries alone, with what they cover (D900, the market check): no row while visits are not counted. */
-export type MarketTraffic = { coverage: Coverage; byMarket: SegmentRow[] };
+/**
+ * The Traffic page's countries alone, with what they cover (D900, the market check): no row while visits are not counted. `enquiries` are
+ * the visits by country that sent an enquiry through one of the site's forms (D905 M5e), the conversion of a store without a shop.
+ */
+export type MarketTraffic = { coverage: Coverage; byMarket: SegmentRow[]; enquiries: Map<string, number> };
 
 /**
  * The countries of `trafficReport()` (its `byMarket`, the same reads and the same coverage) without the rest of its report: the market
@@ -428,9 +431,17 @@ export type MarketTraffic = { coverage: Coverage; byMarket: SegmentRow[] };
 export async function marketTraffic(store: Store, period: AnalyticsPeriod, now: Date): Promise<MarketTraffic> {
   const firstDay = store.visitCounting ? await firstCountedDay(store) : null;
   const { coverage, range } = coverageOf(store, period, firstDay, now);
-  if (!range) return { coverage, byMarket: [] };
-  const [sessions, { market }] = await Promise.all([marketSessionsIn(store, range), ordersByKeys(store, range, { market: sql`o.market_code` })]);
-  return { coverage, byMarket: marketSegments(store, sessions, market) };
+  if (!range) return { coverage, byMarket: [], enquiries: new Map() };
+  const [counted, { market }] = await Promise.all([
+    typedRows(
+      z.object({ k: col.text, n: col.minor, e: col.minor }),
+      sql`select coalesce(v.market_code, '') as k, count(*) as n, count(*) filter (where v.enquiry_at is not null) as e
+        from commerce.visits v where ${visitsIn(store, range)} group by 1`,
+    ),
+    ordersByKeys(store, range, { market: sql`o.market_code` }),
+  ]);
+  const sessions = new Map(counted.map((r) => [r.k, r.n]));
+  return { coverage, byMarket: marketSegments(store, sessions, market), enquiries: new Map(counted.map((r) => [r.k, r.e])) };
 }
 
 /**
