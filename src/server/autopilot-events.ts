@@ -28,6 +28,7 @@ import {
   ORDER_EVENT_DAYS,
   ORDER_UNSENT_HOURS,
   STOCKOUT_PER_CHECK,
+  rivalCheckDue,
   stockoutCheckDue,
   TEST_ENDED_DAYS,
   type EventFacts,
@@ -79,6 +80,8 @@ export type EventDeps = {
   deadline?: number;
   /** Check stock for risks in this run, whatever the hour (tests); by the clock unless given (`stockoutCheckDue()`). */
   stockoutCheck?: boolean;
+  /** Look for rivals' changes in this run, whatever the minute (tests); by the clock unless given (`rivalCheckDue()`). */
+  rivalCheck?: boolean;
   now?: Date;
 };
 
@@ -148,16 +151,18 @@ export async function detectEvents(deps: EventDeps = {}): Promise<number> {
     (await detectOrderEvents(now)) +
     (await detectAlerts(now, deps)) +
     (await detectStockoutRisks(now, deps)) +
-    (await detectRivalChanges(now))
+    (await detectRivalChanges(now, deps))
   );
 }
 
 /**
  * Rivals' changes (D900 M3): a scan, because a rival's page is not an event the database queues (it is a page read by the watcher or a
  * person, `keepOffer()`), and the change is kept on the offer's row. Each reacting store's offers held against one of its products whose
- * last read changed them within `EVENT_STALE_HOURS`, kept once per change (`eventRef()`: the offer and when it changed).
+ * last read changed them within `EVENT_STALE_HOURS`, kept once per change (`eventRef()`: the offer and when it changed). Looked for once an
+ * hour (`rivalCheckDue()`), not in every minute's run.
  */
-async function detectRivalChanges(now: Date): Promise<number> {
+async function detectRivalChanges(now: Date, deps: EventDeps): Promise<number> {
+  if (!(deps.rivalCheck ?? rivalCheckDue(now))) return 0;
   const rows = await typedRows(
     z.object({
       store_id: col.uuid,

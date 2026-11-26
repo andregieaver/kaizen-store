@@ -79,6 +79,11 @@ export const STOCKOUT_CHECK_HOURS = 6;
 export const stockoutCheckDue = (now: Date): boolean => now.getUTCHours() % STOCKOUT_CHECK_HOURS === 0 && now.getUTCMinutes() < 5;
 /** Variants whose risk one check keeps, the shortest-lasting first. */
 export const STOCKOUT_PER_CHECK = 5;
+/**
+ * Whether a run at this moment looks for rivals' changes (D900 M3): the first five minutes of each hour (UTC). A change is kept on its offer
+ * for `EVENT_STALE_HOURS`, so an hourly look answers it within the hour without a statement in every minute's run.
+ */
+export const rivalCheckDue = (now: Date): boolean => now.getUTCMinutes() < 5;
 
 /** The alerts that bring a turn: urgent and warning, never info or good news. */
 export const EVENT_ALERT_SEVERITIES = ["urgent", "warning"] as const;

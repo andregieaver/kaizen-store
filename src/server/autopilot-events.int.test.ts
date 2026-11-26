@@ -189,7 +189,10 @@ describe("reacting to events", () => {
         '{"priceMinor": 52000, "currency": "NOK", "availability": "in_stock", "shippingMinor": 9900, "shippingCurrency": "NOK", "returnDays": null, "readAt": "2026-10-28T10:00:00Z"}'::jsonb)
       returning id`);
     turns.length = 0;
-    await react();
+    // Looked for once an hour: a run outside its minutes finds nothing.
+    await runEvents({ turn: fakeTurn, connection: null, alerts: async () => alerts, rivalCheck: false });
+    expect((await eventsOf()).filter((r) => r.kind === "rival_changed")).toHaveLength(0);
+    await runEvents({ turn: fakeTurn, connection: null, alerts: async () => alerts, rivalCheck: true });
     const rows = (await eventsOf()).filter((r) => r.kind === "rival_changed");
     expect(rows).toHaveLength(1);
     expect(String(rows[0].ref)).toMatch(new RegExp(`^${String(offer.id)}:`));
@@ -201,7 +204,7 @@ describe("reacting to events", () => {
     const [kept] = await db().execute<Row>(sql`select * from commerce.assistant_approvals where tool = 'start_autopilot_plan' and args ->> 'plan' = ${String(rows[0].plan_id)}`);
     expect(kept).toMatchObject({ status: "pending", category: "plan" });
     // One event per change: read again, nothing new is kept.
-    await react();
+    await runEvents({ turn: fakeTurn, connection: null, alerts: async () => alerts, rivalCheck: true });
     expect((await eventsOf()).filter((r) => r.kind === "rival_changed")).toHaveLength(1);
     await db().execute(sql`delete from commerce.market_rivals where id = ${String(rival.id)}::uuid`);
     await settings({ reacts: true, waitMinutes: 15, starts: "ask" });
