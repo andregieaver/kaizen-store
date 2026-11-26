@@ -37,7 +37,7 @@ The parts already exist; the market check joins them:
 | M5b | **Search visibility**: where the store and its rivals stand for up to 10 words a market, monthly (7.3). | Built, deployed at `f3e7ba0` (26 November 2026): migration `20261126122344_daily_thor_girl.sql`, advisors INFO only |
 | M5c | **Speed**: the store's and its rivals' speed as their visitors meet it, from the Chrome UX Report (7.4). | Built (26 November 2026): migration `20261126134157_opposite_zombie.sql` |
 | M5d | **Service prices**: a rival's published service prices kept by hand with their page and checked there by code, like M4 (7.5). | Built, deployed at `b574b68` (26 November 2026): migration `20261126112637_absent_magma.sql`, advisors INFO only |
-| M5e | **Enquiries as the conversion**: messages sent through the site's forms per country where a store has no shop (7.6). | Built (26 November 2026): migration `20261126135316_brave_jetstream.sql` |
+| M5e | **Enquiries as the conversion**: messages sent through the site's forms per country where a store has no shop (7.6). | Built (26 November 2026): migration `20261126142507_fresh_bulldozer.sql` |
 
 ## 3. M1: your markets side by side (built)
 

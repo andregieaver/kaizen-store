@@ -1,6 +1,6 @@
 {
-  "id": "acd8066b-0f98-4b0a-8278-211487f84425",
-  "prevId": "cd9aebba-c6d6-40ae-8139-bb6be2775196",
+  "id": "80647938-64cf-45b4-b777-213da252d772",
+  "prevId": "e0603a12-3791-4925-9965-cdf35775c6f1",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -17126,6 +17126,121 @@
       "checkConstraints": {},
       "isRLSEnabled": true
     },
+    "commerce.checklist_item_time": {
+      "name": "checklist_item_time",
+      "schema": "commerce",
+      "columns": {
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "item_id": {
+          "name": "item_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "time_entry_id": {
+          "name": "time_entry_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "checklist_item_time_item_idx": {
+          "name": "checklist_item_time_item_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "item_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "checklist_item_time_store_id_stores_id_fk": {
+          "name": "checklist_item_time_store_id_stores_id_fk",
+          "tableFrom": "checklist_item_time",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "checklist_item_time_item_fk": {
+          "name": "checklist_item_time_item_fk",
+          "tableFrom": "checklist_item_time",
+          "tableTo": "checklist_items",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id",
+            "item_id"
+          ],
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "checklist_item_time_entry_fk": {
+          "name": "checklist_item_time_entry_fk",
+          "tableFrom": "checklist_item_time",
+          "tableTo": "work_time_entries",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id",
+            "time_entry_id"
+          ],
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "checklist_item_time_store_id_time_entry_id_pk": {
+          "name": "checklist_item_time_store_id_time_entry_id_pk",
+          "columns": [
+            "store_id",
+            "time_entry_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
     "commerce.checklist_items": {
       "name": "checklist_items",
       "schema": "commerce",
@@ -17298,6 +17413,24 @@
         "conversation_id": {
           "name": "conversation_id",
           "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "assigned_by": {
+          "name": "assigned_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "assigned_at": {
+          "name": "assigned_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "assignee_told_at": {
+          "name": "assignee_told_at",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
@@ -17565,6 +17698,37 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "checklist_items_assigned_by_idx": {
+          "name": "checklist_items_assigned_by_idx",
+          "columns": [
+            {
+              "expression": "assigned_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "checklist_items_to_tell_idx": {
+          "name": "checklist_items_to_tell_idx",
+          "columns": [
+            {
+              "expression": "assigned_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"commerce\".\"checklist_items\".\"assigned_at\" is not null and \"commerce\".\"checklist_items\".\"assignee_told_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -17589,6 +17753,20 @@
           "schemaTo": "commerce",
           "columnsFrom": [
             "assigned_to"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "checklist_items_assigned_by_accounts_id_fk": {
+          "name": "checklist_items_assigned_by_accounts_id_fk",
+          "tableFrom": "checklist_items",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "assigned_by"
           ],
           "columnsTo": [
             "id"
@@ -18377,6 +18555,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "assignment_id": {
+          "name": "assignment_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "sort_order": {
           "name": "sort_order",
           "type": "integer",
@@ -18451,6 +18635,28 @@
           ],
           "isUnique": false,
           "where": "\"commerce\".\"checklists\".\"primary_project_id\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "checklists_assignment_idx": {
+          "name": "checklists_assignment_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "assignment_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"commerce\".\"checklists\".\"assignment_id\" is not null",
           "concurrently": false,
           "method": "btree",
           "with": {}

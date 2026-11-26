@@ -5,6 +5,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { requireExtension } from "@/components/admin/extension-off";
 import { requireFeature } from "@/components/admin/feature-off";
 import { ListSettings } from "@/components/admin/projects/list-settings";
+import { ListWork } from "@/components/admin/projects/list-work";
 import { ChoiceField } from "@/components/admin/projects/parts";
 import { StatusesEditor } from "@/components/admin/projects/statuses-editor";
 import { Card, Field, PageHeader, TextInput } from "@/components/admin/ui";
@@ -18,6 +19,7 @@ import { whenFields } from "@/lib/projects-dates";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { projectChoices, teamOf } from "@/server/projects";
 import { checklistDetail } from "@/server/projects-lists";
+import { assignmentOptions, listWork, workPairOn } from "@/server/projects-work";
 
 import { projectsAction, saveChecklistAction } from "../../../projects/actions";
 
@@ -38,8 +40,16 @@ export default async function ChecklistSettingsPage({ params }: PageProps<"/admi
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
   const w = PROJECTS_WORDS[lang];
-  const [list, projects, team] = await Promise.all([checklistDetail(store.id, checklistId, member.account.id), projectChoices(store.id), teamOf(store.id)]);
+  // Work's pair (D904 P8.3d): where the list's time goes, offered only while the store has Work and the person may see it.
+  const withWork = workPairOn(member);
+  const [list, projects, team, work] = await Promise.all([
+    checklistDetail(store.id, checklistId, member.account.id),
+    projectChoices(store.id),
+    teamOf(store.id),
+    withWork ? listWork(store.id, checklistId) : null,
+  ]);
   if (!list) notFound();
+  const workOptions = withWork ? await assignmentOptions(store.id, work?.assignmentId ?? null) : [];
   const canChange = memberCan(member, "projects:write");
   const act = projectsAction.bind(null, store.slug);
   const s = w.listSettings;
@@ -85,6 +95,11 @@ export default async function ChecklistSettingsPage({ params }: PageProps<"/admi
           act={act}
         />
       </Card>
+      {withWork && (
+        <Card>
+          <ListWork listId={list.id} assignmentId={work?.assignmentId ?? null} options={workOptions} canChange={canChange} words={w.work} act={act} />
+        </Card>
+      )}
       {list.ownStatuses && (
         <Card title={s.statuses}>
           <StatusesEditor kind="checklist" scopeId={list.id} statuses={list.statuses.map((x) => ({ id: x.id, name: x.name, colour: x.colour, bucket: x.bucket }))} canChange={canChange} words={w} act={act} />

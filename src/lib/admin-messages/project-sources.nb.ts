@@ -30,4 +30,19 @@ export const projectSourcesNb: ProjectSourcesMessages = {
     go: "Start prosjektet",
   },
   openLists: "Se sjekklistene",
+  assignedEmail: {
+    subjectOne: "{giver} ga deg en oppgave: {title}",
+    subjectMany: "Du har {n} nye oppgaver i {store}",
+    preview: { one: "En oppgave i {store} er din nå.", many: "{n} oppgaver i {store} er dine nå." },
+    heading: { one: "En oppgave er din", many: "{n} oppgaver er dine" },
+    line: "{title}, i {list}, fra {giver}",
+    buttonOne: "Åpne listen med oppgaven",
+    buttonMany: "Se oppgavene dine",
+    why: "Du får dette fordi noen i teamet til {store} ga deg en oppgave i Prosjekter. Du får høre om hver oppgave én gang.",
+  },
+  work: {
+    heading: "Sjekklister",
+    hint: "Tid som føres på oppgavene i disse listene, kommer hit.",
+    open: { one: "{n} åpen oppgave", many: "{n} åpne oppgaver" },
+  },
 };

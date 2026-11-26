@@ -544,6 +544,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   project_labels: never("A store's categories and tags for tasks (D903 P4.6), with its lists: a copy starts without them."),
   checklist_item_tags: never("A task's tags (D903 P4.6), with the lists."),
   checklist_item_comments: never("The team's comments on a task (D903 P4.4): their own words, with the lists."),
+  checklist_item_time: never("Which Work time entry a task logged (D904 P8.3d): with the lists and Work's time, neither copied."),
   work_time_entries: never("Work (D122) is the owner's own bookkeeping."),
   work_timers: never("Work (D122) is the owner's own bookkeeping."),
 };
