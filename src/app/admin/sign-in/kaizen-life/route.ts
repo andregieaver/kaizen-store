@@ -1,5 +1,6 @@
 import { connection, NextResponse } from "next/server";
 
+import { isNativeAppAgent, signInReturnUrl } from "@/lib/native-app";
 import { safeNext } from "@/lib/password";
 import { siteUrl } from "@/lib/site";
 import { createClient } from "@/lib/supabase/server";
@@ -30,7 +31,8 @@ export async function GET(request: Request): Promise<Response> {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: KAIZEN_LIFE_PROVIDER,
       options: {
-        redirectTo: `${siteUrl()}/auth/callback?via=kaizen-life&next=${encodeURIComponent(next)}`,
+        // In the phone app (D908), back by the app's own scheme, as `signInWithKaizenLife()` does.
+        redirectTo: signInReturnUrl(siteUrl(), `via=kaizen-life&next=${encodeURIComponent(next)}`, isNativeAppAgent(request.headers.get("user-agent"))),
         scopes: "openid email profile",
         skipBrowserRedirect: true,
       },

@@ -1,0 +1,96 @@
+name: Mobile build
+
+# The phone app's Android build (D908, docs/mobile-app.md). It never deploys anything: it proves the native project still compiles after a
+# change to the app's config, its pages or its packages, and, once the signing secrets are set, leaves a bundle for Play to download.
+# The iPhone app is built in Xcode on a Mac (docs/mobile-app.md).
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "capacitor.config.ts"
+      - "capacitor-www/**"
+      - "android/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/mobile-build.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      # 21: the Android Gradle plugin Capacitor 8 uses needs it.
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - run: pnpm install --frozen-lockfile
+      - name: Capacitor sync
+        env:
+          CAPACITOR_SERVER_URL: ${{ vars.CAPACITOR_SERVER_URL }}
+        run: pnpm exec cap sync android
+
+      # A job's `if` cannot read secrets, so a step says whether the signing ones are all there.
+      - id: signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ] && [ -n "$KEYSTORE_PASSWORD" ] && [ -n "$KEY_ALIAS" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No signed bundle: set the ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD and ANDROID_KEY_ALIAS secrets for one."
+          fi
+
+      - name: Build (debug, unsigned check)
+        if: steps.signing.outputs.enabled != 'true'
+        working-directory: android
+        run: ./gradlew assembleDebug
+
+      - name: Decode keystore
+        if: steps.signing.outputs.enabled == 'true'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/release.keystore
+
+      - name: Build the bundle for Play
+        if: steps.signing.outputs.enabled == 'true'
+        working-directory: android
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_VERSION_CODE: ${{ github.run_number }}
+          ANDROID_VERSION_NAME: ${{ vars.ANDROID_VERSION_NAME || '1.0' }}
+        run: ./gradlew bundleRelease
+
+      # An unsigned bundle builds and is then refused at upload: fail here, where the reason is plain.
+      - name: Check the bundle is signed
+        if: steps.signing.outputs.enabled == 'true'
+        run: |
+          AAB=android/app/build/outputs/bundle/release/app-release.aab
+          unzip -l "$AAB" | grep -qE "META-INF/.*\.(RSA|EC|DSA)" || { echo "::error::The bundle is not signed: check the ANDROID_KEYSTORE_* secrets."; exit 1; }
+
+      - name: Keep the bundle
+        if: steps.signing.outputs.enabled == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: kaizena-flow-android-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error

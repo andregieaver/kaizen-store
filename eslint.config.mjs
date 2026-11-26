@@ -14,6 +14,9 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Agents' worktrees are whole copies of the repository.
     ".claude/**",
+    // The phone app's native projects (D908): `cap sync` copies Capacitor's own scripts into them.
+    "android/**",
+    "ios/**",
   ]),
 ]);
 

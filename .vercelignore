@@ -1,2 +1,6 @@
 # Drizzle snapshots (the whole schema as JSON) are for generating migrations, never for the build (D532).
 supabase/migrations/meta
+# The phone app's native projects and its own pages (D908, docs/mobile-app.md): built by Xcode and Gradle, never by the site.
+android
+ios
+capacitor-www

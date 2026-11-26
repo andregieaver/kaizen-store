@@ -37,6 +37,11 @@ export const COOKIE_PATTERNS = [
     category: "necessary",
   },
   {
+    name: "kaizen_native_launch",
+    pattern: /^kaizen_native_launch$/,
+    category: "necessary",
+  },
+  {
     name: "kaizen_admin_rail",
     pattern: /^kaizen_admin_rail$/,
     category: "necessary",

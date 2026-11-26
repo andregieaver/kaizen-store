@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
+import { isNativeAppAgent, signInReturnUrl } from "@/lib/native-app";
 import { siteUrl } from "@/lib/site";
 import { createClient } from "@/lib/supabase/server";
 import { safeNext } from "@/lib/password";
@@ -90,16 +91,20 @@ async function signInWithPassword(formData: FormData): Promise<FormState> {
 /**
  * Signing in with Kaizen Life (D95): off to Kaizen Life's sign-in and
  * consent, back through /auth/callback, which admits store owners only.
+ * In the phone app (D908) Kaizen Life opens in the phone's browser and
+ * comes back by the app's own scheme, which the app opens as
+ * /auth/callback in its web view, where this request's PKCE cookie is.
  */
 export async function signInWithKaizenLife(formData: FormData): Promise<void> {
   if (!kaizenLifeSignInOn()) redirect("/admin/sign-in");
   const supabase = await supabaseOrNull();
   if (!supabase) redirect("/admin/sign-in");
   const next = safeNext(String(formData.get("next") ?? ""));
+  const native = isNativeAppAgent((await headers()).get("user-agent"));
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: KAIZEN_LIFE_PROVIDER,
     options: {
-      redirectTo: `${await origin()}/auth/callback?via=kaizen-life&next=${encodeURIComponent(next)}`,
+      redirectTo: signInReturnUrl(await origin(), `via=kaizen-life&next=${encodeURIComponent(next)}`, native),
       scopes: "openid email profile",
       skipBrowserRedirect: true,
     },

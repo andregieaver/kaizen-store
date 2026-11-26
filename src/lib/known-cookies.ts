@@ -141,6 +141,20 @@ const DETAILS: Record<KnownCookieName, Omit<KnownCookie, "name" | "pattern" | "c
       da: "I Kaizena Flows administration: gemmer den side, der vises, når du er offline, så den installerede administration kan sige det. Den indeholder ingen af dine data.",
     },
   },
+  kaizen_native_launch: {
+    // In the phone app's session storage, not a cookie (D908): the last address handed to the app, so a sign-in link is opened once and
+    // never spent twice. Only inside the app; gone when it closes.
+    provider: "Kaizena Flow",
+    days: null,
+    on: "platform",
+    staff: true,
+    purpose: {
+      en: "In Kaizena Flow's phone app: remembers the last link the app was opened with, so it is opened once. Gone when the app closes.",
+      nb: "I Kaizena Flows mobilapp: husker den siste lenken appen ble åpnet med, så den åpnes én gang. Forsvinner når appen lukkes.",
+      sv: "I Kaizena Flows mobilapp: kommer ihåg den senaste länken som appen öppnades med, så att den öppnas en gång. Försvinner när appen stängs.",
+      da: "I Kaizena Flows mobilapp: husker det seneste link, appen blev åbnet med, så det åbnes én gang. Forsvinder, når appen lukkes.",
+    },
+  },
   "kaizen_admin_rail": {
     // In local storage, not a cookie: set in Kaizen's admin by someone signed in who shows the rail's names (D262).
     provider: "Kaizena Flow",

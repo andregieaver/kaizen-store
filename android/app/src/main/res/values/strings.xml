@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Kaizena Flow</string>
+    <string name="title_activity_main">Kaizena Flow</string>
+    <string name="package_name">com.humanweb.kaizenaflow</string>
+    <string name="custom_url_scheme">com.humanweb.kaizenaflow</string>
+</resources>

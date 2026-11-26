@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { AdminProgress } from "@/components/admin/admin-progress";
+import { NativeApp } from "@/components/admin/native-app";
 import { SpeedBeacon } from "@/components/speed-beacon";
 import { railNamesScript } from "@/lib/admin-rail";
 import { adminLangScript } from "@/lib/admin-lang";
@@ -45,6 +46,8 @@ export default function AdminRootLayout({ children }: LayoutProps<"/admin">) {
           <AdminProgress />
         </Suspense>
         {children}
+        {/* The phone app's own parts (D908): nothing in a browser, which never loads them. */}
+        <NativeApp />
         {/* How fast the admin is for the people working in it (D390): the speed beacon, no cookie or identifier, GPC and DNT honoured. */}
         <SpeedBeacon own="admin" />
       </body>

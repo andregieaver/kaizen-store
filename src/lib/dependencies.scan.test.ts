@@ -13,6 +13,14 @@ import pkg from "../../package.json";
  */
 type Loads = "server" | "browser" | "both" | "build" | "test" | "peer";
 const PACKAGES: Record<string, { why: string; loads: Loads }> = {
+  "@capacitor/app": { why: "The phone app's links handed to it (native-app-bridge.ts, D908), loaded only inside the app.", loads: "browser" },
+  "@capacitor/browser": { why: "Closes the phone's browser after a sign-in comes back to the app (native-app-bridge.ts, D908).", loads: "browser" },
+  "@capacitor/core": { why: "The phone app's bridge, which the Capacitor plugins above and below need (D908); nothing here imports it.", loads: "peer" },
+  "@capacitor/filesystem": { why: "Saves a file downloaded in the phone app before it is shared (native-app-bridge.ts, D908).", loads: "browser" },
+  "@capacitor/keyboard": { why: "The phone app's keyboard resizing, set in capacitor.config.ts and synced into the native projects (D908).", loads: "build" },
+  "@capacitor/share": { why: "Hands a file downloaded in the phone app to the share sheet (native-app-bridge.ts, D908).", loads: "browser" },
+  "@capacitor/splash-screen": { why: "The phone app's launch screen, set in capacitor.config.ts and synced into the native projects (D908).", loads: "build" },
+  "@capacitor/status-bar": { why: "The phone app's status bar colours for the admin's own colour mode (native-app-bridge.ts, D908).", loads: "browser" },
   "@codemirror/autocomplete": { why: "Completion in the owner's CSS editor (css-code-editor.tsx).", loads: "browser" },
   "@codemirror/commands": { why: "Editing commands and history in the owner's CSS editor.", loads: "browser" },
   "@codemirror/lang-css": { why: "CSS language support in the owner's CSS editor.", loads: "browser" },
@@ -75,6 +83,9 @@ const PACKAGES: Record<string, { why: string; loads: Loads }> = {
   "web-vitals": { why: "The speed beacon's measures (speed-beacon.tsx).", loads: "browser" },
   zod: { why: "Validates every form, action and external input.", loads: "both" },
   "@axe-core/playwright": { why: "The accessibility checks of the browser tests (e2e/a11y.ts).", loads: "test" },
+  "@capacitor/android": { why: "The phone app's Android runtime, which `cap sync` links into android/ (D908).", loads: "build" },
+  "@capacitor/cli": { why: "`cap sync` and `cap open` for the phone app, and capacitor.config.ts's types (D908).", loads: "build" },
+  "@capacitor/ios": { why: "The phone app's iPhone runtime, which `cap sync` links into ios/ (D908).", loads: "build" },
   "@electric-sql/pglite": { why: "The in-process Postgres every migration is tested on (db/testing.ts).", loads: "test" },
   "@electric-sql/pglite-pgvector": { why: "The vector extension of that test database (db/testing.ts).", loads: "test" },
   "@playwright/test": { why: "The browser tests (e2e/) and their configuration.", loads: "test" },

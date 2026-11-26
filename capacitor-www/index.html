@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kaizena Flow</title>
+    <!-- The app loads the site itself (server.url in capacitor.config.ts); Capacitor needs a page here all the same. -->
+    <script src="site-url.js"></script>
+    <script>
+      location.replace((window.__SITE_URL__ || "https://kaizenaflow.com") + "/admin");
+    </script>
+  </head>
+  <body></body>
+</html>

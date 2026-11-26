@@ -166,7 +166,7 @@ D) run on other people's clocks.
 | 3 | **POS and retail** | Skip; later; build a simple tablet POS on the existing orders and Stripe Terminal | Defer. It is a weight-2 row and a large build (hardware, offline). Revisit after wave 9. |
 | 4 | **Headless Storefront API** | Skip; GraphQL read API on the catalogue and cart | Cheap once the Admin API exists; do it in wave 9, weight 2. |
 | 5 | **SMS marketing** | Skip; integrate a provider (EU-hosted) | Integrate one provider after email broadcasts; consent and quiet hours as for email. |
-| 6 | **Mobile admin** | Responsive admin only; installable PWA; native apps | PWA with push notifications for orders; native apps are not worth it yet. |
+| 6 | **Mobile admin** | Responsive admin only; installable PWA; native apps | PWA with push notifications for orders; native apps are not worth it yet. Since D908 (26 November 2026): also a thin native shell around the same admin, for iPhone and Android. |
 | 7 | **Marketplace and multi-vendor** | Keep hosts (D71) only; full multi-vendor | Keep hosts; weight 1. |
 | 8 | **Operational rows** (support channel, uptime promise, status page, DPAs, audit evidence) | Treat as company work, not software | Software provides the status page, support inbox and evidence checklist; the company provides the people and signatures. |
 | 9 | **Is the goal the score or the merchant?** | Chase every row; or stop at rows that matter to an EU small or mid-size merchant | Build all of A and B; for weight 1 and 2 rows in C and D, do them last and decide per row. |

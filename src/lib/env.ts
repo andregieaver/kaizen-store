@@ -108,6 +108,30 @@ export function vapidEnv(
 }
 
 /**
+ * The phone app's link files (D908, `docs/mobile-app.md`): Apple's team id (ten letters and digits, Apple Developer → Membership), for
+ * `/.well-known/apple-app-site-association`, and the SHA-256 fingerprints of the keys the Android app is signed with (the upload key's and
+ * Google Play's app signing key's, comma-separated, as Play Console → App integrity shows them), for `/.well-known/assetlinks.json`. Each
+ * file answers 404 while its setting is empty, and email sign-in links then open in the browser as before.
+ */
+export function appLinksEnv(
+  source: Record<string, string | undefined> = {
+    APPLE_TEAM_ID: process.env.APPLE_TEAM_ID,
+    ANDROID_APP_SHA256: process.env.ANDROID_APP_SHA256,
+  },
+): { appleTeamId: string | null; androidFingerprints: string[] } {
+  const appleTeamId = source.APPLE_TEAM_ID?.trim().toUpperCase() || null;
+  if (appleTeamId && !/^[A-Z0-9]{10}$/.test(appleTeamId)) throw new Error("APPLE_TEAM_ID must be the ten letters and digits of the Apple team id.");
+  const androidFingerprints = (source.ANDROID_APP_SHA256 ?? "")
+    .split(",")
+    .map((value) => value.trim().toUpperCase())
+    .filter(Boolean);
+  for (const fingerprint of androidFingerprints) {
+    if (!/^([0-9A-F]{2}:){31}[0-9A-F]{2}$/.test(fingerprint)) throw new Error("ANDROID_APP_SHA256 must be SHA-256 fingerprints written AA:BB:…, comma-separated.");
+  }
+  return { appleTeamId, androidFingerprints };
+}
+
+/**
  * Kaizena Flow's own Google OAuth client for customers' *Sign in with Google* (D375): its id and secret, from Google Cloud's console, with
  * `{SITE_URL}/api/auth/google/callback` as its one redirect address. Null without both: the button is not shown anywhere.
  */

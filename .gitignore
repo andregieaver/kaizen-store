@@ -58,3 +58,6 @@ next-env.d.ts
 /.vitest-report.json
 /timings.jsonl
 /playwright-report.json
+
+# Written by capacitor.config.ts at each `cap sync` (D908): where the app's offline page sends people back to
+/capacitor-www/site-url.js

@@ -746,6 +746,16 @@ under *What the router fetches ahead*.
   `orders:read`, on a push service's host (`isPushEndpoint()`; the server POSTs there); a push carries no customer's data. A new notification
   is a sender there that reads the membership again before each device and removes a device gone (404, 410).
 
+## The phone app (D908, `docs/mobile-app.md`, `capacitor.config.ts`, `src/lib/native-app.ts`)
+
+- **The phone app (D908)** is a Capacitor shell that loads the deployed admin, so the admin's code is the app's: a web deploy reaches it
+  and a native build is needed only for the shell's own files (`capacitor.config.ts`, `capacitor-www/`, `android/`, `ios/`). The server
+  tells the app by the word `KaizenaFlowApp` in the user agent (`isNativeAppAgent()`), the page by Capacitor's bridge (`NativeApp`).
+  The browser never loads the app's code: `NativeApp` takes `src/lib/native-app-bridge.ts` with `import()`, and nothing else imports
+  `@capacitor/*`. A sign-in through another site comes back to the app at `kaizenaflow://auth/callback` (`signInReturnUrl()`); the app
+  opens only the addresses `nativeOpenPath()` allows, and only `/auth/confirm` is an app link (`APP_LINK_PATHS`). A web view saves no
+  file: a download is an `<a download>`, which the app hands to the share sheet.
+
 ## Sign in with Google (wave 10 unit L, D375, `src/lib/google-sign-in.ts`, `src/server/google-sign-in.ts`)
 
 - **Sign in with Google (wave 10 unit L, D375, `src/lib/google-sign-in.ts`, `src/server/google-sign-in.ts`)**: customers sign in with Google
