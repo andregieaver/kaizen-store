@@ -79,7 +79,7 @@ function bodyOf(file: string, name: string): { body: string; line: number } | nu
   return { body: text.slice(i, end + 1), line: text.slice(0, i).split("\n").length };
 }
 
-type Job = { job: string; fn: string; from: string };
+type Job = { job: string; fn: string; from: string; module?: string };
 
 function dispatcherJobs(): Job[] {
   const jobs: Job[] = [];
@@ -87,7 +87,13 @@ function dispatcherJobs(): Job[] {
   const text = read(file);
   const open = text.indexOf("{", text.indexOf("export const DISPATCHER_JOBS = {"));
   const object = text.slice(open, closing(text, open));
-  for (const m of object.matchAll(/^ {2}(\w+):\s*(?:async\s*)?\(\w*\)\s*=>\s*(?:\(\s*)?(?:await\s+)?(\w+)\(/gm)) jobs.push({ job: m[1], fn: m[2], from: file });
+  for (const m of object.matchAll(/^ {2}(\w+):\s*(?:async\s*)?\(\w*\)\s*=>\s*(?:\(\s*)?(?:await\s+)?(\w+)\(/gm)) {
+    // A job loaded when it runs (`(await import("@/server/x")).fn()`) is read from that module itself.
+    if (m[2] !== "import") jobs.push({ job: m[1], fn: m[2], from: file });
+  }
+  for (const m of object.matchAll(/^ {2}(\w+):\s*async\s*\(\w*\)\s*=>\s*\(await import\("@\/([\w/-]+)"\)\)\.(\w+)\(/gm)) {
+    jobs.push({ job: m[1], fn: m[3], from: file, module: `src/${m[2]}.ts` });
+  }
   const route = "src/app/api/cron/cart-reminders/route.ts";
   for (const m of read(route).matchAll(/tracked\("dispatcher\.([\w-]+)",\s*EVERY,\s*(?:async\s*)?\(\w*\)\s*=>\s*(?:\(\s*)?(?:await\s+)?(\w+)\(/g)) {
     jobs.push({ job: m[1], fn: m[2], from: route });
@@ -118,8 +124,8 @@ describe("scheduled jobs' entry functions", () => {
     const silent: string[] = [];
     const missing: string[] = [];
     const used = new Set<string>();
-    for (const { job, fn, from } of jobs) {
-      const file = importsOf(from).get(fn);
+    for (const { job, fn, from, module } of jobs) {
+      const file = module ?? importsOf(from).get(fn);
       const found = file ? bodyOf(file, fn) : null;
       if (!file || !found) {
         if (!(job in NOT_FOUND_OK)) missing.push(`${job} (${fn})`);
