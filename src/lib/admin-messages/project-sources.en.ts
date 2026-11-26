@@ -48,6 +48,16 @@ export const projectSourcesEn = {
     buttonMany: "See your tasks",
     why: "You get this because someone on {store}'s team gave you a task in Projects. You hear about each task once.",
   },
+  /** A reminder's email and notification (P4.3), to the task's or the list's person. */
+  reminderEmail: {
+    subjectTask: "Reminder: {title}",
+    subjectList: "Reminder: {list}",
+    task: "{title}, in {list}.",
+    due: "It is due {when}.",
+    list: { one: "{n} task is open in {list}.", many: "{n} tasks are open in {list}." },
+    button: "Open the list",
+    why: "You get this because a reminder was set in {store}'s Projects. Remove it on the task or the list to stop it.",
+  },
   /** A Work assignment's checklists (P8.3d): the card on its page, the lists whose time goes to it. */
   work: {
     heading: "Checklists",

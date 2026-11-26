@@ -429,3 +429,39 @@ describe("a list's time on a Work assignment (D904 P8.3d)", () => {
     expect(await one("select count(*)::int as n from commerce.checklist_item_time where time_entry_id = $1", [kept])).toEqual({ n: 0 });
   });
 });
+
+describe("reminders on tasks and lists (D903 P4.3)", () => {
+  const nextAt = async (id: string) => (await one<{ next_at: string | null }>("select next_at::text from commerce.checklist_reminders where id = $1", [id])).next_at;
+
+  it("are on a task or a list, at a moment, before a due time (a task's only) or repeating (a list's only), sent some way", async () => {
+    const list = await checklist(shop);
+    const task = await item(shop, list);
+    await rejects("insert into commerce.checklist_reminders (store_id, item_id, checklist_id, remind_at) values ($1, $2, $3, now())", [shop, task, list], /checklist_reminders_target/);
+    await rejects("insert into commerce.checklist_reminders (store_id, checklist_id, offset_minutes) values ($1, $2, 15)", [shop, list], /checklist_reminders_when/);
+    await rejects("insert into commerce.checklist_reminders (store_id, item_id, recurrence) values ($1, $2, '{}')", [shop, task], /checklist_reminders_when/);
+    await rejects("insert into commerce.checklist_reminders (store_id, item_id, remind_at, offset_minutes) values ($1, $2, now(), 15)", [shop, task], /checklist_reminders_when/);
+    await rejects("insert into commerce.checklist_reminders (store_id, item_id, remind_at, channels) values ($1, $2, now(), '{sms}')", [shop, task], /checklist_reminders_channels/);
+    await rejects("insert into commerce.checklist_reminders (store_id, item_id, remind_at) values ($1, $2, now())", [other, task], /checklist_reminders_item_fk/);
+    await db.query("insert into commerce.checklist_reminders (store_id, checklist_id, recurrence, next_at) values ($1, $2, '{\"freq\":\"daily\",\"times\":[\"09:00\"]}', now())", [shop, list]);
+  });
+
+  it("before a due time come that long before it, again when it moves, and not while the task has none", async () => {
+    const task = await item(shop, await checklist(shop));
+    const early = await id("insert into commerce.checklist_reminders (store_id, item_id, offset_minutes) values ($1, $2, 60) returning id", [shop, task]);
+    expect(await nextAt(early)).toBeNull();
+    await db.query("update commerce.checklist_items set due_at = '2026-12-01 10:00+00' where id = $1", [task]);
+    expect(await nextAt(early)).toBe("2026-12-01 09:00:00+00");
+    // Sent: the job clears it; a new due time arms it again.
+    await db.query("update commerce.checklist_reminders set next_at = null, fired_at = now() where id = $1", [early]);
+    await db.query("update commerce.checklist_items set due_at = '2026-12-02 10:00+00' where id = $1", [task]);
+    expect(await one("select next_at::text, fired_at from commerce.checklist_reminders where id = $1", [early])).toEqual({ next_at: "2026-12-02 09:00:00+00", fired_at: null });
+    // One added to a task with a due time is armed at once; a due time taken away disarms both.
+    const atDue = await id("insert into commerce.checklist_reminders (store_id, item_id, offset_minutes) values ($1, $2, 0) returning id", [shop, task]);
+    expect(await nextAt(atDue)).toBe("2026-12-02 10:00:00+00");
+    await db.query("update commerce.checklist_items set due_at = null where id = $1", [task]);
+    expect([await nextAt(early), await nextAt(atDue)]).toEqual([null, null]);
+    // A task deleted takes its reminders with it.
+    await db.query("delete from commerce.checklist_items where id = $1", [task]);
+    expect(await one("select count(*)::int as n from commerce.checklist_reminders where item_id = $1", [task])).toEqual({ n: 0 });
+  });
+});

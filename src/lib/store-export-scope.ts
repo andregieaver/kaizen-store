@@ -234,6 +234,8 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   checklist_item_comments: "people",
   // Which Work time entry a task logged (D904 P8.3d): a link by ids to time the file does not hold.
   checklist_item_time: "record",
+  // Reminders on tasks and lists (D903 P4.3): who set them and when they come, for the team.
+  checklist_reminders: "people",
   work_timers: "people",
   workflow_runs: "record",
 };

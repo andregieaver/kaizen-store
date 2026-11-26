@@ -192,6 +192,14 @@ export async function sendActivityPush(storeId: string, activityId: string, acco
   );
 }
 
+/** A notice of Projects (a reminder, D903 P4.3), built in the person's language by its caller, so its words stay in Projects' own area. */
+export type ProjectsPushBuild = (store: { slug: string; name: string }, lang: AdminLang) => { title: string; body: string; url: string; tag: string };
+
+/** A Projects notice to one person's devices for the store, while they may read projects. As `sendOrderPush()`: never throws, removes devices gone. */
+export async function sendProjectsPush(storeId: string, accountId: string, build: ProjectsPushBuild, topic: string, send: Sender = realSender): Promise<number> {
+  return pushToStore(storeId, async () => (sub: Row, lang: AdminLang) => build({ slug: String(sub.slug), name: String(sub.name) }, lang), topic, send, accountId, "projects:read");
+}
+
 /**
  * A call the autopilot kept for a yes (a refund in the 100-day challenge above all, `docs/100-day-challenge.md` A3), to the devices of the
  * store's owners, who decide it on the Autopilot page: what waits and the store. As `sendOrderPush()`: never throws, removes devices gone.
@@ -226,8 +234,8 @@ async function pushToStore(
   send: Sender,
   /** One person's devices only (an activity's, D468); every member's of the store when absent. */
   only: string | null = null,
-  /** What a person must be allowed to receive it: reading orders, or being an owner (a decision). */
-  permission: "orders:read" | "owner" = "orders:read",
+  /** What a person must be allowed to receive it: reading orders, being an owner (a decision), or reading projects (a reminder). */
+  permission: "orders:read" | "owner" | "projects:read" = "orders:read",
 ): Promise<number> {
   const keys = (() => {
     try {

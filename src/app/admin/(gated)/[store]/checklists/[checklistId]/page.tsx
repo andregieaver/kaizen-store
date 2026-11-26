@@ -23,6 +23,7 @@ import { checklistDetail, listChecklists, listFingerprint, type ChecklistItem } 
 import { ensureDefaultStatuses } from "@/server/projects-statuses";
 import { sourceLinks } from "@/server/projects-sources";
 import { listWork, taskMinutes, workPairOn } from "@/server/projects-work";
+import { remindersOf } from "@/server/projects-reminders";
 import { todayIn } from "@/lib/work-dates";
 import { formatDuration } from "@/lib/work-time";
 
@@ -49,7 +50,7 @@ export default async function ChecklistPage({ params }: PageProps<"/admin/[store
   await ensureDefaultStatuses(store.id, w.defaults);
   // Work's pair (D904 P8.3d): a list whose time goes to an assignment shows it, and its tasks their time, while the store has Work.
   const withWork = workPairOn(member);
-  const [list, lists, team, labels, drawnAs, work, minutes] = await Promise.all([
+  const [list, lists, team, labels, drawnAs, work, minutes, reminders] = await Promise.all([
     checklistDetail(store.id, checklistId, member.account.id, store.timeZone),
     listChecklists(store.id),
     teamOf(store.id),
@@ -57,6 +58,7 @@ export default async function ChecklistPage({ params }: PageProps<"/admin/[store
     listFingerprint(store.id, checklistId),
     withWork ? listWork(store.id, checklistId) : null,
     withWork ? taskMinutes(store.id, checklistId) : {},
+    remindersOf(store.id, checklistId),
   ]);
   if (!list) notFound();
   const canChange = memberCan(member, "projects:write");
@@ -139,6 +141,7 @@ export default async function ChecklistPage({ params }: PageProps<"/admin/[store
         act={act}
         sources={sources}
         time={work ? { minutes, canLog: workPairOn(member, true), today: todayIn(store.timeZone) } : undefined}
+        reminders={reminders.items}
       />
       {canChange && (
         <details className="flex flex-col gap-3">

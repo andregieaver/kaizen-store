@@ -1541,6 +1541,20 @@
       "when": 1795704099865,
       "tag": "20261126144139_social_publish",
       "breakpoints": true
+    },
+    {
+      "idx": 220,
+      "version": "7",
+      "when": 1795705353291,
+      "tag": "20261126150233_checklist_reminders",
+      "breakpoints": true
+    },
+    {
+      "idx": 221,
+      "version": "7",
+      "when": 1795705358108,
+      "tag": "20261126150238_checklist_reminders_rules",
+      "breakpoints": true
     }
   ]
 }

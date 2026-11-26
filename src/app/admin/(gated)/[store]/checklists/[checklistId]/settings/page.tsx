@@ -5,13 +5,14 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { requireExtension } from "@/components/admin/extension-off";
 import { requireFeature } from "@/components/admin/feature-off";
 import { ListSettings } from "@/components/admin/projects/list-settings";
+import { ListReminders } from "@/components/admin/projects/list-reminders";
 import { ListWork } from "@/components/admin/projects/list-work";
 import { ChoiceField } from "@/components/admin/projects/parts";
 import { StatusesEditor } from "@/components/admin/projects/statuses-editor";
 import { Card, Field, PageHeader, TextInput } from "@/components/admin/ui";
 import { TextArea } from "@/components/admin/ui/field";
 import { fillWords } from "@/lib/admin-fill";
-import { adminLangOf } from "@/lib/admin-lang";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { PROJECTS_WORDS } from "@/lib/admin-words/projects";
 import { checklistFeatures } from "@/lib/projects-features";
 import { CHECKLIST_STATES, PROJECT_LIMITS } from "@/lib/projects-model";
@@ -20,6 +21,7 @@ import { memberCan, requirePermission } from "@/server/permissions";
 import { projectChoices, teamOf } from "@/server/projects";
 import { checklistDetail } from "@/server/projects-lists";
 import { assignmentOptions, listWork, workPairOn } from "@/server/projects-work";
+import { remindersOf } from "@/server/projects-reminders";
 
 import { projectsAction, saveChecklistAction } from "../../../projects/actions";
 
@@ -42,11 +44,12 @@ export default async function ChecklistSettingsPage({ params }: PageProps<"/admi
   const w = PROJECTS_WORDS[lang];
   // Work's pair (D904 P8.3d): where the list's time goes, offered only while the store has Work and the person may see it.
   const withWork = workPairOn(member);
-  const [list, projects, team, work] = await Promise.all([
+  const [list, projects, team, work, reminders] = await Promise.all([
     checklistDetail(store.id, checklistId, member.account.id),
     projectChoices(store.id),
     teamOf(store.id),
     withWork ? listWork(store.id, checklistId) : null,
+    remindersOf(store.id, checklistId),
   ]);
   if (!list) notFound();
   const workOptions = withWork ? await assignmentOptions(store.id, work?.assignmentId ?? null) : [];
@@ -92,6 +95,18 @@ export default async function ChecklistSettingsPage({ params }: PageProps<"/admi
           ownStatuses={list.ownStatuses}
           canChange={canChange}
           words={w}
+          act={act}
+        />
+      </Card>
+      <Card>
+        <ListReminders
+          listId={list.id}
+          reminders={reminders.list}
+          canChange={canChange}
+          timeZone={store.timeZone}
+          lang={lang}
+          locale={ADMIN_LANG_FACTS[lang].locale}
+          words={{ reminders: w.reminders, repeat: w.repeat }}
           act={act}
         />
       </Card>

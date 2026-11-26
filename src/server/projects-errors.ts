@@ -20,7 +20,7 @@ function chain(error: unknown): Failure[] {
 }
 
 const RULE = /\b(checklist_item|checklist_subtask|project_item_stage)\.[a-z_]+\b/;
-const TABLES = /^(projects|project_statuses|checklists|project_checklists|checklist_statuses|checklist_sections|checklist_items|project_item_stages|checklist_subtasks|checklist_folds|project_labels|checklist_item_tags|checklist_item_comments|checklist_item_time)_/;
+const TABLES = /^(projects|project_statuses|checklists|project_checklists|checklist_statuses|checklist_sections|checklist_items|project_item_stages|checklist_subtasks|checklist_folds|project_labels|checklist_item_tags|checklist_item_comments|checklist_item_time|checklist_reminders)_/;
 
 /** The problem a database refusal means, or null when the error is not one of this module's rules. */
 export function projectsProblem(error: unknown): ProjectsProblem | null {

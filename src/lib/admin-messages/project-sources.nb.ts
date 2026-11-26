@@ -40,6 +40,15 @@ export const projectSourcesNb: ProjectSourcesMessages = {
     buttonMany: "Se oppgavene dine",
     why: "Du får dette fordi noen i teamet til {store} ga deg en oppgave i Prosjekter. Du får høre om hver oppgave én gang.",
   },
+  reminderEmail: {
+    subjectTask: "Påminnelse: {title}",
+    subjectList: "Påminnelse: {list}",
+    task: "{title}, i {list}.",
+    due: "Fristen er {when}.",
+    list: { one: "{n} oppgave er åpen i {list}.", many: "{n} oppgaver er åpne i {list}." },
+    button: "Åpne listen",
+    why: "Du får dette fordi noen satte en påminnelse i Prosjekter hos {store}. Fjern den på oppgaven eller listen for å stoppe den.",
+  },
   work: {
     heading: "Sjekklister",
     hint: "Tid som føres på oppgavene i disse listene, kommer hit.",

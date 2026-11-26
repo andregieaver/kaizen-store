@@ -224,7 +224,7 @@ Status: Planned, Building, Done (date and commit).
 |---|---|---|
 | P4.1 | Recurrence and routines: the editor, completing moves to the next due time, streak, skip and undo; the job in the five-minute dispatcher | Done, 26 Nov 2026 (b7b673b) |
 | P4.2 | Duplicate a list with its options (templates are P4.12) | Done, 26 Nov 2026 (50c0dbf) |
-| P4.3 | Reminders: on an item (at a time or before its due time) and on a list (repeating), through Flow's push and email | Planned |
+| P4.3 | Reminders: on an item (at a time or before its due time) and on a list (repeating), through Flow's push and email | Built 26 November 2026 (below) |
 | P4.4 | Comments on an item (Life's activity thread) | Done, 26 Nov 2026 (a9d0ea8) |
 | P4.5 | Attachments from the media library | Planned |
 | P4.6 | Category and tags (Life's taxonomy) | Done, 26 Nov 2026 (a9d0ea8) |
@@ -504,4 +504,22 @@ and the agents' eval recorded again on Platform → AI for the three new tools.
 - **Why not Email automation.** The email is to the store's own team, not to its customers, so it is part of Projects rather than a pair
   with Email automation (which writes to customers): a team's tasks need their people told whatever else the account has. P4.3's reminders
   (a time before a task is due) stay their own step.
+
+## As built: step P4.3, reminders (26 November 2026)
+
+- **One table for both.** Life's item and list reminders are one table here, `checklist_reminders`: on a task (at a moment, or so many
+  minutes before its due time) or on a list (at a moment, or repeating by a repeating task's rule, P4.1), each sent by email, as a
+  notification on the person's devices, or both. A task or a list has at most five. `next_at` is when one comes next: the rules migration
+  arms a reminder before a due time from the task's due time, again whenever that moves (sent before or not), and clears it when the task
+  has none; a whole-day task's due time is noon, so its reminders count from noon. Moments and rules are armed by `addReminder()`
+  (`src/server/projects-reminders.ts`); a repeating one starts no earlier than the day chosen.
+- **Where.** A task's editor has *Reminders*: when it is due, 15 minutes, an hour or a day before (offered once the task has a due date),
+  or at a day and time; *Send by* email and notification, both ticked. A list's Customise has *Reminders*: a day, a time and *Once*, *Every
+  day*, *Every week* or *Every month* from then. A task with a reminder shows a bell on its row.
+- **Who and how.** The dispatcher's `projectsReminders` job (`runTaskReminders()` in `src/server/projects-notices.ts`) claims each reminder
+  whose time has come, moves a repeating one of an open list to its rule's next time in the store's zone, and tells the task's or the list's
+  person, or whoever set it when there is none: an email in their admin language (`staff.task_reminder`: the task and its list and when it
+  is due, or how many tasks the list has open) and a notification (`sendProjectsPush()`), each once. A reminder of a task done or archived,
+  of a list not open, a day late, or for someone who may no longer read projects, is passed over. Its words are Projects' own
+  (`project-sources` area), so the screens that load the staff emails' words carry none of them.
 

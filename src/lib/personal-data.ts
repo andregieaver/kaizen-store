@@ -765,6 +765,8 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "support.waiting": "staff",
   /** A task's person told it is theirs (D904 P8.3d): the tasks' titles and lists and who gave them, to a member of the store's team. */
   "staff.task_assigned": "staff",
+  /** A reminder on a task or a list (D903 P4.3): the task's or list's title and when it is due, to a member of the store's team. */
+  "staff.task_reminder": "staff",
   // Staff alerts and tests (D238): never a shopper's name, email, phone or address (docs/wave-3-notifications.md 4.8).
   "notification.test": "staff",
   "staff.new_order": "staff",

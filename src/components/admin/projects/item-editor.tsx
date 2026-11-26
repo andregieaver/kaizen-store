@@ -18,6 +18,7 @@ import { PRIORITIES, type Priority, type ProjectColour, type StatusBucket } from
 import type { Recurrence } from "@/lib/projects-recurrence";
 
 import { ItemComments, type EditorComment } from "./item-comments";
+import { TaskReminders, type ReminderView } from "./task-reminders";
 import { TaskTime, type TaskTimeFacts } from "./task-time";
 import { ColourDot } from "./parts";
 import { draftOf, RepeatField, ruleOf } from "./repeat-field";
@@ -47,7 +48,7 @@ export type EditorItem = {
 };
 
 /** The words of a task's time (D904 P8.3d), given only on a list whose time goes to a Work assignment. */
-export type TimeWords = Partial<Pick<ProjectsMessages, "work" | "fieldProblems">>;
+export type TimeWords = Partial<Pick<ProjectsMessages, "work" | "fieldProblems" | "reminders">>;
 export type EditorWords = Pick<ProjectsMessages, "item" | "repeat" | "priorities" | "cancel" | "save" | "delete" | "none" | "nobody"> & TimeWords;
 
 /**
@@ -71,6 +72,7 @@ export function ItemEditor({
   act,
   canChange,
   time,
+  reminders,
   onClose,
 }: {
   item: EditorItem;
@@ -92,6 +94,8 @@ export function ItemEditor({
   canChange: boolean;
   /** Its time, on a list whose time goes to a Work assignment (D904 P8.3d). */
   time?: TaskTimeFacts;
+  /** Its reminders (P4.3); none drawn when the page gives none. */
+  reminders?: ReminderView[];
   onClose: () => void;
 }) {
   const w = words.item;
@@ -350,6 +354,20 @@ export function ItemEditor({
               </form>
             )}
           </section>
+        )}
+        {reminders && words.reminders && (
+          <TaskReminders
+            itemId={item.id}
+            dueAt={item.dueAt}
+            reminders={reminders}
+            canChange={canChange}
+            timeZone={timeZone}
+            lang={lang}
+            locale={locale}
+            words={{ reminders: words.reminders, repeat: words.repeat }}
+            run={run}
+            pending={pending}
+          />
         )}
         {time && words.work && words.fieldProblems && (
           <TaskTime itemId={item.id} facts={time} words={words.work} fieldWords={words.fieldProblems} run={run} pending={pending} />

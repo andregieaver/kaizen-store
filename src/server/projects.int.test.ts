@@ -19,6 +19,7 @@ const dealProjects = await import("./projects-deals");
 const tools = await import("./projects-tools");
 const work = await import("./projects-work");
 const notices = await import("./projects-notices");
+const reminders = await import("./projects-reminders");
 const attention = await import("./attention");
 const { dayIn, addCalendarDays, noonOf } = await import("@/lib/work-dates");
 const { newStore } = await import("./inventory-test-support");
@@ -642,6 +643,113 @@ describe("a task's person told by email (D904 P8.3d)", () => {
     const email = notices.taskAssignedEmail([task], "en");
     expect(email.subject).toBe("Anna gave you a task: Hang the lights");
     expect(email.text).toContain("Hang the lights, in Window display, from Anna");
+    expect(email.text).toContain("/admin/shop/checklists/c");
+  });
+});
+
+describe("reminders (D903 P4.3)", () => {
+  it("are added at a moment, before a due time or repeating, at most five, never in the past, and taken off", async () => {
+    const now = Date.now();
+    const { id: list } = ok(await lists.createChecklist(store.member, { title: "Opening routine" }));
+    // Far enough off that none of these comes while the next test sends.
+    const due = new Date(now + 10 * 3600_000).toISOString();
+    const { id: task } = ok(await items.addItem(store.member, list, { title: "Unlock the door", dueAt: due }));
+    const soon = new Date(now + 3600_000).toISOString();
+    const at = ok(await reminders.addReminder(store.member, { itemId: task, remindAt: soon, channels: ["email"] }));
+    const before = ok(await reminders.addReminder(store.member, { itemId: task, offsetMinutes: 15, channels: ["email", "push"] }));
+    const weekly = ok(
+      await reminders.addReminder(store.member, { checklistId: list, recurrence: { freq: "weekly", weekdays: [1], times: ["09:00"] }, channels: ["push"] }),
+    );
+    const got = await reminders.remindersOf(store.storeId, list);
+    expect(got.items[task].map((r) => [r.id, r.nextAt])).toEqual([
+      [at.id, soon],
+      [before.id, new Date(Date.parse(due) - 15 * 60_000).toISOString()],
+    ]);
+    expect(got.list).toMatchObject([{ id: weekly.id, recurrence: { freq: "weekly", weekdays: [1], times: ["09:00"] }, channels: ["push"] }]);
+    // A Monday at nine in the store's zone, after now.
+    expect(Date.parse(got.list[0].nextAt!)).toBeGreaterThan(now);
+
+    expect(await reminders.addReminder(store.member, { itemId: task, remindAt: new Date(now - 3600_000).toISOString(), channels: ["email"] })).toMatchObject({ ok: false, fields: ["remindAt"] });
+    expect(await reminders.addReminder(store.member, { checklistId: list, offsetMinutes: 15, channels: ["email"] })).toMatchObject({ ok: false, problem: "invalid" });
+    for (let i = 0; i < 3; i++) ok(await reminders.addReminder(store.member, { itemId: task, offsetMinutes: 60 * (i + 1), channels: ["email"] }));
+    expect(await reminders.addReminder(store.member, { itemId: task, offsetMinutes: 1440, channels: ["email"] })).toMatchObject({ ok: false, fields: ["reminders"] });
+    ok(await reminders.deleteReminder(store.member, at.id));
+    expect(await reminders.deleteReminder(store.member, at.id)).toMatchObject({ ok: false, problem: "not_found" });
+    expect(await reminders.deleteReminder(other.member, before.id)).toMatchObject({ ok: false, problem: "not_found" });
+  });
+
+  it("are sent once when their time comes, to the task's person or whoever set them, a repeating one moved on, a done task's passed over", async () => {
+    await db().execute(sql`update commerce.stores set features = array_append(features, 'projects') where id = ${store.storeId}::uuid and not ('projects' = any(features))`);
+    const now = Date.now();
+    const { id: list } = ok(await lists.createChecklist(store.member, { title: "Closing routine" }));
+    const { id: task } = ok(await items.addItem(store.member, list, { title: "Lock the door", dueAt: new Date(now + 3600_000).toISOString() }));
+    const { id: done } = ok(await items.addItem(store.member, list, { title: "Count the till" }));
+    ok(await reminders.addReminder(store.member, { itemId: task, offsetMinutes: 30, channels: ["email", "push"] }));
+    ok(await reminders.addReminder(store.member, { itemId: done, remindAt: new Date(now + 60_000).toISOString(), channels: ["email"] }));
+    const daily = ok(await reminders.addReminder(store.member, { checklistId: list, recurrence: { freq: "daily", times: ["09:00"] }, channels: ["email"] }));
+    ok(await items.setItemDone(store.member, done, true));
+    // Its time come: the daily one is due now.
+    await db().execute(sql`update commerce.checklist_reminders set next_at = now() - interval '1 minute' where id = ${daily.id}::uuid`);
+
+    const mails: { to: string; subject: string }[] = [];
+    const send = (async (message: { to: string; email: { subject: string } }) => {
+      mails.push({ to: message.to, subject: message.email.subject });
+      return "sent" as const;
+    }) as unknown as Parameters<typeof notices.runTaskReminders>[1];
+    const pushed: string[] = [];
+    const push = async (_store: string, accountId: string, build: Parameters<NonNullable<Parameters<typeof notices.runTaskReminders>[2]>>[2]) => {
+      pushed.push(`${accountId}:${build({ slug: store.slug, name: "Test" }, "en").title}`);
+      return 1;
+    };
+    const mine = () => mails.filter((m) => m.to === store.accountEmail);
+
+    // Now: only the list's daily one has come.
+    await notices.runTaskReminders(new Date(), send, push);
+    expect(mine()).toEqual([{ to: store.accountEmail, subject: "Reminder: Closing routine" }]);
+    const [{ next }] = await db().execute<{ next: string }>(sql`select next_at::text as next from commerce.checklist_reminders where id = ${daily.id}::uuid`);
+    expect(Date.parse(next)).toBeGreaterThan(now);
+
+    // Forty minutes on: the task's half-hour-before one comes, by email and push; the done task's is passed over, never sent.
+    const later = new Date(now + 40 * 60_000);
+    await notices.runTaskReminders(later, send, push);
+    expect(mine().map((m) => m.subject)).toEqual(["Reminder: Closing routine", "Reminder: Lock the door"]);
+    expect(pushed).toContain(`${store.accountId}:Reminder: Lock the door`);
+    expect(mine().some((m) => m.subject.includes("Count the till"))).toBe(false);
+    // Sent once.
+    await notices.runTaskReminders(later, send, push);
+    expect(mine()).toHaveLength(2);
+  });
+
+  it("say the task, its list and when it is due", () => {
+    const email = notices.reminderEmail(
+      {
+        id: "r",
+        store_id: "s",
+        slug: "shop",
+        store_name: "Nord",
+        time_zone: "Europe/Oslo",
+        item_title: "Lock the door",
+        due_at: "2026-12-01T21:00:00.000Z",
+        all_day: false,
+        closed: false,
+        list_id: "c",
+        list_title: "Closing routine",
+        list_open: true,
+        open_tasks: 3,
+        channels: ["email"],
+        account_id: "a",
+        email: "kari@example.com",
+        admin_locale: null,
+        owner: true,
+        kind: null,
+        role_id: null,
+        permissions: null,
+      },
+      "en",
+    );
+    expect(email.subject).toBe("Reminder: Lock the door");
+    expect(email.text).toContain("Lock the door, in Closing routine.");
+    expect(email.text).toContain("It is due");
     expect(email.text).toContain("/admin/shop/checklists/c");
   });
 });

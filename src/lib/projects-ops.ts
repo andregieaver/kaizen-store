@@ -42,6 +42,18 @@ export const projectsOp = z.discriminatedUnion("op", [
   // A list's time goes to a Work assignment, and a task logs time there (D904 P8.3d).
   z.object({ op: z.literal("list.assignment"), checklistId: id, assignmentId: id.nullable() }),
   z.object({ op: z.literal("item.logTime"), itemId: id, minutes: z.int().min(1).max(1440), workDate: z.string().max(10).nullable() }),
+  // A reminder on a task or a list (P4.3): checked in full by the server's own input (`reminderInput`).
+  z.object({
+    op: z.literal("reminder.add"),
+    itemId: id.nullable(),
+    checklistId: id.nullable(),
+    remindAt: z.string().max(40).nullable(),
+    offsetMinutes: z.int().nullable(),
+    recurrence: z.record(z.string(), z.unknown()).nullable(),
+    startsAt: z.string().max(40).nullable().optional(),
+    channels: z.array(z.string().max(10)).max(2),
+  }),
+  z.object({ op: z.literal("reminder.delete"), id }),
   z.object({ op: z.literal("project.reorderLists"), projectId: id, ids }),
   z.object({ op: z.literal("project.stage"), projectId: id, itemId: id, stageId: scope }),
   z.object({ op: z.literal("list.update"), id, patch: checklistInput.partial() }),

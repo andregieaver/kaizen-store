@@ -44,7 +44,7 @@ import {
 import { FLOW_TRIGGERS } from "../lib/flow-triggers";
 import { AUTOPILOT_GAPS, AUTOPILOT_REASONS, ENHANCEMENT_ONLY, INCIDENT_KINDS, INCIDENT_LIMITS, INCIDENT_SOURCES, INCIDENT_STATUSES, PROBLEM_ONLY } from "../lib/incidents";
 import { CHANNEL_KEYS } from "../lib/analytics-channels";
-import { CHECKLIST_STATES, LABEL_KINDS, PRIORITIES, PROJECT_COLOURS, PROJECT_HEALTHS, PROJECT_LIMITS, PROJECT_STATUSES, STATUS_BUCKETS } from "../lib/projects-model";
+import { CHECKLIST_STATES, LABEL_KINDS, PRIORITIES, PROJECT_COLOURS, PROJECT_HEALTHS, PROJECT_LIMITS, PROJECT_STATUSES, REMINDER_CHANNELS, STATUS_BUCKETS } from "../lib/projects-model";
 import { LIMIT_KEYS } from "../lib/limits";
 import { EXTENSION_IDS, EXTENSION_SOURCES } from "../lib/extensions";
 import { USAGE_METRIC_IDS } from "../lib/usage-metrics";
@@ -14141,6 +14141,52 @@ export const checklistItemTime = commerce
       foreignKey({ name: "checklist_item_time_item_fk", columns: [t.storeId, t.itemId], foreignColumns: [checklistItems.storeId, checklistItems.id] }).onDelete("cascade"),
       foreignKey({ name: "checklist_item_time_entry_fk", columns: [t.storeId, t.timeEntryId], foreignColumns: [workTimeEntries.storeId, workTimeEntries.id] }).onDelete("cascade"),
       index("checklist_item_time_item_idx").on(t.storeId, t.itemId),
+    ],
+  )
+  .enableRLS();
+
+/**
+ * A reminder (D903 P4.3, Life's `checklist_item_reminders` and `checklist_reminders` in one table): on a task, at a moment or so long
+ * before its due time, or on a list, at a moment or repeating. `next_at` is when it comes next: the rules migration keeps it for a reminder
+ * before a task's due time (and arms it again when the due time moves); the five-minute job clears it when it is sent, or moves a repeating
+ * one on. It goes to the task's or the list's person, or to whoever set it when there is none.
+ */
+export const checklistReminders = commerce
+  .table(
+    "checklist_reminders",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+      /** A task's reminder; the other is a list's. */
+      itemId: uuid("item_id"),
+      checklistId: uuid("checklist_id"),
+      remindAt: timestamp("remind_at", { withTimezone: true }),
+      /** So many minutes before the task's due time (0: when it is due). */
+      offsetMinutes: integer("offset_minutes"),
+      /** A list's repeating reminder: the same rule as a repeating task's (P4.1), its times the reminder's. */
+      recurrence: jsonb("recurrence"),
+      channels: text("channels").array().notNull().default(sql`'{email,push}'::text[]`),
+      nextAt: timestamp("next_at", { withTimezone: true }),
+      firedAt: timestamp("fired_at", { withTimezone: true }),
+      createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+      createdAt: createdAt(),
+    },
+    (t) => [
+      foreignKey({ name: "checklist_reminders_item_fk", columns: [t.storeId, t.itemId], foreignColumns: [checklistItems.storeId, checklistItems.id] }).onDelete("cascade"),
+      foreignKey({ name: "checklist_reminders_checklist_fk", columns: [t.storeId, t.checklistId], foreignColumns: [checklists.storeId, checklists.id] }).onDelete("cascade"),
+      // What the five-minute job reads: only reminders still to come.
+      index("checklist_reminders_next_idx").on(t.nextAt).where(sql`${t.nextAt} is not null`),
+      index("checklist_reminders_item_idx").on(t.storeId, t.itemId).where(sql`${t.itemId} is not null`),
+      index("checklist_reminders_checklist_idx").on(t.storeId, t.checklistId).where(sql`${t.checklistId} is not null`),
+      index("checklist_reminders_created_by_idx").on(t.createdBy),
+      check("checklist_reminders_target", sql`num_nonnulls(${t.itemId}, ${t.checklistId}) = 1`),
+      check(
+        "checklist_reminders_when",
+        sql`num_nonnulls(${t.remindAt}, ${t.offsetMinutes}, ${t.recurrence}) = 1 and (${t.offsetMinutes} is null or ${t.itemId} is not null) and (${t.recurrence} is null or ${t.checklistId} is not null)`,
+      ),
+      check("checklist_reminders_offset", sql`${t.offsetMinutes} is null or ${t.offsetMinutes} between 0 and ${checkNumber(PROJECT_LIMITS.reminderOffset)}`),
+      check("checklist_reminders_recurrence", sql`${t.recurrence} is null or jsonb_typeof(${t.recurrence}) = 'object'`),
+      check("checklist_reminders_channels", sql`cardinality(${t.channels}) between 1 and 2 and ${t.channels} <@ array[${wordList(REMINDER_CHANNELS)}]::text[]`),
     ],
   )
   .enableRLS();

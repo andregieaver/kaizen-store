@@ -12,7 +12,7 @@ const DISPATCHER = "src/app/api/cron/cart-reminders/route.ts";
 // The job list itself moved to its own module (bloat review step 1.10); the hourly prunes stay in the route.
 const JOBS = "src/server/dispatcher-jobs.ts";
 const DAILY = "src/app/api/cron/subscription-reminders/route.ts";
-const DISPATCHER_JOBS = 89; // 89 with telling a task's person (D904 P8.3d); 88 with the repeating checklist tasks (D903 P4.1); 87 with the rivals' watcher (D900 M3); 86 with the Facebook Pages' figures (D870 S1.2b); 85 with the social media adviser's weekly review (D870 S1.5); 84 with the Instagram posts' figures (D870 S1.2); 83 with the incident log (D895); 82 with the owners' journey (D886); 78 when the step was written, 84 when it was carried out, minus the nine prunes; 78 with the domain watch (E4.2) and the autopilot's tests (E4.1); 79 with the contracts' upkeep (D795); 80 with the documents' PDFs asked for (D807); 81 with the products' standard category words (bloat review step 2.23).
+const DISPATCHER_JOBS = 90; // 90 with reminders on tasks and lists (D903 P4.3); 89 with telling a task's person (D904 P8.3d); 88 with the repeating checklist tasks (D903 P4.1); 87 with the rivals' watcher (D900 M3); 86 with the Facebook Pages' figures (D870 S1.2b); 85 with the social media adviser's weekly review (D870 S1.5); 84 with the Instagram posts' figures (D870 S1.2); 83 with the incident log (D895); 82 with the owners' journey (D886); 78 when the step was written, 84 when it was carried out, minus the nine prunes; 78 with the domain watch (E4.2) and the autopilot's tests (E4.1); 79 with the contracts' upkeep (D795); 80 with the documents' PDFs asked for (D807); 81 with the products' standard category words (bloat review step 2.23).
 
 const NINE = [
   "pruneSearchLog",

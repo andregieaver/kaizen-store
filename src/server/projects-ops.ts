@@ -11,6 +11,7 @@ import * as items from "./projects-items";
 import * as labels from "./projects-labels";
 import * as lists from "./projects-lists";
 import * as sources from "./projects-sources";
+import * as reminders from "./projects-reminders";
 import * as statuses from "./projects-statuses";
 import * as work from "./projects-work";
 
@@ -62,6 +63,11 @@ export async function runProjectsOp(
       return work.setListAssignment(member, op);
     case "item.logTime":
       return work.logTaskTime(member, op);
+    case "reminder.add":
+      // The server's own input reads what it knows and leaves the op's name.
+      return reminders.addReminder(member, op);
+    case "reminder.delete":
+      return reminders.deleteReminder(member, op.id);
     case "item.addFrom":
       return sources.addSourceTask(member, op, context.followUps);
     case "item.add": {

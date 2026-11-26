@@ -46,7 +46,15 @@ export const PROJECT_LIMITS = {
   blockedReason: 500,
   labelName: 40,
   comment: 4000,
+  /** Reminders on one task or one list (P4.3). */
+  reminders: 5,
+  /** How long before a task's due time a reminder may come: four weeks, in minutes. */
+  reminderOffset: 40_320,
 } as const;
+
+/** How a reminder reaches its person (P4.3): an email, a notification on their devices, or both. */
+export const REMINDER_CHANNELS = ["email", "push"] as const;
+export type ReminderChannel = (typeof REMINDER_CHANNELS)[number];
 
 /** A label is a category (one a task) or a tag (several), P4.6. */
 export const LABEL_KINDS = ["category", "tag"] as const;
