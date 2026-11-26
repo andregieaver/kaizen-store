@@ -364,7 +364,10 @@ These are the owner's to write (legal texts are never written by a model, D656 s
 
 ### Later
 
-- [ ] **IA-17** A Vercel log drain into the ingest endpoint, so runtime errors arrive within minutes instead of at the next run.
+- [x] **IA-17** A Vercel log drain into the ingest endpoint, so runtime errors arrive within minutes instead of at the next run. Done 26
+      November 2026, without a new drain: the usage drain (D314, `/api/usage/drain`, already signed and filtered to production) also hands
+      its error lines to the log (`drain-errors.ts`): grouped by route shape and event or error name, the runbook's fingerprint, messages
+      masked, at most 20 a batch, the log's own lines left out.
 - [ ] **IA-18** A store owner's view of the entries about their store.
 - [ ] **IA-19** If the owner wants it after IA-13: small enhancements approved automatically, under rules the owner sets.
 

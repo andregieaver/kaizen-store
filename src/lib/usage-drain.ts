@@ -13,7 +13,7 @@ export type TrafficTotal = { storeId: StoreKey; day: string; requests: number; s
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
 
 /** The objects of a drain body: a JSON array, one object, or one object per line. Anything unreadable is left out. */
-function objectsOf(text: string): Record<string, unknown>[] {
+export function objectsOf(text: string): Record<string, unknown>[] {
   const trimmed = text.trim();
   if (trimmed === "") return [];
   try {

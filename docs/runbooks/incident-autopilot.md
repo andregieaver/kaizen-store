@@ -57,9 +57,11 @@ Your session's link names you in every write (`session`): get it from the `get_s
    says, unless a comment on the issue says the session that broke it is fixing it: then note that on the entry and leave it to them
    (two sessions on one red run push over each other). It closes itself when `main` is green.
 3. **Bring the log up to date.**
-   - Production's runtime errors since the last run (the Vercel tools: `get_runtime_errors` for the project, production). Group them: one
-     entry per fingerprint `runtime:{route}:{error name}:{first frame of ours}`, `kind: "error"`, facts the route, the error's name and
-     message cut to 300 characters, the count and the deployment. Never a person's name, email or address in a title or a fact.
+   - Production's runtime errors arrive by themselves within a minute, through the log drain (IA-17, `drain-errors.ts`). Check the last
+     hours with the Vercel tools (`get_runtime_errors` for the project, production) only for what the drain cannot see (a build, a crash
+     before a line is written), and put those in with the drain's fingerprint `runtime:{route shape}:{event or error name}` (lower case;
+     a store's slug is `:store`, an id `:id`), `kind: "error"`, facts the route, the name, the message cut to 300 characters with emails and
+     long numbers masked, the count and the deployment. Never a person's name, email or address in a title or a fact.
    - The nightly run, and any run that pushed a migration: the Supabase advisors (security and performance) for project
      `ybsozesfuxuitoacntfo`. Only findings at level **WARN or ERROR** become entries: one per object, `kind: "warning"` (`"error"` for
      ERROR), `source: "advisor"`, fingerprint `advisor:{name}:{table or object}`. INFO findings are the standing lists (every commerce table
