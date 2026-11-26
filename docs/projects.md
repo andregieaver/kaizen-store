@@ -241,7 +241,7 @@ Status: Planned, Building, Done (date and commit).
 | Id | Step | Status |
 |---|---|---|
 | P5.1 | Life's project and checklist tools as AI manager tools (listed below), held for the eval as `.claude/rules/ai-prompts.md` says | Planned |
-| P5.2 | Events in `commerce.events` (project created, status changed; list created, archived; item done, assigned), workflow triggers and webhook topics | Built 26 November 2026 (below) |
+| P5.2 | Events in `commerce.events` (project created, status changed; list created, archived; item done, assigned), workflow triggers and webhook topics | Done 26 November 2026 (83dd8da, 370b4a5; below) |
 | P5.3 | Tasks the AI manager works on (Life: assigned to the assistant) | Planned |
 
 Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set_project_status`, `review_project`,
