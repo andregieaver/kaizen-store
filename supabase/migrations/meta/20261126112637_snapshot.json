@@ -1,6 +1,6 @@
 {
-  "id": "e79283d3-f9c9-4f1f-baff-c3fc161fd06d",
-  "prevId": "0609b50e-2bf3-447a-928c-4c74a755605b",
+  "id": "84017aa4-586d-4498-8704-e577086fea61",
+  "prevId": "554b8bb5-01d6-4ed3-93e7-c8cbe1dfe6e0",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -17277,6 +17277,30 @@
           "primaryKey": false,
           "notNull": false
         },
+        "order_id": {
+          "name": "order_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "return_id": {
+          "name": "return_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "review_id": {
+          "name": "review_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "conversation_id": {
+          "name": "conversation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_by": {
           "name": "created_by",
           "type": "uuid",
@@ -17445,6 +17469,88 @@
           "method": "btree",
           "with": {}
         },
+        "checklist_items_order_link_idx": {
+          "name": "checklist_items_order_link_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "order_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"commerce\".\"checklist_items\".\"order_id\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "checklist_items_return_link_idx": {
+          "name": "checklist_items_return_link_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "return_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"commerce\".\"checklist_items\".\"return_id\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "checklist_items_review_link_idx": {
+          "name": "checklist_items_review_link_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "review_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"commerce\".\"checklist_items\".\"review_id\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "checklist_items_conversation_link_idx": {
+          "name": "checklist_items_conversation_link_idx",
+          "columns": [
+            {
+              "expression": "conversation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"commerce\".\"checklist_items\".\"conversation_id\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "checklist_items_created_by_idx": {
           "name": "checklist_items_created_by_idx",
           "columns": [
@@ -17565,6 +17671,10 @@
         "checklist_items_not_self_blocked": {
           "name": "checklist_items_not_self_blocked",
           "value": "\"commerce\".\"checklist_items\".\"blocked_by_item_id\" is null or \"commerce\".\"checklist_items\".\"blocked_by_item_id\" <> \"commerce\".\"checklist_items\".\"id\""
+        },
+        "checklist_items_one_source": {
+          "name": "checklist_items_one_source",
+          "value": "num_nonnulls(\"commerce\".\"checklist_items\".\"order_id\", \"commerce\".\"checklist_items\".\"return_id\", \"commerce\".\"checklist_items\".\"review_id\", \"commerce\".\"checklist_items\".\"conversation_id\") <= 1"
         }
       },
       "isRLSEnabled": true

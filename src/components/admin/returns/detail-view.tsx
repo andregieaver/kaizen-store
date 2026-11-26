@@ -67,6 +67,7 @@ export function ReturnDetailView({
   locale = "en-GB",
   exchangeCard = null,
   labelCard = null,
+  tasksCard = null,
   words: w,
 }: {
   /** `/admin/{store}` */
@@ -83,6 +84,8 @@ export function ReturnDetailView({
   exchangeCard?: ReactNode;
   /** The **Return shipping** card (D239, `LabelCard`); placed after the instructions. */
   labelCard?: ReactNode;
+  /** The return's tasks (D904 P8.3a, `SourceTasks`), drawn by the page while the store has Projects; placed above the history. */
+  tasksCard?: ReactNode;
   words: ReturnsMessages;
 }) {
   const d = w.detail;
@@ -461,6 +464,7 @@ export function ReturnDetailView({
             
                 </FoldRow>
               )}
+              {tasksCard}
               <FoldRow title={d.history} sub={detail.events.length === 0 ? d.historyNone : countWords(detail.events.length, d.historySome)} action={detail.events.length === 0 ? null : d.view}>
 
             {detail.events.length === 0 ? (

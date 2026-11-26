@@ -1,5 +1,7 @@
 import type { FormState } from "@/components/admin/action-form";
 import type { SavedReply } from "@/lib/support-replies";
+import type { ProjectsAct } from "@/components/admin/projects/use-act";
+import type { ProjectSourcesMessages } from "@/lib/admin-messages/project-sources.en";
 
 /**
  * What an inbox needs from the level it is drawn at (D216, `docs/support.md` 5.4): a store's, the owner's combined one, or Kaizen's
@@ -22,6 +24,11 @@ export type SupportDeskContext = {
   partnerOn: boolean | null;
   /** Where shoppers meet the chat (the storefront, or Kaizena Flow's own site), linked from an empty inbox (round 21); left out where there is none. */
   shopUrl?: string | null;
+  /**
+   * *Make a task* from a conversation (D904 P8.3a): a store's desk only, while the store has Projects and the person may change it. The task
+   * goes to the store's list for follow-ups and links back to the conversation.
+   */
+  tasks?: { base: string; act: ProjectsAct; words: ProjectSourcesMessages } | null;
   actions: {
     heartbeat: () => Promise<{ ok: boolean }>;
     presence: ((status: "online" | "away") => Promise<{ ok: boolean }>) | null;

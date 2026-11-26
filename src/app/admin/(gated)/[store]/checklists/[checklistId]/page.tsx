@@ -21,6 +21,7 @@ import { teamOf } from "@/server/projects";
 import { labelsOf } from "@/server/projects-labels";
 import { checklistDetail, listChecklists, listFingerprint, type ChecklistItem } from "@/server/projects-lists";
 import { ensureDefaultStatuses } from "@/server/projects-statuses";
+import { sourceLinks } from "@/server/projects-sources";
 
 import { listStatusAction, projectsAction } from "../../projects/actions";
 
@@ -57,6 +58,8 @@ export default async function ChecklistPage({ params }: PageProps<"/admin/[store
   const total = list.done.length + list.entries.filter((e) => e.kind === "item").length;
   const home = list.projects.find((p) => p.id === list.primaryProjectId);
   const toView = (item: ChecklistItem): ViewItem => ({ ...item, subtasks: item.subtasks.map((s) => ({ id: s.id, title: s.title, done: s.done, isGoal: s.isGoal })) });
+  // Where tasks came from (D904 P8.3a): links back to orders, returns, reviews and conversations, while their arms are there.
+  const sources = await sourceLinks(member, [...list.entries.flatMap((e) => (e.kind === "item" ? [e.item] : [])), ...list.done], w.sources);
   const entries: ViewEntry[] = list.entries.map((e) => (e.kind === "section" ? { kind: "section", section: { id: e.section.id, title: e.section.title } } : { kind: "item", item: toView(e.item) }));
   const assignee = team.find((p) => p.id === list.assignedTo)?.name;
   const locale = ADMIN_LANG_FACTS[lang].locale;
@@ -119,6 +122,7 @@ export default async function ChecklistPage({ params }: PageProps<"/admin/[store
         now={drawn.toISOString()}
         words={w}
         act={act}
+        sources={sources}
       />
       {canChange && (
         <details className="flex flex-col gap-3">

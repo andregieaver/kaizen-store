@@ -8,6 +8,7 @@ import { itemFields, itemInput, problemFields, sectionTitle, sequence, subtaskIn
 import { itemMoment } from "@/lib/projects-ops";
 import { anchored, nextOccurrence, type Recurrence } from "@/lib/projects-recurrence";
 import { parseRecurrence } from "@/lib/projects-recurrence-schema";
+import { SOURCE_COLUMNS, type TaskSource } from "@/lib/projects-sources";
 
 import type { Membership } from "./auth";
 import { memberCan } from "./permissions";
@@ -88,14 +89,16 @@ function repeatColumns(rule: Recurrence | null | undefined, timeZone: string, no
 }
 
 /** A new item at the end of a list (its status the list's default, by the database). */
-export async function addItem(member: Membership, checklistId: string, raw: unknown): Promise<ProjectsResult<{ id: string }>> {
+export async function addItem(member: Membership, checklistId: string, raw: unknown, source?: TaskSource): Promise<ProjectsResult<{ id: string }>> {
   if (!memberCan(member, WRITE)) return { ok: false, problem: "forbidden" };
   const input = itemInput.safeParse(raw);
   if (!input.success) return { ok: false, problem: "invalid", fields: problemFields(input.error) };
   const storeId = member.store.id;
   if (!(await listExists(storeId, checklistId))) return { ok: false, problem: "not_found" };
   if (!(await assignable(storeId, input.data.assignedTo))) return { ok: false, problem: "invalid", fields: ["assignedTo"] };
-  const given = [...itemColumns(input.data), ...repeatColumns(input.data.recurrence, member.store.timeZone)].filter(([, v]) => v !== undefined);
+  // Where it came from (P8.3a): the source's column, from a fixed list, never the caller's words.
+  const from: [SQL, unknown][] = source ? [[sql`${sql.identifier(SOURCE_COLUMNS[source.kind])}`, sql`${source.id}::uuid`]] : [];
+  const given = [...itemColumns(input.data), ...repeatColumns(input.data.recurrence, member.store.timeZone), ...from].filter(([, v]) => v !== undefined);
   return projectsGuard(() =>
     db().transaction(async (tx): Promise<ProjectsResult<{ id: string }>> => {
       const sortOrder = await endOf(tx, storeId, checklistId);

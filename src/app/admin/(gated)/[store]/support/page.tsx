@@ -4,7 +4,7 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminLangOf } from "@/lib/admin-lang";
 import { Inbox } from "@/components/admin/support/inbox";
 import type { SupportDeskContext } from "@/components/admin/support/desk-context";
-import { requirePermission } from "@/server/permissions";
+import { memberCan, requirePermission } from "@/server/permissions";
 import { presence } from "@/server/support";
 import { memberDesk } from "@/server/support-desk";
 import { openingInbox } from "@/server/support-inbox";
@@ -20,6 +20,9 @@ import {
 } from "./actions";
 import { carryOutRequestAction, decideRequestAction } from "./requests/actions";
 import { requireExtension } from "@/components/admin/extension-off";
+import { projectsAction } from "@/app/admin/(gated)/[store]/projects/actions";
+import { PROJECT_SOURCES_WORDS } from "@/lib/admin-words/project-sources";
+import { projectsOn } from "@/lib/extensions";
 
 export const metadata: Metadata = { title: "Support inbox" };
 
@@ -52,6 +55,11 @@ export default async function SupportInboxPage({
     presence: staff.canWrite ? mine.status : null,
     partnerOn: staff.canWrite ? mine.partner : null,
     shopUrl: storeHref(slug, storeBase(slug)),
+    // A pair of the octopus (D904 P8.3a): a conversation becomes a task while the store has Projects too.
+    tasks:
+      staff.canWrite && projectsOn(member.store) && memberCan(member, "projects:write")
+        ? { base: `/admin/${slug}`, act: projectsAction.bind(null, slug), words: PROJECT_SOURCES_WORDS[adminLangOf(member.account.adminLocale)] }
+        : null,
     actions: {
       heartbeat: supportHeartbeatAction.bind(null, slug),
       presence: staff.canWrite ? supportPresenceAction.bind(null, slug) : null,

@@ -357,3 +357,27 @@ describe("labels and comments (P4.6, P4.4)", () => {
     expect(await one("select count(*)::int as n from commerce.checklist_item_comments where item_id = $1", [task])).toEqual({ n: 0 });
   });
 });
+
+describe("where a task came from (D904 P8.3a)", () => {
+  const conversation = (storeId: string) =>
+    id("insert into commerce.support_conversations (store_id, source, handler, token_hash, locale) values ($1, 'site', 'ai', md5(gen_random_uuid()::text), 'en') returning id", [storeId]);
+
+  it("links a task to a conversation of its own store only, and keeps the task when the conversation goes", async () => {
+    const list = await checklist(shop);
+    const task = await item(shop, list);
+    const ours = await conversation(shop);
+    await rejects("update commerce.checklist_items set conversation_id = $2 where id = $1", [task, await conversation(other)], /checklist_item\.conversation_store/);
+    await db.query("update commerce.checklist_items set conversation_id = $2 where id = $1", [task, ours]);
+    await db.query("delete from commerce.support_conversations where id = $1", [ours]);
+    expect(await one("select conversation_id, title is not null as kept from commerce.checklist_items where id = $1", [task])).toEqual({ conversation_id: null, kept: true });
+  });
+
+  it("gives a task one source at most, and only one of its store", async () => {
+    const list = await checklist(shop);
+    const task = await item(shop, list);
+    await rejects("update commerce.checklist_items set conversation_id = $2, order_id = gen_random_uuid() where id = $1", [task, await conversation(shop)], /checklist_items_one_source/);
+    await rejects("update commerce.checklist_items set order_id = gen_random_uuid() where id = $1", [task], /checklist_items_order_fk/);
+    await rejects("update commerce.checklist_items set review_id = gen_random_uuid() where id = $1", [task], /checklist_items_review_fk/);
+    await rejects("update commerce.checklist_items set return_id = gen_random_uuid() where id = $1", [task], /checklist_items_return_fk/);
+  });
+});

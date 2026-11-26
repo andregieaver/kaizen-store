@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { DotChip, StepPath, Thumb, type PathStep } from "@/components/admin/home/home-parts";
 import { FoldOnHash, MoreMenu } from "@/components/admin/orders/order-folds";
 import { FoldRow } from "@/components/admin/fold-row";
+import { SourceTasks } from "@/components/admin/projects/source-tasks";
+import { projectsAction } from "@/app/admin/(gated)/[store]/projects/actions";
 import { linePictures } from "@/server/home";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -70,6 +72,7 @@ import { db } from "@/db/client";
 import { listLocations } from "@/server/inventory-locations";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { dealOfThing } from "@/server/deals";
+import { sourceTasks } from "@/server/projects-sources";
 import { orderStockHistory } from "@/server/stock-restock";
 import { componentsText } from "@/lib/bundles";
 import { estimateWeightGrams } from "@/server/bring-shipping";
@@ -115,12 +118,13 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { einvoiceLines } from "@/server/einvoice-sending";
 import type { OrderMessages } from "@/lib/admin-messages/order.en";
-import { dealsOn } from "@/lib/extensions";
+import { dealsOn, projectsOn } from "@/lib/extensions";
 import { areaTexts } from "@/lib/admin-area";
 import { BUILDER_TEXT_WORDS } from "@/lib/admin-words/builder-text";
 import { COMMON_WORDS } from "@/lib/admin-words/common";
 import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
 import { DEALS_WORDS } from "@/lib/admin-words/deals";
+import { PROJECT_SOURCES_WORDS } from "@/lib/admin-words/project-sources";
 import { DRAFTS_WORDS } from "@/lib/admin-words/drafts";
 import { HOME_WORDS } from "@/lib/admin-words/home";
 import { INVOICES_WORDS } from "@/lib/admin-words/invoices";
@@ -156,7 +160,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   // The admin's own locale for the dates the page wrote in English (D312); money and times keep the store's.
   const adminLocale = ADMIN_LANG_FACTS[lang].locale;
   if (!z.uuid().safeParse(orderId).success) notFound();
-  const [order, events, downloads, emails, customer, fromWishlists, weekly, attribution, returns, treatment, documents, privacy, archiveFacts, tagChoices, deal] = await Promise.all([
+  const [order, events, downloads, emails, customer, fromWishlists, weekly, attribution, returns, treatment, documents, privacy, archiveFacts, tagChoices, deal, tasksHere] = await Promise.all([
     getOrderAdmin(store.id, orderId),
     getOrderEvents(store.id, orderId),
     getOrderDownloads(store.id, orderId),
@@ -180,6 +184,8 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
     tagSuggestions(store.id),
     // The deal the order is linked to (ecosystem plan E1.3): only while Deals are on, for people who may read customers.
     dealsOn(store) && memberCan(member, "customers:read") ? dealOfThing(store.id, "order", orderId) : Promise.resolve(null),
+    // Its tasks (D904 P8.3a): only while the store has Projects, for people who may read projects.
+    projectsOn(store) && memberCan(member, "projects:read") ? sourceTasks(store.id, { kind: "order", id: orderId }) : Promise.resolve(null),
   ]);
   // Whether its items can be changed now, and if not why, in words (D174 2.2: copied, unpaid, sent and the rest included).
   const editability = order ? await orderEditability(store.id, orderId) : null;
@@ -1084,6 +1090,18 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               words={words.profit}
               costsHref={`/admin/${store.slug}/products`}
               settingsHref={`/admin/${store.slug}/analytics/settings`}
+            />
+          )}
+          {tasksHere && (
+            <SourceTasks
+              base={`/admin/${store.slug}`}
+              source={{ kind: "order", id: order.id }}
+              label={order.number}
+              tasks={tasksHere.tasks}
+              lists={tasksHere.lists}
+              canChange={memberCan(member, "projects:write")}
+              words={PROJECT_SOURCES_WORDS[lang]}
+              act={projectsAction.bind(null, store.slug)}
             />
           )}
           {/* Tags folded (round 6, D620): open by themselves when the order has some. */}

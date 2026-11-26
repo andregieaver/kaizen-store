@@ -14,6 +14,7 @@ const statuses = await import("./projects-statuses");
 const repeat = await import("./projects-repeat");
 const labels = await import("./projects-labels");
 const comments = await import("./projects-comments");
+const sources = await import("./projects-sources");
 const attention = await import("./attention");
 const { dayIn, addCalendarDays, noonOf } = await import("@/lib/work-dates");
 const { newStore } = await import("./inventory-test-support");
@@ -449,3 +450,42 @@ describe("who may", () => {
     expect(row.n).toBe(0);
   });
 });
+
+describe("a task from where it came from (D904 P8.3a)", () => {
+  const conversation = async (storeId: string, name: string | null = null) =>
+    (
+      await db().execute<{ id: string }>(sql`
+        insert into commerce.support_conversations (store_id, source, handler, token_hash, locale, contact_name)
+        values (${storeId}::uuid, 'site', 'ai', md5(gen_random_uuid()::text), 'en', ${name}) returning id`)
+    )[0].id;
+  const LINK_WORDS = { order: "Order {label}", return: "Return {label}", review: "Review by {label}", conversation: "Conversation with {label}", conversationUnnamed: "A conversation" };
+
+  it("goes to the store's list for follow-ups, made once, links back, and is shown on its source", async () => {
+    const chat = await conversation(store.storeId, "Kari");
+    const first = ok(await sources.addSourceTask(store.member, { kind: "conversation", sourceId: chat, title: "Call Kari back", checklistId: null }, "Follow-ups"));
+    const second = ok(await sources.addSourceTask(store.member, { kind: "conversation", sourceId: chat, title: "Send the new size", checklistId: null }, "Follow-ups"));
+    const lists = await db().execute<{ id: string }>(sql`select id from commerce.checklists where store_id = ${store.storeId}::uuid and title = 'Follow-ups'`);
+    expect(lists).toHaveLength(1);
+    const here = await sources.sourceTasks(store.storeId, { kind: "conversation", id: chat });
+    expect(here.tasks.map((t) => t.id).sort()).toEqual([first.id, second.id].sort());
+    expect(here.tasks.every((t) => t.listTitle === "Follow-ups")).toBe(true);
+    expect(here.lists.some((l) => l.title === "Follow-ups")).toBe(true);
+    // The list's page links each back to the conversation (extensions are not sold in this database, so the desk is there).
+    const links = await sources.sourceLinks(store.member, [{ id: first.id, source: { kind: "conversation", id: chat } }], LINK_WORDS);
+    expect(links[first.id]).toEqual({ text: "Conversation with Kari", href: `/admin/${store.member.store.slug}/support?c=${chat}` });
+  });
+
+  it("refuses another store's conversation and an order that is not there", async () => {
+    const theirs = await conversation(other.storeId);
+    expect(await sources.addSourceTask(store.member, { kind: "conversation", sourceId: theirs, title: "Not ours", checklistId: null }, "Follow-ups")).toMatchObject({
+      ok: false,
+      problem: "invalid",
+    });
+    const missing = "00000000-0000-4000-8000-000000000000";
+    expect(await sources.addSourceTask(store.member, { kind: "order", sourceId: missing, title: "No such order", checklistId: null }, "Follow-ups")).toMatchObject({
+      ok: false,
+      problem: "not_found",
+    });
+  });
+});
+
