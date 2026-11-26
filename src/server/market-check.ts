@@ -22,6 +22,7 @@ import { geoReport } from "./analytics-geo-data";
 import { searchesByMarket } from "./analytics-search-data";
 import { marketTraffic, type Coverage } from "./analytics-traffic-data";
 import { isDemoProduct } from "./demo-content";
+import { listSearchTerms, type KeptSearchTerm } from "./market-search";
 import { listRivals, listServicePrices, rivalOffers, rivalSites, type KeptOffer, type KeptServicePrice, type Rival } from "./market-rivals";
 import { owned } from "./owned";
 import type { Store } from "./stores";
@@ -37,7 +38,7 @@ import { col, typedRow, typedRows } from "./typed-rows";
  * - Kaizena Flow's own store (`house`) sells plans through Stripe, not goods: orders and prices do not apply to it and are not read.
  */
 
-export type MarketCheck = MarketCheckFacts & {
+export type MarketCheck = Omit<MarketCheckFacts, "searchTerms"> & {
   findings: MarketFinding[];
   /** The main currency of every amount, without VAT. */
   currency: string;
@@ -60,6 +61,8 @@ export type MarketCheck = MarketCheckFacts & {
   sites: RivalSiteFacts[];
   /** The rivals' service prices kept by hand (D905 M5d); none for Kaizena Flow's own store, whose prices are its plans. */
   services: KeptServicePrice[];
+  /** The words the store follows in search, as last searched (D905 M5b). */
+  searchTerms: KeptSearchTerm[];
 };
 
 const PER_LOCALE = z.object({ locale: col.text, n: col.int });
@@ -145,7 +148,7 @@ export async function marketCheck(store: Store, period: AnalyticsPeriod, options
   for (const m of store.markets) if (!sold.has(m.code)) sold.set(m.code, m.ownLocale);
   const otherLocales = [...new Set([...sold.values()].filter((l) => l !== mainLocale))];
 
-  const [traffic, geo, searches, unpriced, untranslated, products, rivals, offers, sites, published, services] = await Promise.all([
+  const [traffic, geo, searches, unpriced, untranslated, products, rivals, offers, sites, published, services, searchTerms] = await Promise.all([
     marketTraffic(store, period, now),
     sells ? geoReport(store, period) : null,
     searchesByMarket(store, period, { perMarket: MARKET_TERMS, minMisses: MIN_MISSES, demandTerms: DEMAND_TERMS }, now),
@@ -160,6 +163,8 @@ export async function marketCheck(store: Store, period: AnalyticsPeriod, options
     publishedSince(store, now),
     // Rivals' service prices kept by hand (D905 M5d): Kaizena Flow's own prices are its plans, held against other platforms' on Platform → Plans.
     house ? [] : listServicePrices(store, mainLocale),
+    // The words the store follows in search (D905 M5b): every store's, Kaizena Flow's own too.
+    listSearchTerms(store.id),
   ]);
 
   const visitRows = new Map(traffic.byMarket.filter((r) => r.key !== "front_door").map((r) => [r.key, r]));
@@ -199,7 +204,7 @@ export async function marketCheck(store: Store, period: AnalyticsPeriod, options
       a.name.localeCompare(b.name),
   );
 
-  const facts: MarketCheckFacts = { markets, products, demand: searches.demand, rivalOffers: offers, rivalSites: sites, published, rivalServices: services };
+  const facts: MarketCheckFacts = { markets, products, demand: searches.demand, rivalOffers: offers, rivalSites: sites, published, rivalServices: services, searchTerms };
   return {
     ...facts,
     findings: marketFindings(facts, now),
@@ -215,5 +220,6 @@ export async function marketCheck(store: Store, period: AnalyticsPeriod, options
     offers,
     sites,
     services,
+    searchTerms,
   };
 }

@@ -39,6 +39,7 @@ import { jobReport } from "./cache-events";
 import { isDemoProduct } from "./demo-content";
 import { OwnerToolError } from "./owner-tool-error";
 import { log } from "./log";
+import type { SearchWatchRun } from "./market-search";
 import { pgTextArray } from "./pg-arrays";
 import { readOfferPage, readSitemapPaths, readWebPage, type ResearchActor, type ResearchDeps, type SitemapRead } from "./research";
 import { getStore, type Store } from "./stores";
@@ -207,7 +208,15 @@ const CHANGED = sql`(o.price_minor, o.currency, o.availability, o.shipping_minor
   is distinct from (excluded.price_minor, excluded.currency, excluded.availability, excluded.shipping_minor, excluded.shipping_currency, excluded.return_days)`;
 
 export type WatchDeps = ResearchDeps & { now?: Date; perRun?: number };
-export type WatchRun = { read: number; changed: number; failed: number; sites: SiteWatchRun; services: ServiceWatchRun; platform: PlatformWatchRun };
+export type WatchRun = {
+  read: number;
+  changed: number;
+  failed: number;
+  sites: SiteWatchRun;
+  services: ServiceWatchRun;
+  search: SearchWatchRun;
+  platform: PlatformWatchRun;
+};
 
 /**
  * The watcher (D900 M3, the five-minute dispatcher's `rivalWatch`): a few kept offers read longer ago than `RIVAL_WATCH_DAYS` are read
@@ -252,6 +261,7 @@ export async function watchRivals(deps: WatchDeps = {}): Promise<WatchRun> {
     failed: 0,
     sites: { listed: 0, failed: 0 },
     services: { checked: 0, gone: 0, failed: 0 },
+    search: { searched: 0, waiting: 0 },
     platform: { checked: 0, gone: 0, failed: 0 },
   };
   for (const o of due) {
@@ -284,6 +294,14 @@ export async function watchRivals(deps: WatchDeps = {}): Promise<WatchRun> {
     run.services = await watchServicePrices(deps);
   } catch (error) {
     report(error, "rivals.service_watch");
+  }
+  // The words stores follow in search (D905 M5b): a few searches a run.
+  try {
+    // Loaded here only: every module that reads rivals (the autopilot's events among them) need not load the search's.
+    const { watchSearchTerms } = await import("./market-search");
+    run.search = await watchSearchTerms(deps);
+  } catch (error) {
+    report(error, "rivals.search_watch");
   }
   // The other store platforms' prices (M4), in the same job: a few pages a run.
   try {

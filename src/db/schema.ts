@@ -15800,6 +15800,46 @@ export const rivalPages = commerce.table(
 ).enableRLS();
 
 /**
+ * A word a store follows in search in one of its countries (D905, market check M5b, `docs/market-check.md` 7.3), and where the store and its
+ * rivals there came up on the first page of results when it was last searched (`searchWeb()`: only the word and the country are sent),
+ * with the store's place the time before. At most `SEARCH_TERMS_PER_MARKET` a country; written only by `src/server/market-search.ts`;
+ * staff-only.
+ */
+export const searchTerms = commerce.table(
+  "search_terms",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    marketCode: char("market_code", { length: 2 }).notNull(),
+    /** The word as searched: trimmed, lower case (`normaliseTerm()`). */
+    term: text("term").notNull(),
+    addedBy: uuid("added_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    /** When it was last searched; the store's place then (1 to 10, null: not on the first page) and each rival host's (`{ host: place }`). */
+    checkedAt: timestamp("checked_at", { withTimezone: true }),
+    ownPosition: integer("own_position"),
+    positions: jsonb("positions").notNull().default(sql`'{}'::jsonb`),
+    /** The store's place, and when, at the search before. */
+    previousPosition: integer("previous_position"),
+    previousAt: timestamp("previous_at", { withTimezone: true }),
+    /** When the watcher last tried to search it, and why that try could not (`off`: search is not set up; `failed`). */
+    triedAt: timestamp("tried_at", { withTimezone: true }),
+    problem: text("problem"),
+  },
+  (t) => [
+    unique("search_terms_key").on(t.storeId, t.marketCode, t.term),
+    index("search_terms_added_by_idx").on(t.addedBy),
+    // The watcher's due words, never tried first.
+    index("search_terms_tried_idx").on(t.triedAt),
+    check("search_terms_market", sql`${t.marketCode} ~ '^[A-Z]{2}$'`),
+    check("search_terms_term", sql`length(${t.term}) between 2 and 80`),
+    check("search_terms_positions", sql`jsonb_typeof(${t.positions}) = 'object'`),
+    check("search_terms_places", sql`(${t.ownPosition} is null or ${t.ownPosition} between 1 and 100) and (${t.previousPosition} is null or ${t.previousPosition} between 1 and 100)`),
+    check("search_terms_problem", sql`${t.problem} is null or ${t.problem} in ('off', 'failed')`),
+  ],
+).enableRLS();
+
+/**
  * A rival's published price for a service (D905, market check M5d, `docs/market-check.md` 7.5): kept by a person with the page it is on, as
  * M4 keeps other platforms' plan prices. Code checks the figure stands on that page (`priceOnPage()`) when it is kept and monthly after;
  * held against the store's own price, as the owner gave it (`own_minor`) or a product's current price in the rival's country. At most

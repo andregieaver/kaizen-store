@@ -146,6 +146,7 @@ import { declineQuoteTool, preflightDeclineQuote, preflightPriceDisplay, priceDi
 import { draftContractTool, listContractsTool, preflightRemindSigner, remindContractSignerTool } from "./contract-tools";
 import { changeFormTool, formResponsesTool, listFormsTool, makeFormTool, placeFormTool } from "./form-tools";
 import { crmTodayTool, customerTimelineTool, getDealTool, listDealsTool, listLeadsTool, logActivityTool, makeDealFromLeadTool, moveDealTool } from "./crm-tools";
+import { addTaskTool, projectsOverviewTool, tickTaskTool } from "./projects-tools";
 import { blogCommentsTool, listBlogsTool, moderateBlogCommentTool, preflightModerateTool, preflightScheduleTool, scheduleArticleTool } from "./blog-tools";
 import { listScheduledChangesTool, preflightSiteScheduleTool, scheduleSiteChangeTool } from "./schedule-tools";
 import { checkoutQuestionsTool, preflightCheckoutQuestion, saveCheckoutQuestionTool } from "./checkout-question-tools";
@@ -2450,6 +2451,9 @@ const handlersOf = (): Record<OwnerToolName, Handler> => (handlers ??= {
   make_deal_from_lead: makeDealFromLeadTool,
   crm_today: crmTodayTool,
   log_activity: logActivityTool,
+  projects_overview: projectsOverviewTool,
+  add_task: addTaskTool,
+  tick_task: tickTaskTool,
   customer_timeline: customerTimelineTool,
   draft_contract: draftContractTool,
   remind_contract_signer: remindContractSignerTool,

@@ -222,6 +222,14 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   agents' eval is recorded again on production and its recording committed (D391).
 
 
+## The AI manager's Projects tools (D904 P8.3c, `src/server/projects-tools.ts`, their inputs in `src/lib/owner-tools.ts`)
+
+- **The AI manager's Projects tools (D904 P8.3c)**: `projects_overview` reads (`projects:read`); `add_task` and `tick_task` change only the
+  store's own lists (`projects:write`, no gate: nobody is told). Offered only while the store has the Projects extension and its feature, so
+  the manager gains the arm with the account. A list is named by its title or id, a task by its id or title (several matches are listed and
+  nothing changes). Task titles reach the model, so a title written in advance by *Make a task* carries a number the system made and never a
+  name a customer typed. New tools change `toolsVersion()`: the eval is recorded again (D391).
+
 ## The AI manager's CRM tools (ecosystem plan E2.5, D713, `src/lib/crm-tools.ts`, `src/server/crm-tools.ts`)
 
 - **The AI manager's CRM tools (ecosystem plan E2.5, D713, `src/lib/crm-tools.ts`, `src/server/crm-tools.ts`)**: deals, leads, activities

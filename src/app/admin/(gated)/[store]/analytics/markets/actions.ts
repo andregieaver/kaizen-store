@@ -6,14 +6,16 @@ import type { FormState } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { MARKET_CHECK_WORDS } from "@/lib/admin-words/market-check";
 import { OFFERS_PER_RIVAL, RIVALS_PER_MARKET, SERVICE_PRICES_PER_RIVAL } from "@/lib/market-rivals";
+import { SEARCH_TERMS_PER_MARKET } from "@/lib/market-search";
 import { englishMoney } from "@/lib/money";
 import { addRival, keepServicePrice, readRivalOffer, removeRival, removeServicePrice, RivalError, ServicePriceError } from "@/server/market-rivals";
+import { addSearchTerm, removeSearchTerm, SearchTermError } from "@/server/market-search";
 import { OwnerToolError } from "@/server/owner-tool-error";
 import { storeAction } from "@/server/store-action";
 
 /**
  * Analytics → Markets' rivals (D900 M2): add a rival, remove one, read one of its product pages; keep or remove a rival's published service
- * price (D905 M5d). Bound to the store's slug; each runs
+ * price (D905 M5d); follow a word in search or stop (M5b). Bound to the store's slug; each runs
  * through `storeAction()` with `analytics:write`, and the server module refuses the rest (`src/server/market-rivals.ts`). A refusal is said
  * in the member's language; a page that could not be read says why in the reader's own words. The three share one export, `rivalsAction`,
  * which the page binds once for each form: every `"use server"` export is an entry of the server-reference manifest, which the route budget
@@ -101,7 +103,29 @@ async function removePriceAction(storeSlug: string, _state: FormState, form: For
   });
 }
 
-export type RivalIntent = "add" | "remove" | "read" | "keepPrice" | "removePrice";
+async function addTermAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  return storeAction({ store: storeSlug, key: "analytics:write", action: "analytics.search_term_add", answer: said.answer }, async (member, lang) => {
+    const w = MARKET_CHECK_WORDS[lang].search;
+    try {
+      const added = await addSearchTerm(member, { market: String(form.get("market") ?? ""), term: String(form.get("term") ?? "") });
+      refresh();
+      return { status: "ok", messages: [fillWords(w.added, { term: added.term })] };
+    } catch (error) {
+      if (error instanceof SearchTermError) return said.answer(fillWords(w.problems[error.problem], { n: SEARCH_TERMS_PER_MARKET }));
+      throw error;
+    }
+  });
+}
+
+async function removeTermAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  return storeAction({ store: storeSlug, key: "analytics:write", action: "analytics.search_term_remove", answer: said.answer }, async (member, lang) => {
+    if (!(await removeSearchTerm(member, String(form.get("term") ?? "")))) return said.answer(MARKET_CHECK_WORDS[lang].search.problems.term);
+    refresh();
+    return { status: "ok", messages: [] };
+  });
+}
+
+export type RivalIntent = "add" | "remove" | "read" | "keepPrice" | "removePrice" | "addTerm" | "removeTerm";
 
 /** The rivals' one server function: the page binds the store and which form it is (`add`, `remove`, `read`, `keepPrice`, `removePrice`). */
 export async function rivalsAction(storeSlug: string, intent: RivalIntent, state: FormState, form: FormData): Promise<FormState> {
@@ -116,6 +140,10 @@ export async function rivalsAction(storeSlug: string, intent: RivalIntent, state
       return keepPriceAction(storeSlug, state, form);
     case "removePrice":
       return removePriceAction(storeSlug, state, form);
+    case "addTerm":
+      return addTermAction(storeSlug, state, form);
+    case "removeTerm":
+      return removeTermAction(storeSlug, state, form);
     default:
       return { status: "error", messages: [] };
   }

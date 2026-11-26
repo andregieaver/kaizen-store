@@ -91,6 +91,10 @@ export const TOOL_FEATURES: Partial<Record<OwnerToolName, FeatureRequirement>> =
   make_deal_from_lead: "sales",
   crm_today: "sales",
   log_activity: "sales",
+  // Projects (D904 P8.3c): behind the store feature `projects` too.
+  projects_overview: "projects",
+  add_task: "projects",
+  tick_task: "projects",
   search_merchandising: "shop",
   save_search_synonym: "shop",
   save_search_rule: "shop",
@@ -222,6 +226,10 @@ export const TOOL_EXTENSIONS: Partial<Record<OwnerToolName, ExtensionId>> = {
   make_deal_from_lead: "deals",
   crm_today: "deals",
   log_activity: "deals",
+  // Projects (D904 P8.3c).
+  projects_overview: "projects",
+  add_task: "projects",
+  tick_task: "projects",
 };
 
 /** The extension a tool is part of, or undefined. */

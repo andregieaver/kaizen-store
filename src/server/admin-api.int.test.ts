@@ -18,6 +18,14 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
 vi.mock("next/server", () => ({ connection: async () => {}, after: () => {} }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined, set: () => {}, delete: () => {} }), headers: async () => new Headers() }));
+// A look from a Figma file installs its typefaces (`installFamily()`) and checks the theme's fonts (`installFonts()`), both downloading
+// from Google Fonts: the test failed main's run 2002 when that download did (D803, as `figma-look.int.test.ts` in 10161da). Inter
+// stands installed here; any other family takes the real path, which the page import's unknown family relies on to be noted.
+vi.mock("./replicate-assets", async (importOriginal) => {
+  const real = await importOriginal<typeof import("./replicate-assets")>();
+  return { ...real, installFamily: async (family: string) => (family === "Inter" ? { ok: true as const, family } : real.installFamily(family)) };
+});
+vi.mock("./fonts", async (importOriginal) => ({ ...(await importOriginal<typeof import("./fonts")>()), installFonts: async () => ({ ok: true as const }) }));
 // Store credit's gift card codes are kept only as keyed hashes (D300).
 process.env.SETTINGS_ENCRYPTION_KEY ??= randomBytes(32).toString("base64");
 // Kaizena Flow's Stripe client, faked: nothing here reaches Stripe (a refund over the API is store credit, which asks no provider).
