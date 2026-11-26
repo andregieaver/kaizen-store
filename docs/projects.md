@@ -13,8 +13,9 @@ day: counts only, no person's data read) and **[U]** (not verified).
 
 ## 0. The owner's answers (25 November 2026)
 
-1. **A store feature on every plan**, `projects`, switched on under Features, not a paid extension. It costs nothing while idle and
-   brings owners back daily.
+1. ~~A store feature on every plan, not a paid extension.~~ **Changed 26 November 2026 (D904): a paid extension that stands alone**, as
+   the other extensions (D748): subscribed to on its own, used without a store in a standalone account's workspace, and doing more with
+   every other arm the account has (the octopus, `docs/platform.md` P9). Built in P8; the store feature `projects` stays under it.
 2. **Store level.** A store's team shares its projects; every row belongs to a store (P1). A combined view across the owner's stores
    may follow, as Work's did (D123).
 3. **One kind of task.** A checklist item is Flow's task. Work's tasks (`work_tasks`, 13 rows in one store [prod Flow]) move into
@@ -263,6 +264,14 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
 | Id | Step | Status |
 |---|---|---|
 | P7.1 | The platform admin's own projects (`store_id is null`), and the row in `docs/platform-parity.md` | Planned |
+
+### P8: an extension that stands alone (D904)
+
+| Id | Step | Status |
+|---|---|---|
+| P8.1 | The extension `projects` in the catalogue (its id, its row, the owner's price, its trial, bundles and plans), its gates on `/projects` and `/checklists` (`EXTENSION_PATHS`), the store feature `projects` under it; stores already using it get the trial D748 gives existing accounts | Planned |
+| P8.2 | Standalone: an account with only Projects uses it in its workspace (no store), with its landing page on kaizenaflow.com (a draft) and its place in the combined sign-up | Planned |
+| P8.3 | The octopus' pairs, each lit only when both arms are there: Deals (a won deal starts a project from a template, P6.3), Work (time and assignments on tasks, P6.1), Support desk (a conversation becomes a task), the shop (an order, a return or a review makes a task), Email automation (a task's people told when it is theirs), the AI manager (P5) | Planned |
 
 ## 6. Tests
 

@@ -116,6 +116,7 @@ Each part's rules are in full in these files. Read the rule of a part before cha
   store feature done, check the platform has it. `docs/platform-parity.md` lists what the platform still lacks; tick a row there when a
   change brings it.
 - The platform's name is Kaizena Flow (D240) in every string a person or an assistant reads, and its domain `kaizenaflow.com`; `Kaizen` stays in code names, cookie names, the webhook headers and Kaizen Life (another product). `src/lib/brand.scan.test.ts` fails on the old name or an old domain in any string.
+- The octopus (D904, `docs/platform.md` P9): every part stands alone; each part added makes the whole smarter.
 - Environment variables are validated in `src/lib/env.ts` (the two public ones in `src/lib/public-env.ts`, without zod, for the browser) when used, not at
   import, so builds and tests run without secrets.
 - Server-only modules import `server-only`.
