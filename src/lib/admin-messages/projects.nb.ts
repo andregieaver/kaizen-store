@@ -126,6 +126,9 @@ export const projectsNb: ProjectsMessages = {
     project: "Prosjekt",
     titleField: "Tittel",
     views: { lists: "Lister", tasks: "Alle oppgaver" },
+    templates: "Maler",
+    startFrom: "Start fra",
+    blank: "En tom liste",
     viewsLabel: "Vis",
     noOpenTasks: "Ingen åpne oppgaver: alt er gjort."
   },
@@ -311,6 +314,8 @@ export const projectsNb: ProjectsMessages = {
     hiddenKept: "Et felt som er slått av, skjules, men slettes aldri: slå det på igjen, så er det som før.",
     routine: "Rutine",
     routineText: "En vane som følges i rekkefølge: avkryssede oppgaver beholder plassen sin, og status og tildeling skjules.",
+    template: "Mal",
+    templateText: "Tilbys når en liste lages: den nye listen starter som en kopi, alt åpent. En mal har ingen oppgaver å gjøre selv.",
     projects: "Prosjekter",
     projectsText: "En liste kan være i flere prosjekter; hovedprosjektet er det den hører mest til.",
     homeLabel: "Hovedprosjekt",

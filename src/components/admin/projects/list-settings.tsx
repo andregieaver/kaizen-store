@@ -11,11 +11,12 @@ import { BUILT_FEATURES, type AdvancedFeature, type ChecklistFeatures } from "@/
 
 import { useAct, type ProjectsAct } from "./use-act";
 
-type Mode = { isAdvanced: boolean; isRoutine: boolean; features: ChecklistFeatures };
+type Mode = { isAdvanced: boolean; isRoutine: boolean; asTemplate: boolean; features: ChecklistFeatures };
 
 /**
  * How a list works (D903, Life's checklist settings): *Advanced list* brings every field at once and its switches take away what this list
- * doesn't need (hidden, never deleted); *Routine* keeps a habit's order. Each switch is saved as it is turned. Below, the projects the list
+ * doesn't need (hidden, never deleted); *Routine* keeps a habit's order; *Template* (P4.12) offers the list when a new one is made. Each
+ * switch is saved as it is turned. Below, the projects the list
  * is in, its home among them, and whether it uses the store's statuses or its own.
  */
 export function ListSettings({
@@ -85,6 +86,13 @@ export function ListSettings({
           on={shown.isRoutine}
           disabled={!canChange}
           onChange={(on) => run({ op: "list.mode", id: listId, isRoutine: on }, undefined, () => change({ isRoutine: on }))}
+        />
+        <Switch
+          label={w.template}
+          text={w.templateText}
+          on={shown.asTemplate}
+          disabled={!canChange}
+          onChange={(on) => run({ op: "list.mode", id: listId, asTemplate: on }, undefined, () => change({ asTemplate: on }))}
         />
       </section>
 

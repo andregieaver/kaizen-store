@@ -211,7 +211,7 @@ function taskRead(storeIds: readonly string[], accountId: string | null, now: Da
         -- A day and more ahead of any time zone's today, for the index; the store's own day decides.
         and i.due_at < ${at}::timestamptz + interval '2 days'
         and commerce.store_day(i.store_id, i.due_at) <= commerce.store_day(i.store_id, ${at}::timestamptz)
-        and c.status = 'open' and c.is_advanced and c.advanced_features ->> 'dueDate' is distinct from 'false'
+        and c.status = 'open' and not c.as_template and c.is_advanced and c.advanced_features ->> 'dueDate' is distinct from 'false'
       group by i.store_id
     `,
     figures: (rows) => new Map(rows.filter((r) => r.overdue > 0 || r.today > 0).map((r) => [r.store_id, { overdue: r.overdue, today: r.today, ...(accountId ? {} : { team: true }) }])),

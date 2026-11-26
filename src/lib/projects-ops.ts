@@ -45,6 +45,7 @@ export const projectsOp = z.discriminatedUnion("op", [
     isAdvanced: z.boolean().optional(),
     features: features.optional(),
     isRoutine: z.boolean().optional(),
+    asTemplate: z.boolean().optional(),
     primaryProjectId: scope.optional(),
   }),
   z.object({ op: z.literal("list.reset"), id }),

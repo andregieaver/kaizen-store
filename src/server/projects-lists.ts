@@ -34,6 +34,7 @@ export type ChecklistSummary = {
   allDay: boolean | null;
   assignedTo: string | null;
   isRoutine: boolean;
+  asTemplate: boolean;
   isAdvanced: boolean;
   projects: { id: string; name: string }[];
   total: number;
@@ -100,6 +101,7 @@ export type ChecklistDetail = {
   allDay: boolean | null;
   assignedTo: string | null;
   isRoutine: boolean;
+  asTemplate: boolean;
   isAdvanced: boolean;
   advancedFeatures: unknown;
   goal: string | null;
@@ -125,6 +127,7 @@ const summaryRow = z.object({
   all_day: col.bool.nullable(),
   assigned_to: col.uuid.nullable(),
   is_routine: col.bool,
+  as_template: col.bool,
   is_advanced: col.bool,
   sort_order: col.int,
   total: col.int,
@@ -137,7 +140,7 @@ export async function listChecklists(storeId: string): Promise<ChecklistSummary[
   const rows = await typedRows(
     summaryRow,
     sql`
-      select c.id, c.title, c.status, c.due_at, c.all_day, c.assigned_to, c.is_routine, c.is_advanced, c.sort_order,
+      select c.id, c.title, c.status, c.due_at, c.all_day, c.assigned_to, c.is_routine, c.as_template, c.is_advanced, c.sort_order,
         (select count(*)::int from commerce.checklist_items i where i.store_id = c.store_id and i.checklist_id = c.id and i.archived_at is null) as total,
         (select count(*)::int from commerce.checklist_items i where i.store_id = c.store_id and i.checklist_id = c.id and i.archived_at is null and i.done_at is not null) as done,
         coalesce((
@@ -157,6 +160,7 @@ export async function listChecklists(storeId: string): Promise<ChecklistSummary[
     allDay: r.all_day,
     assignedTo: r.assigned_to,
     isRoutine: r.is_routine,
+    asTemplate: r.as_template,
     isAdvanced: r.is_advanced,
     projects: r.projects,
     total: r.total,
@@ -174,6 +178,7 @@ const listRow = z.object({
   all_day: col.bool.nullable(),
   assigned_to: col.uuid.nullable(),
   is_routine: col.bool,
+  as_template: col.bool,
   is_advanced: col.bool,
   advanced_features: z.unknown(),
   goal: col.textOrNull,
@@ -226,7 +231,7 @@ export async function checklistDetail(storeId: string, checklistId: string, acco
   const list = await typedRow(
     listRow,
     sql`
-      select id, title, description, status, due_at, all_day, assigned_to, is_routine, is_advanced, advanced_features, goal, primary_project_id
+      select id, title, description, status, due_at, all_day, assigned_to, is_routine, as_template, is_advanced, advanced_features, goal, primary_project_id
       from commerce.checklists where store_id = ${storeId}::uuid and id = ${checklistId}::uuid
     `,
   );
@@ -339,6 +344,7 @@ export async function checklistDetail(storeId: string, checklistId: string, acco
     allDay: list.all_day,
     assignedTo: list.assigned_to,
     isRoutine: list.is_routine,
+    asTemplate: list.as_template,
     isAdvanced: list.is_advanced,
     advancedFeatures: list.advanced_features,
     goal: list.goal,
@@ -405,7 +411,7 @@ export async function openTasks(storeId: string): Promise<OpenTask[]> {
         from commerce.checklist_items i
         join commerce.checklists c on c.store_id = i.store_id and c.id = i.checklist_id
         left join commerce.checklist_statuses s on s.store_id = i.store_id and s.id = i.status_id
-        where i.store_id = ${storeId}::uuid and i.done_at is null and i.archived_at is null and c.status = 'open' and not c.is_routine
+        where i.store_id = ${storeId}::uuid and i.done_at is null and i.archived_at is null and c.status = 'open' and not c.is_routine and not c.as_template
         order by i.due_at nulls last, c.sort_order, i.sort_order
         limit ${MAX_OPEN_TASKS}
       `,
@@ -569,7 +575,7 @@ export async function updateChecklist(member: Membership, id: string, raw: unkno
 export async function setChecklistMode(
   member: Membership,
   id: string,
-  mode: { isAdvanced?: boolean; features?: Partial<ChecklistFeatures>; isRoutine?: boolean; primaryProjectId?: string | null },
+  mode: { isAdvanced?: boolean; features?: Partial<ChecklistFeatures>; isRoutine?: boolean; asTemplate?: boolean; primaryProjectId?: string | null },
 ): Promise<ProjectsResult> {
   if (!memberCan(member, WRITE)) return { ok: false, problem: "forbidden" };
   const home = mode.primaryProjectId;
@@ -577,6 +583,7 @@ export async function setChecklistMode(
     [sql`is_advanced`, mode.isAdvanced],
     [sql`advanced_features`, mode.features === undefined ? undefined : sql`${JSON.stringify(storedFeatures(mode.features))}::jsonb`],
     [sql`is_routine`, mode.isRoutine],
+    [sql`as_template`, mode.asTemplate],
     [sql`primary_project_id`, home === undefined ? undefined : home === null ? null : sql`${home}::uuid`],
   ]);
   if (!set) return { ok: true };

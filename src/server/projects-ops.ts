@@ -36,7 +36,7 @@ export async function runProjectsOp(member: Membership, op: ProjectsOp): Promise
     case "list.update":
       return lists.updateChecklist(member, op.id, op.patch);
     case "list.mode":
-      return lists.setChecklistMode(member, op.id, { isAdvanced: op.isAdvanced, features: op.features, isRoutine: op.isRoutine, primaryProjectId: op.primaryProjectId });
+      return lists.setChecklistMode(member, op.id, { isAdvanced: op.isAdvanced, features: op.features, isRoutine: op.isRoutine, asTemplate: op.asTemplate, primaryProjectId: op.primaryProjectId });
     case "list.reset": {
       const result = await lists.resetChecklist(member, op.id);
       return result.ok ? { ok: true, count: result.reset } : result;

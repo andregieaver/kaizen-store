@@ -13778,6 +13778,8 @@ export const checklists = commerce
       primaryProjectId: uuid("primary_project_id"),
       /** A habit followed in order: ticking keeps an item's place, and status, assignment and labels are hidden. */
       isRoutine: boolean("is_routine").notNull().default(false),
+      /** Kept as a template (P4.12): offered when a list is made, its copy the new list; it has no tasks to do of its own. */
+      asTemplate: boolean("as_template").notNull().default(false),
       isAdvanced: boolean("is_advanced").notNull().default(false),
       advancedFeatures: jsonb("advanced_features").notNull().default({}),
       /** What the list is for, read by the AI manager; an advanced list's field. */

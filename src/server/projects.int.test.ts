@@ -346,6 +346,21 @@ describe("every open task (P4.8)", () => {
   });
 });
 
+describe("a template (P4.12)", () => {
+  it("is kept apart, has no tasks to do, and its copy is an ordinary open list", async () => {
+    const { id } = ok(await lists.createChecklist(store.member, { title: "Opening a pop-up" }));
+    const { id: task } = ok(await items.addItem(store.member, id, { title: "Book the venue" }));
+    ok(await lists.setChecklistMode(store.member, id, { asTemplate: true }));
+    expect((await lists.listChecklists(store.storeId)).find((l) => l.id === id)).toMatchObject({ asTemplate: true });
+    expect((await lists.openTasks(store.storeId)).map((t) => t.id)).not.toContain(task);
+    const { id: copy } = ok(await lists.duplicateChecklist(store.member, id, "Pop-up in March"));
+    const made = await detail(copy);
+    expect(made).toMatchObject({ asTemplate: false, title: "Pop-up in March" });
+    const [copied] = made.entries.flatMap((e) => (e.kind === "item" ? [e.item] : []));
+    expect((await lists.openTasks(store.storeId)).map((t) => t.id)).toContain(copied?.id);
+  });
+});
+
 describe("Home's attention (P4.9)", () => {
   it("counts the tasks late and due today of lists that show due dates: the reader's and nobody's, or the team's", async () => {
     const fresh = await newStore("projects-attention");

@@ -229,10 +229,10 @@ Status: Planned, Building, Done (date and commit).
 | P4.6 | Category and tags (Life's taxonomy) | Done, 26 Nov 2026 (a9d0ea8) |
 | P4.7 | A customer on an item (Life's contacts) | Planned |
 | P4.8 | Every task across lists (Life's *All items*, with P4.11's filters); a list's cost summary; its due countdown (calendar and timeline are P4.13) | Done, 26 Nov 2026 (87d9db8) |
-| P4.9 | What is due on Home's attention list | Done, 26 Nov 2026 |
+| P4.9 | What is due on Home's attention list | Done, 26 Nov 2026 (a190512) |
 | P4.10 | A light refresh while a list is open, for a team working together | Planned |
 | P4.11 | Filters on a list (Life's `checklist-item-filter.tsx`): by status, person, priority and due; across lists with P4.8 | Done, 26 Nov 2026 (50c0dbf) |
-| P4.12 | Templates: a list kept as a template and offered when a list is made (a won deal's project, P6.3, starts from one) | Planned |
+| P4.12 | Templates: a list kept as a template and offered when a list is made (a won deal's project, P6.3, starts from one) | Done, 26 Nov 2026 |
 | P4.13 | Calendar and Timeline views of a project (its tasks by due day; start to due as bars) | Planned |
 
 ### P5: the AI manager and events
@@ -354,3 +354,9 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
   briefing say the same. A member's own and nobody's (a one-person store assigns nobody), the team's in the briefing; only while Projects
   is on and for who may read projects, and only lists that show due dates. The item opens All tasks. One CTE more in the queues' one
   statement.
+
+## As built: step P4.12 (26 November 2026)
+
+- **Templates**: a list's settings switch *Template* (`checklists.as_template`); a template is listed apart under Templates, has no tasks to
+  do (All tasks and Home's attention leave it out), and is offered as *Start from* when a list is made, on Checklists and in a project. The
+  new list is the template's copy (`duplicateChecklist()`, all open, not a template), in the project chosen.

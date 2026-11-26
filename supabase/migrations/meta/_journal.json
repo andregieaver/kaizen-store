@@ -1394,6 +1394,13 @@
       "when": 1795663466854,
       "tag": "20261126032426_checklist_folds_section_idx",
       "breakpoints": true
+    },
+    {
+      "idx": 199,
+      "version": "7",
+      "when": 1795664787051,
+      "tag": "20261126034627_checklist_templates",
+      "breakpoints": true
     }
   ]
 }

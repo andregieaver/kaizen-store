@@ -72,6 +72,7 @@ export default async function ChecklistPage({ params }: PageProps<"/admin/[store
           ...(assignee ? [<span key="who">{assignee}</span>] : []),
           ...(list.archived > 0 ? [<span key="archived">{countWords(list.archived, w.checklist.archived)}</span>] : []),
           ...(list.status !== "open" ? [<span key="state">{w.checklistStates[list.status]}</span>] : []),
+          ...(list.asTemplate ? [<span key="template">{w.listSettings.template}</span>] : []),
           ...list.projects.map((p) => (
             <AdminLink key={p.id} href={`${base}/projects/${p.id}`} className="underline-offset-2 hover:underline">
               {p.name}

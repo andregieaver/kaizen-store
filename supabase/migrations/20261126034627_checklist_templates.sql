@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."checklists" ADD COLUMN "as_template" boolean DEFAULT false NOT NULL;

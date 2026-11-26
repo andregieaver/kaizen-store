@@ -12,9 +12,9 @@ import { featureOffText } from "@/lib/feature-labels";
 import { formFields, projectsOp, type ProjectsAnswer, type ProjectsOpInput } from "@/lib/projects-ops";
 import { featureOn } from "@/lib/store-features";
 import type { Membership } from "@/server/auth";
-import { createProject, updateProject } from "@/server/projects";
+import { createProject, linkChecklist, updateProject } from "@/server/projects";
 import type { ProjectsResult } from "@/server/projects-errors";
-import { createChecklist, updateChecklist } from "@/server/projects-lists";
+import { createChecklist, duplicateChecklist, updateChecklist } from "@/server/projects-lists";
 import { runProjectsOp } from "@/server/projects-ops";
 import { storeAction } from "@/server/store-action";
 
@@ -84,8 +84,13 @@ export async function createChecklistAction(store: string, _state: FormState, fo
       const w = wordsOf(lang);
       const off = featureOff(member, lang);
       if (off) return { status: "error", messages: [off] };
-      const { title = "", projectId } = formFields(form, ["title", "projectId"]);
-      const result = await createChecklist(member, { title }, projectId || null);
+      const { title = "", projectId, from } = formFields(form, ["title", "projectId", "from"]);
+      // From a template (P4.12): its copy, then in the project chosen.
+      const result = from ? await duplicateChecklist(member, from, title) : await createChecklist(member, { title }, projectId || null);
+      if (result.ok && from && projectId) {
+        const linked = await linkChecklist(member, projectId, result.id);
+        if (!linked.ok) return formAnswer(w, linked);
+      }
       return result.ok ? { id: result.id } : formAnswer(w, result);
     },
   );

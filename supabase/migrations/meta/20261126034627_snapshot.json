@@ -1,6 +1,6 @@
 {
-  "id": "9f7c4cd5-7383-498c-8026-9d46146245cf",
-  "prevId": "b22f17b6-38fe-40ce-8794-519603bdf4d3",
+  "id": "1200b340-b64c-4e39-9969-5434870ae02d",
+  "prevId": "9f7c4cd5-7383-498c-8026-9d46146245cf",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -18235,6 +18235,13 @@
         },
         "is_routine": {
           "name": "is_routine",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "as_template": {
+          "name": "as_template",
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,

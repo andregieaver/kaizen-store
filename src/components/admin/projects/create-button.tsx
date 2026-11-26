@@ -11,6 +11,8 @@ export type CreateFields = {
   name: { name: string; label: string; max: number };
   date?: { name: string; label: string };
   choice?: { name: string; label: string; none: string; options: { id: string; label: string }[]; chosen?: string };
+  /** What the new one starts from (a list's templates, P4.12), offered only when there is one. */
+  start?: { name: string; label: string; none: string; options: { id: string; label: string }[] };
 };
 
 /**
@@ -35,7 +37,7 @@ export function CreateButton({
   kind?: "main" | "secondary" | "quiet";
 }) {
   const [open, setOpen] = useState(false);
-  const { name, date, choice } = fields;
+  const { name, date, choice, start } = fields;
   return (
     <>
       <Button kind={kind} onClick={() => setOpen(true)}>
@@ -47,20 +49,8 @@ export function CreateButton({
             {(control) => <TextInput {...control} name={name.name} maxLength={name.max} autoFocus full />}
           </Field>
           {date && <Field label={date.label}>{(control) => <TextInput {...control} type="date" name={date.name} full />}</Field>}
-          {choice && choice.options.length > 0 && (
-            <Field label={choice.label}>
-              {(control) => (
-                <Select {...control} name={choice.name} defaultValue={choice.chosen ?? ""} full>
-                  <option value="">{choice.none}</option>
-                  {choice.options.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.label}
-                    </option>
-                  ))}
-                </Select>
-              )}
-            </Field>
-          )}
+          {start && start.options.length > 0 && <Choice {...start} />}
+          {choice && choice.options.length > 0 && <Choice {...choice} />}
           <div className="flex flex-wrap justify-end gap-2">
             <Button kind="quiet" onClick={() => setOpen(false)}>
               {cancel}
@@ -70,5 +60,23 @@ export function CreateButton({
         </ActionForm>
       </Modal>
     </>
+  );
+}
+
+/** One of the form's choices, its first option none. */
+function Choice({ name, label, none, options, chosen }: { name: string; label: string; none: string; options: { id: string; label: string }[]; chosen?: string }) {
+  return (
+    <Field label={label}>
+      {(control) => (
+        <Select {...control} name={name} defaultValue={chosen ?? ""} full>
+          <option value="">{none}</option>
+          {options.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.label}
+            </option>
+          ))}
+        </Select>
+      )}
+    </Field>
   );
 }

@@ -70,7 +70,7 @@ export default async function ChecklistSettingsPage({ params }: PageProps<"/admi
       <Card>
         <ListSettings
           listId={list.id}
-          mode={{ isAdvanced: list.isAdvanced, isRoutine: list.isRoutine, features: list.features }}
+          mode={{ isAdvanced: list.isAdvanced, isRoutine: list.isRoutine, asTemplate: list.asTemplate, features: list.features }}
           stored={stored}
           projects={list.projects}
           homeId={list.primaryProjectId}

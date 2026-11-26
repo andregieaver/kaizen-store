@@ -25,7 +25,8 @@ export const metadata: Metadata = { title: "Checklists" };
 
 /**
  * Checklists (D903, Life's `app/app/checklists`): Homer sees his open lists, each with how far it has come, and presses New checklist; an
- * empty page is one card to make the first. Routines are apart (habits used again), done and archived lists below. *All tasks* (P4.8, Life's
+ * empty page is one card to make the first. Routines are apart (habits used again), then templates (P4.12, offered as *Start from* when a
+ * list is made), done and archived lists below. *All tasks* (P4.8, Life's
  * All items) is every open task of every open list, the soonest due first, to tick off or filter there.
  */
 export default async function ChecklistsPage({ params, searchParams }: PageProps<"/admin/[store]/checklists">) {
@@ -46,10 +47,11 @@ export default async function ChecklistsPage({ params, searchParams }: PageProps
   ]);
   const canChange = memberCan(member, "projects:write");
   const base = `/admin/${store.slug}/checklists`;
-  const open = lists.filter((l) => l.status === "open" && !l.isRoutine);
-  const routines = lists.filter((l) => l.status === "open" && l.isRoutine);
+  const open = lists.filter((l) => l.status === "open" && !l.isRoutine && !l.asTemplate);
+  const routines = lists.filter((l) => l.status === "open" && l.isRoutine && !l.asTemplate);
+  const templates = lists.filter((l) => l.status === "open" && l.asTemplate);
   const closed = lists.filter((l) => l.status !== "open");
-  const openCount = lists.filter((l) => l.status === "open").reduce((sum, l) => sum + (l.total - l.done), 0);
+  const openCount = lists.filter((l) => l.status === "open" && !l.asTemplate).reduce((sum, l) => sum + (l.total - l.done), 0);
   const create = canChange ? (
     <CreateButton
       label={w.checklists.newChecklist}
@@ -57,6 +59,7 @@ export default async function ChecklistsPage({ params, searchParams }: PageProps
       action={createChecklistAction.bind(null, store.slug)}
       fields={{
         name: { name: "title", label: w.checklists.titleField, max: PROJECT_LIMITS.checklistTitle },
+        start: { name: "from", label: w.checklists.startFrom, none: w.checklists.blank, options: lists.filter((l) => l.asTemplate).map((l) => ({ id: l.id, label: l.title })) },
         choice: {
           name: "projectId",
           label: w.checklists.project,
@@ -119,6 +122,14 @@ export default async function ChecklistsPage({ params, searchParams }: PageProps
             {w.checklists.routines}
           </h2>
           {group(routines)}
+        </section>
+      )}
+      {view === "lists" && templates.length > 0 && (
+        <section aria-labelledby="templates" className="flex flex-col gap-3">
+          <h2 id="templates" className="text-title text-ink">
+            {w.checklists.templates}
+          </h2>
+          {group(templates)}
         </section>
       )}
       {view === "lists" && closed.length > 0 && (

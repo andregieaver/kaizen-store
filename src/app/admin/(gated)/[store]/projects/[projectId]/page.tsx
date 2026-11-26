@@ -86,6 +86,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
       fields={{
         name: { name: "title", label: w.checklists.titleField, max: PROJECT_LIMITS.checklistTitle },
         choice: { name: "projectId", label: w.checklists.project, none: w.none, options: [{ id: project.id, label: project.name }], chosen: project.id },
+        start: { name: "from", label: w.checklists.startFrom, none: w.checklists.blank, options: lists.filter((l) => l.asTemplate).map((l) => ({ id: l.id, label: l.title })) },
       }}
       submit={w.create}
       cancel={w.cancel}
