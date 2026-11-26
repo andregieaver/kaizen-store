@@ -72,7 +72,6 @@ import { syncDueTripletex } from "@/server/tripletex-sync";
 import { syncDueFiken } from "@/server/fiken-sync";
 import { syncAgentPurchases } from "@/server/agent-purchases";
 import { runActivityPushes } from "@/server/activities";
-import { runTaskAssignedEmails, runTaskReminders } from "@/server/projects-notices";
 import { runBusinessChanges } from "@/server/business-change";
 import { runPipedriveMoves } from "@/server/pipedrive";
 import { runLedgerPosting } from "@/server/ledger";
@@ -129,9 +128,10 @@ export const DISPATCHER_JOBS = {
   einvoices: () => runEinvoiceSending(),
   activities: () => runActivityPushes(),
   // A task's person told by email that it is theirs (D904 P8.3d): tasks given by someone else, two minutes settled, one email a person a run.
-  projectsAssigned: () => runTaskAssignedEmails(),
+  // Loaded when it runs (import()): its emails' words and builders stay out of this route's chunks (the api chunk budget).
+  projectsAssigned: async () => (await import("@/server/projects-notices")).runTaskAssignedEmails(),
   // Reminders on tasks and lists (D903 P4.3): those whose time has come, by email and on the person's devices; a repeating one moved on.
-  projectsReminders: () => runTaskReminders(),
+  projectsReminders: async () => (await import("@/server/projects-notices")).runTaskReminders(),
   // A change of the business behind a store (D473) taking effect on its day, and the store drawn again with its new details.
   businessChanges: () => runBusinessChanges(),
   // Moving in from Pipedrive (D477): a check or an import the owner left goes on, page by page, within 40 seconds.
