@@ -7,6 +7,7 @@ import { db } from "@/db/client";
 import { decryptSecret } from "@/lib/secret-box";
 import { FACEBOOK_GRAPH } from "@/lib/facebook-pages";
 import { pinBody, pinIdFrom, pinUrl } from "@/lib/pinterest";
+import { parseInit, postState, privacyFor, TIKTOK_ONE_CHUNK_MAX, videoInitBody, videoUrl } from "@/lib/tiktok";
 import { POST_CHANNELS } from "@/lib/social-posts";
 import {
   CONTAINER_CHECKS,
@@ -26,6 +27,7 @@ import { FacebookError, graph } from "./facebook-pages";
 import { call, GRAPH, InstagramError } from "./instagram";
 import { pinterestCall, PinterestError, pinterestTarget } from "./pinterest";
 import { loadSharp } from "./sharp-load";
+import { creatorInfo, tiktokAudited, tiktokCall, TiktokError, tiktokTarget } from "./tiktok";
 import { log } from "./log";
 import { storePicture } from "./media-library";
 import { memberCan, NO_ACCESS } from "./permissions";
@@ -58,7 +60,8 @@ type Post = z.infer<typeof POST>;
 type Target =
   | { kind: "instagram"; userId: string; token: string }
   | { kind: "facebook"; pageId: string; token: string }
-  | { kind: "pinterest"; boardId: string; token: string };
+  | { kind: "pinterest"; boardId: string; token: string }
+  | { kind: "tiktok"; username: string; token: string };
 
 export type PublishDeps = {
   /** Meta's API, for a test: Instagram's and Facebook's callers. */
@@ -66,6 +69,10 @@ export type PublishDeps = {
   facebook?: typeof graph;
   /** Pinterest's API, for a test. */
   pinterest?: typeof pinterestCall;
+  /** TikTok's API, the video's bytes and its upload, for a test. */
+  tiktok?: typeof tiktokCall;
+  videoBytes?: (url: string) => Promise<Uint8Array | null>;
+  upload?: (url: string, bytes: Uint8Array) => Promise<boolean>;
   /** The picture's public address, for a test. */
   picture?: (member: Membership, post: Post, origin: string) => Promise<string | null>;
   wait?: (ms: number) => Promise<void>;
@@ -77,6 +84,10 @@ export type PublishResult = { ok: true; url: string | null } | { ok: false; prob
 async function targetOf(store: Membership["store"], channel: PublishChannel, deps: PublishDeps): Promise<Target | { problem: string }> {
   const key = encryptionKey();
   if (!key) return { problem: "Publishing is not set up here." };
+  if (channel === "tiktok") {
+    const account = await tiktokTarget(store.id, new Date(), deps.tiktok);
+    return "problem" in account ? account : { kind: "tiktok", ...account };
+  }
   if (channel === "pinterest") {
     const board = await pinterestTarget(store.id, new Date(), deps.pinterest);
     return "problem" in board ? board : { kind: "pinterest", ...board };
@@ -174,8 +185,61 @@ async function toPinterest(target: Extract<Target, { kind: "pinterest" }>, post:
   return { id, url: pinUrl(id) };
 }
 
+/** The video's bytes, read from the library's public address; null when it cannot be read. */
+async function readVideo(url: string): Promise<Uint8Array | null> {
+  const response = await fetch(url, { redirect: "error", signal: AbortSignal.timeout(60_000) }).catch(() => null);
+  return response?.ok ? new Uint8Array(await response.arrayBuffer()) : null;
+}
+
+/** Puts the video to the address TikTok gave, in one piece. */
+async function uploadVideo(url: string, bytes: Uint8Array): Promise<boolean> {
+  const response = await fetch(url, {
+    method: "PUT",
+    headers: { "Content-Type": "video/mp4", "Content-Range": `bytes 0-${bytes.length - 1}/${bytes.length}` },
+    body: new Blob([new Uint8Array(bytes)], { type: "video/mp4" }),
+    redirect: "error",
+    signal: AbortSignal.timeout(120_000),
+  }).catch(() => null);
+  return Boolean(response?.ok);
+}
+
 /**
- * Publishes one of the store's approved posts now, to its channel (Instagram, Facebook or Pinterest). Refused without the marketing permission, for a
+ * Posts the slideshow video to TikTok, uploaded as a file: TikTok's creator info asked first (who may see the post: private until the app is
+ * audited), the post started, the video put, and the post waited on while TikTok processes it. One TikTok accepted but still processing is
+ * kept as posted, without an address.
+ */
+async function toTiktok(target: Extract<Target, { kind: "tiktok" }>, videoAt: string, text: string, deps: PublishDeps) {
+  const call = deps.tiktok ?? tiktokCall;
+  const bytes = await (deps.videoBytes ?? readVideo)(videoAt);
+  if (!bytes || bytes.length === 0) throw new TiktokError("The post's video could not be read.");
+  if (bytes.length > TIKTOK_ONE_CHUNK_MAX) throw new TiktokError("The post's video is larger than TikTok takes in one piece.");
+  const creator = await creatorInfo(target.token, call);
+  const started = parseInit(
+    await call("/post/publish/video/init/", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${target.token}`, "Content-Type": "application/json; charset=UTF-8" },
+      body: JSON.stringify(videoInitBody(text, privacyFor(creator.privacy, tiktokAudited()), bytes.length)),
+    }),
+  );
+  if (!started) throw new TiktokError("TikTok did not start the post.");
+  if (!(await (deps.upload ?? uploadVideo)(started.uploadUrl, bytes))) throw new TiktokError("The video could not be sent to TikTok. Try again.");
+  for (let i = 0; i < CONTAINER_CHECKS; i++) {
+    const state = postState(
+      await call("/post/publish/status/fetch/", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${target.token}`, "Content-Type": "application/json; charset=UTF-8" },
+        body: JSON.stringify({ publish_id: started.publishId }),
+      }),
+    );
+    if (state.state === "done") return { id: state.postId ?? started.publishId, url: videoUrl(creator.username || target.username, state.postId) };
+    if (state.state === "failed") throw new TiktokError(`TikTok could not post the video: ${state.reason}`);
+    await (deps.wait ?? pause)(CONTAINER_WAIT_MS);
+  }
+  return { id: started.publishId, url: null };
+}
+
+/**
+ * Publishes one of the store's approved posts now, to its channel (Instagram, Facebook, Pinterest or TikTok). Refused without the marketing permission, for a
  * post not approved, already published or being published, for a channel Kaizena Flow does not post to, and without a connection that
  * allows publishing. Audited with who published it.
  */
@@ -195,6 +259,8 @@ export async function publishSocialPost(member: Membership, postId: unknown, ori
   if (!isPublishChannel(post.channel)) return { ok: false, problem: "Kaizena Flow does not post to this channel yet: copy the post into it." };
   if (post.published) return { ok: false, problem: "This post is published already." };
   if (!post.approved) return { ok: false, problem: "Approve the post before it is published." };
+  // A TikTok post is its slideshow video (S3.5).
+  if (post.channel === "tiktok" && !post.video) return { ok: false, problem: "A TikTok post goes out as its video: make the video first." };
   const target = await targetOf(store, post.channel, deps);
   if ("problem" in target) return { ok: false, problem: target.problem };
 
@@ -207,7 +273,7 @@ export async function publishSocialPost(member: Membership, postId: unknown, ori
   if (claimed.length === 0) return { ok: false, problem: "This post is being published already." };
 
   try {
-    const kind = target.kind === "pinterest" ? "picture" : publishKind(Boolean(post.video));
+    const kind = target.kind === "pinterest" ? "picture" : target.kind === "tiktok" ? "video" : publishKind(Boolean(post.video));
     const url = kind === "video" ? post.video : await (deps.picture ?? publicPicture)(member, post, origin);
     if (!url) throw new InstagramError("The post's picture could not be made ready to publish.");
     const text = publishedText({ channel: post.channel, title: post.title, caption: post.caption, hashtags: post.hashtags, link: post.link, priceLine: post.price_line });
@@ -216,7 +282,9 @@ export async function publishSocialPost(member: Membership, postId: unknown, ori
         ? await toInstagram(target, { kind, url }, text, deps)
         : target.kind === "facebook"
           ? await toFacebook(target, { kind, url }, text, deps)
-          : await toPinterest(target, post, url, deps);
+          : target.kind === "pinterest"
+            ? await toPinterest(target, post, url, deps)
+            : await toTiktok(target, url, text, deps);
     await db().execute(sql`
       update commerce.social_posts set published_at = now(), published_by = ${member.account.id}::uuid, published_id = ${done.id},
         published_url = ${done.url}, publish_problem = null, publish_started_at = null
@@ -224,7 +292,7 @@ export async function publishSocialPost(member: Membership, postId: unknown, ori
     await audit(member.account.id, store.id, "store.social_post_published", { channel: post.channel, kind });
     return { ok: true, url: done.url };
   } catch (error) {
-    const said = error instanceof InstagramError || error instanceof FacebookError || error instanceof PinterestError;
+    const said = error instanceof InstagramError || error instanceof FacebookError || error instanceof PinterestError || error instanceof TiktokError;
     if (!said) log("error", "social.publish_failed", { post: post.id, channel: post.channel }, error);
     const problem = said ? error.message.slice(0, 300) : "The post could not be published. Try again.";
     await db().execute(sql`update commerce.social_posts set publish_problem = ${problem}, publish_started_at = null where store_id = ${store.id}::uuid and id = ${post.id}::uuid`);
@@ -235,11 +303,12 @@ export async function publishSocialPost(member: Membership, postId: unknown, ori
 /** Where the store may publish from the calendar now: each channel whose connection allows it (Kaizena Flow's store: the platform's Instagram too). */
 export async function publishTargets(store: Membership["store"]): Promise<Record<PublishChannel, boolean>> {
   const [row] = await typedRows(
-    z.object({ instagram: col.bool, facebook: col.bool, pinterest: col.bool }),
+    z.object({ instagram: col.bool, facebook: col.bool, pinterest: col.bool, tiktok: col.bool }),
     sql`select
       exists (select 1 from commerce.instagram_accounts where (store_id = ${store.id}::uuid ${store.house ? sql`or store_id is null` : sql``}) and publish and token_expires_at > now()) as instagram,
       exists (select 1 from commerce.facebook_pages where store_id = ${store.id}::uuid and publish and page_id is not null) as facebook,
-      exists (select 1 from commerce.pinterest_accounts where store_id = ${store.id}::uuid and publish and board_id is not null and refresh_expires_at > now()) as pinterest`,
+      exists (select 1 from commerce.pinterest_accounts where store_id = ${store.id}::uuid and publish and board_id is not null and refresh_expires_at > now()) as pinterest,
+      exists (select 1 from commerce.tiktok_accounts where store_id = ${store.id}::uuid and publish and refresh_expires_at > now()) as tiktok`,
   );
-  return { instagram: row?.instagram ?? false, facebook: row?.facebook ?? false, pinterest: row?.pinterest ?? false };
+  return { instagram: row?.instagram ?? false, facebook: row?.facebook ?? false, pinterest: row?.pinterest ?? false, tiktok: row?.tiktok ?? false };
 }

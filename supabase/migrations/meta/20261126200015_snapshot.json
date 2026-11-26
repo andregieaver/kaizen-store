@@ -1,6 +1,6 @@
 {
-  "id": "9fb022ad-b8a6-45a2-a545-a7c3cc23697b",
-  "prevId": "ac88fa1c-c900-4c9e-b3e9-219dd3ec9b93",
+  "id": "426413f4-a3c0-412e-ad50-294e24fb1de9",
+  "prevId": "9fb022ad-b8a6-45a2-a545-a7c3cc23697b",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -104813,6 +104813,164 @@
         }
       },
       "isRLSEnabled": false
+    },
+    "commerce.tiktok_accounts": {
+      "name": "tiktok_accounts",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "open_id": {
+          "name": "open_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "username": {
+          "name": "username",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "access_token_encrypted": {
+          "name": "access_token_encrypted",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "refresh_token_encrypted": {
+          "name": "refresh_token_encrypted",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token_expires_at": {
+          "name": "token_expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "refresh_expires_at": {
+          "name": "refresh_expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "publish": {
+          "name": "publish",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "problem": {
+          "name": "problem",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "connected_by": {
+          "name": "connected_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "tiktok_accounts_connected_by_idx": {
+          "name": "tiktok_accounts_connected_by_idx",
+          "columns": [
+            {
+              "expression": "connected_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "tiktok_accounts_store_id_stores_id_fk": {
+          "name": "tiktok_accounts_store_id_stores_id_fk",
+          "tableFrom": "tiktok_accounts",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "tiktok_accounts_connected_by_accounts_id_fk": {
+          "name": "tiktok_accounts_connected_by_accounts_id_fk",
+          "tableFrom": "tiktok_accounts",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "connected_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "tiktok_accounts_store_key": {
+          "name": "tiktok_accounts_store_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "store_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "tiktok_accounts_names": {
+          "name": "tiktok_accounts_names",
+          "value": "char_length(\"commerce\".\"tiktok_accounts\".\"open_id\") <= 200 and char_length(\"commerce\".\"tiktok_accounts\".\"username\") <= 100"
+        },
+        "tiktok_accounts_problem": {
+          "name": "tiktok_accounts_problem",
+          "value": "\"commerce\".\"tiktok_accounts\".\"problem\" is null or char_length(\"commerce\".\"tiktok_accounts\".\"problem\") <= 300"
+        }
+      },
+      "isRLSEnabled": true
     },
     "commerce.tripletex_connections": {
       "name": "tripletex_connections",

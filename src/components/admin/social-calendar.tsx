@@ -213,8 +213,11 @@ export function SocialCalendar({
                             {!it.draft.published && it.draft.publishProblem && (
                               <p className="text-caption text-danger-text">{fillWords(w.postFailed, { problem: it.draft.publishProblem })}</p>
                             )}
-                            {it.draft.approved && !it.draft.published && (it.channel === "instagram" || it.channel === "facebook" || it.channel === "pinterest") && !publishTo[it.channel] && (
-                              <span className="text-caption text-ink-2">{fillWords(w.connectToPost, { channel: CHANNEL_SPECS[it.channel].label })}</span>
+                            {it.draft.approved && !it.draft.published && (it.channel === "instagram" || it.channel === "facebook" || it.channel === "pinterest" || it.channel === "tiktok") && !publishTo[it.channel] && (
+                              <span className="text-caption text-ink-2">{fillWords(w.connectToPost, { channel: CHANNEL_SPECS[it.channel].label })}
+                            {it.draft.approved && !it.draft.published && it.channel === "tiktok" && publishTo.tiktok && !it.draft.video && (
+                              <span className="text-caption text-ink-2">{w.tiktokNeedsVideo}</span>
+                            )}</span>
                             )}
                             {makesPictures && !it.draft.scene?.on && (it.draft.scene?.tries ?? 0) >= SCENE_TRIES_MAX && <span className="text-caption text-ink-2">{w.sceneTriesUsed}</span>}
                             {it.draft.check ? (
@@ -268,12 +271,12 @@ export function SocialCalendar({
                               {w.checkPicture}
                             </button>
                           ) : null}
-                          {it.draft?.approved && !it.draft.published && publishTo[it.channel] && (
+                          {it.draft?.approved && !it.draft.published && publishTo[it.channel] && (it.channel !== "tiktok" || it.draft.video) && (
                             <button type="button" className={primary} disabled={pending} onClick={() => publish(it.draft!.id)}>
                               {w.postNow}
                             </button>
                           )}
-                          {it.draft?.approved && !it.draft.published && publishTo[it.channel] && (
+                          {it.draft?.approved && !it.draft.published && publishTo[it.channel] && (it.channel !== "tiktok" || it.draft.video) && (
                             <button type="button" className={secondary} disabled={pending} onClick={() => schedule(it.draft!.id, !it.draft!.scheduledFor)}>
                               {it.draft.scheduledFor ? w.dontPostOnItsDay : w.postOnItsDay}
                             </button>

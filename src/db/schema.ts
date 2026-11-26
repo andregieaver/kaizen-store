@@ -12079,6 +12079,41 @@ export const pinterestAccounts = commerce
   .enableRLS();
 
 /**
+ * A store's TikTok account (D870 S3.5, `src/lib/tiktok.ts`, `src/server/tiktok.ts`): the account's TikTok id and name, its tokens (encrypted;
+ * the access token runs a day and is renewed with the refresh token whenever it is used), and whether it allows posting. Kaizena Flow's own
+ * videos are its own store's row. A refusal is kept as `problem`, in TikTok's words.
+ */
+export const tiktokAccounts = commerce
+  .table(
+    "tiktok_accounts",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      storeId: uuid("store_id")
+        .notNull()
+        .references(() => stores.id, { onDelete: "cascade" }),
+      openId: text("open_id").notNull(),
+      username: text("username").notNull().default(""),
+      accessTokenEncrypted: text("access_token_encrypted").notNull(),
+      refreshTokenEncrypted: text("refresh_token_encrypted").notNull(),
+      tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true }).notNull(),
+      refreshExpiresAt: timestamp("refresh_expires_at", { withTimezone: true }).notNull(),
+      /** The token carries `video.publish`: approved videos may be posted. */
+      publish: boolean("publish").notNull().default(false),
+      problem: text("problem"),
+      connectedBy: uuid("connected_by").references(() => accounts.id, { onDelete: "set null" }),
+      createdAt: createdAt(),
+      updatedAt: updatedAt(),
+    },
+    (t) => [
+      unique("tiktok_accounts_store_key").on(t.storeId),
+      index("tiktok_accounts_connected_by_idx").on(t.connectedBy),
+      check("tiktok_accounts_names", sql`char_length(${t.openId}) <= 200 and char_length(${t.username}) <= 100`),
+      check("tiktok_accounts_problem", sql`${t.problem} is null or char_length(${t.problem}) <= 300`),
+    ],
+  )
+  .enableRLS();
+
+/**
  * How each of a connected Instagram account's own posts did (D870 S1.2, `src/lib/social-insights.ts`, `src/server/social-insights.ts`): the
  * post (its id, kind, when, its caption's start and its address) and its totals as Instagram counts them, read again daily while the post is
  * under 90 days old, kept 400 days. A store's or, with no store, Kaizena Flow's own (as `instagram_accounts`); a Facebook Page's posts too
