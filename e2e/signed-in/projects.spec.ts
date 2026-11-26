@@ -6,7 +6,8 @@ import { E2E_STORE, OWNER } from "./accounts";
 
 /**
  * Projects and checklists (D903) as an owner uses them: the feature is switched on under Features; a checklist is made, tasks are added with
- * Enter and one is ticked below the Done line; a project is made, a checklist added to it, and a task moved to the next stage on its board
+ * Enter and one is ticked below the Done line; the list made Advanced, a task set to repeat every day, ticked (its run shows) and the tick
+ * undone; a project is made, a checklist added to it, and a task moved to the next stage on its board
  * with the keyboard's way (*Move to*). The store is left as it was found: its projects and lists deleted, the feature switched off again.
  */
 test.use({ storageState: OWNER.state });
@@ -27,6 +28,17 @@ async function projects(page: Page, on: boolean) {
     if (await confirm.isVisible().catch(() => false)) await confirm.click();
   }
   await expect(toggle).toHaveAttribute("aria-checked", String(on), { timeout: 30_000 });
+}
+
+/** A task added with Enter, typed again until the page has woken (a field filled before then is emptied by React). */
+async function addTask(page: Page, title: string) {
+  const field = page.getByLabel("Add a task");
+  await expect(async () => {
+    await field.fill(title);
+    await expect(page.getByRole("button", { name: "Add", exact: true })).toBeEnabled({ timeout: 1_000 });
+  }).toPass({ timeout: 30_000 });
+  await field.press("Enter");
+  await expect(page.getByRole("button", { name: `Open ${title}` })).toBeVisible({ timeout: 30_000 });
 }
 
 test.beforeAll(async () => {
@@ -61,15 +73,35 @@ test("an owner makes a checklist, adds tasks with Enter and ticks one off", asyn
   await page.getByRole("button", { name: "Create", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1, name: LIST })).toBeVisible({ timeout: 30_000 });
 
-  const add = page.getByLabel("Add a task");
-  for (const task of ["Unlock the door", "Count the till"]) {
-    await add.fill(task);
-    await add.press("Enter");
-    await expect(page.getByRole("button", { name: `Open ${task}` })).toBeVisible({ timeout: 30_000 });
-  }
+  for (const task of ["Unlock the door", "Count the till"]) await addTask(page, task);
   await page.getByRole("checkbox", { name: "Unlock the door done" }).check();
   await expect(page.getByRole("button", { name: "Fold Done" })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText("1 of 2 done")).toBeVisible();
+});
+
+test("an owner makes a task repeat every day, ticks it off and undoes the tick", async ({ page }) => {
+  await page.goto(`/admin/${E2E_STORE}/checklists`);
+  await page.getByRole("link", { name: LIST }).first().click();
+  await expect(page.getByRole("heading", { level: 1, name: LIST })).toBeVisible({ timeout: 30_000 });
+  const listUrl = page.url();
+  await page.getByRole("link", { name: "Customise" }).click();
+  const advanced = page.getByRole("switch", { name: /^Advanced list/ });
+  await advanced.check();
+  await expect(advanced).toBeChecked({ timeout: 30_000 });
+  await expect(page.getByRole("checkbox", { name: "Repeats" })).toBeChecked();
+
+  await page.goto(listUrl);
+  await page.getByRole("button", { name: "Open Count the till" }).click();
+  await page.getByLabel("Repeats").selectOption("daily");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(page.getByText("Every day", { exact: true })).toBeVisible({ timeout: 30_000 });
+
+  const tick = page.getByRole("checkbox", { name: "Count the till done" });
+  await tick.check();
+  await expect(page.getByText("1 in a row")).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(tick).not.toBeChecked({ timeout: 30_000 });
+  await expect(page.getByText("1 in a row")).toHaveCount(0);
 });
 
 test("an owner makes a project, adds a checklist and moves a task on the board", async ({ page }) => {
@@ -83,9 +115,7 @@ test("an owner makes a project, adds a checklist and moves a task on the board",
   await page.getByLabel("Title").fill(`Campaign ${run}`);
   await page.getByRole("button", { name: "Create", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1, name: `Campaign ${run}` })).toBeVisible({ timeout: 30_000 });
-  await page.getByLabel("Add a task").fill("Write the banner");
-  await page.getByLabel("Add a task").press("Enter");
-  await expect(page.getByRole("button", { name: "Open Write the banner" })).toBeVisible({ timeout: 30_000 });
+  await addTask(page, "Write the banner");
 
   await page.getByRole("link", { name: PROJECT }).first().click();
   await page.getByRole("link", { name: "Board", exact: true }).click();

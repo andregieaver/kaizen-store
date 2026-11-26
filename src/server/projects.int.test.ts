@@ -11,6 +11,7 @@ const projects = await import("./projects");
 const lists = await import("./projects-lists");
 const items = await import("./projects-items");
 const statuses = await import("./projects-statuses");
+const repeat = await import("./projects-repeat");
 const { newStore } = await import("./inventory-test-support");
 
 type TestStore = Awaited<ReturnType<typeof newStore>>;
@@ -180,6 +181,67 @@ describe("statuses of a list's own", () => {
     expect(await statuses.reorderStatuses(store.member, "checklist", null, defaults.slice(1).map((s) => s.id))).toEqual({ ok: false, problem: "invalid" });
     ok(await statuses.reorderStatuses(store.member, "checklist", null, [...defaults].reverse().map((s) => s.id)));
     ok(await statuses.reorderStatuses(store.member, "checklist", null, defaults.map((s) => s.id)));
+  });
+});
+
+type Detail = Awaited<ReturnType<typeof detail>>;
+const itemOf = (list: Detail | null, id: string) => {
+  const found = [...(list?.entries ?? []).flatMap((e) => (e.kind === "item" ? [e.item] : [])), ...(list?.done ?? [])].find((i) => i.id === id);
+  if (!found) throw new Error("no item");
+  return found;
+};
+const passTime = (id: string) => db().execute(sql`update commerce.checklist_items set next_due_at = now() - interval '1 minute' where store_id = ${store.storeId}::uuid and id = ${id}::uuid`);
+
+describe("a repeating task (P4.1)", () => {
+  it("comes back at its next time once done, its run one longer and its subtasks unticked; a missed time breaks the run", async () => {
+    const { id } = ok(await lists.createChecklist(store.member, { title: "Daily round" }));
+    ok(await lists.setChecklistMode(store.member, id, { isAdvanced: true }));
+    const { id: itemId } = ok(await items.addItem(store.member, id, { title: "Water the plants", recurrence: { freq: "daily", times: ["08:00"] } }));
+    const { id: stepId } = ok(await items.addSubtask(store.member, itemId, { title: "The front" }));
+    expect(Date.parse(itemOf(await detail(id), itemId).nextDueAt ?? "")).toBeGreaterThan(Date.now());
+    ok(await items.updateSubtask(store.member, stepId, { done: true }));
+    ok(await items.setItemDone(store.member, itemId, true));
+    const done = itemOf(await detail(id), itemId);
+    expect(done).toMatchObject({ done: true, streak: 1 });
+    expect(done.lastCompletedAt).not.toBeNull();
+
+    // Its time comes: the list's page rolls it on before it draws it.
+    await passTime(itemId);
+    const back = itemOf(await lists.checklistDetail(store.storeId, id, store.accountId, "Europe/Oslo"), itemId);
+    expect(back).toMatchObject({ done: false, streak: 1 });
+    expect(back.subtasks[0]?.done).toBe(false);
+    expect(Date.parse(back.nextDueAt ?? "")).toBeGreaterThan(Date.now());
+
+    // Its next time passes untouched: the dispatcher rolls it, the run is broken, and a second roll finds nothing.
+    await passTime(itemId);
+    expect((await repeat.rollOverDueTasks()).rolled).toBeGreaterThanOrEqual(1);
+    expect(itemOf(await detail(id), itemId).streak).toBe(0);
+    expect(await repeat.rollOver(store.storeId, "Europe/Oslo", [{ id: itemId, recurrence: back.recurrence }])).toEqual([]);
+  });
+
+  it("is skipped with its run broken, its tick is undone exactly, and taking the rule off forgets the run", async () => {
+    const { id } = ok(await lists.createChecklist(store.member, { title: "Weekly" }));
+    const { id: itemId } = ok(await items.addItem(store.member, id, { title: "Count the till", recurrence: { freq: "weekly", weekdays: [1], times: ["20:00"] } }));
+    ok(await items.setItemDone(store.member, itemId, true));
+    await passTime(itemId);
+    const open = itemOf(await lists.checklistDetail(store.storeId, id, store.accountId, "Europe/Oslo"), itemId);
+    expect(open).toMatchObject({ done: false, streak: 1 });
+
+    const moment = { doneAt: open.doneAt, skippedAt: open.skippedAt, lastCompletedAt: open.lastCompletedAt, nextDueAt: open.nextDueAt, streak: open.streak, sortOrder: open.sortOrder, statusId: open.statusId };
+    ok(await items.setItemDone(store.member, itemId, true));
+    expect(itemOf(await detail(id), itemId)).toMatchObject({ done: true, streak: 2 });
+    ok(await items.restoreItem(store.member, itemId, moment));
+    expect(itemOf(await detail(id), itemId)).toMatchObject({ done: false, streak: 1, nextDueAt: open.nextDueAt, statusId: open.statusId, sortOrder: open.sortOrder });
+
+    ok(await items.skipItem(store.member, itemId));
+    const skipped = itemOf(await detail(id), itemId);
+    expect(skipped).toMatchObject({ done: false, streak: 0 });
+    expect(skipped.skippedAt).not.toBeNull();
+    expect(Date.parse(skipped.nextDueAt ?? "")).toBeGreaterThanOrEqual(Date.parse(open.nextDueAt ?? ""));
+
+    ok(await items.updateItem(store.member, itemId, { recurrence: null }));
+    expect(itemOf(await detail(id), itemId)).toMatchObject({ recurrence: null, nextDueAt: null, streak: 0, skippedAt: null });
+    expect(await items.updateItem(store.member, itemId, { recurrence: { freq: "weekly", weekdays: [], times: ["09:00"] } })).toMatchObject({ ok: false, problem: "invalid" });
   });
 });
 

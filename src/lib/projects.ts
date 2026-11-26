@@ -17,6 +17,7 @@ import {
   type ProjectColour,
   type StatusBucket,
 } from "./projects-model";
+import { recurrence } from "./projects-recurrence-schema";
 
 /**
  * The default statuses a store starts with, for items and for a project's stages alike, made in the person's language on the first visit
@@ -201,6 +202,8 @@ export const itemFields = z.object({
   blockedReason: optionalText(PROJECT_LIMITS.blockedReason),
   blockedByItemId: uuidOrNone,
   cost,
+  /** When it comes back once done (P4.1); null takes the rule off. */
+  recurrence: recurrence.nullable().optional(),
 });
 export const itemInput = itemFields.refine(
   (v) => !v.startAt || !v.dueAt || v.startAt <= v.dueAt,

@@ -14,6 +14,20 @@ const scope = z.uuid().nullable();
 const kind = z.enum(["checklist", "project"]);
 const features = z.partialRecord(z.enum(ADVANCED_FEATURES), z.boolean());
 
+const instantOrNone = z.iso.datetime({ offset: true }).nullable();
+
+/** What a tick or a skip changed, as the screen saw it before (P4.1): given back by its Undo. */
+export const itemMoment = z.object({
+  doneAt: instantOrNone,
+  skippedAt: instantOrNone,
+  lastCompletedAt: instantOrNone,
+  nextDueAt: instantOrNone,
+  streak: z.int().min(0).max(100_000),
+  sortOrder: z.int().min(0).max(1_000_000),
+  statusId: z.uuid().nullable(),
+});
+export type ItemMoment = z.infer<typeof itemMoment>;
+
 export const projectsOp = z.discriminatedUnion("op", [
   z.object({ op: z.literal("project.update"), id, patch: projectInput.partial() }),
   z.object({ op: z.literal("project.review"), id }),
@@ -39,6 +53,8 @@ export const projectsOp = z.discriminatedUnion("op", [
   z.object({ op: z.literal("item.add"), checklistId: id, titles: z.array(z.string().max(500)).min(1).max(500) }),
   z.object({ op: z.literal("item.update"), id, patch: itemFields.partial() }),
   z.object({ op: z.literal("item.done"), id, done: z.boolean() }),
+  z.object({ op: z.literal("item.skip"), id }),
+  z.object({ op: z.literal("item.restore"), id, moment: itemMoment }),
   z.object({ op: z.literal("item.archive"), ids, archived: z.boolean() }),
   z.object({ op: z.literal("item.delete"), ids }),
   z.object({ op: z.literal("item.status"), ids, statusId: scope }),

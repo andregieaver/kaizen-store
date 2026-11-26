@@ -806,6 +806,10 @@
         "statements": 1,
         "rowsRead": 2
       },
+      "dispatcher.repeats": {
+        "statements": 1,
+        "rowsRead": 0
+      },
       "dispatcher.report-emails": {
         "statements": 1,
         "rowsRead": 0
@@ -1196,6 +1200,10 @@
         "statements": 41,
         "rowsRead": 862
       },
+      "dispatcher.repeats": {
+        "statements": 1,
+        "rowsRead": 0
+      },
       "dispatcher.report-emails": {
         "statements": 1,
         "rowsRead": 0
@@ -1581,6 +1589,10 @@
       "dispatcher.recurring": {
         "statements": 40,
         "rowsRead": 860
+      },
+      "dispatcher.repeats": {
+        "statements": 0,
+        "rowsRead": 0
       },
       "dispatcher.report-emails": {
         "statements": 0,

@@ -39,6 +39,7 @@ export const projectsEn = {
     dueAt: "The due date is before the start.",
     assignedTo: "Choose someone on the store's team.",
     cost: "Write the cost as an amount.",
+    recurrence: "Choose at least one day for it to repeat on.",
   },
   saved: "Saved.",
   cancel: "Cancel",
@@ -205,6 +206,36 @@ export const projectsEn = {
     deleteConfirm: "Delete {title}?",
   },
 
+  /** A repeating task (P4.1): its rule in the editor, and on its row its run, its next time and the skip. */
+  repeat: {
+    label: "Repeats",
+    hint: "Once done, it comes back at its next time.",
+    freqs: { off: "Never", daily: "Every day", weekly: "Every week", interval: "Every few days", monthly: "Every month" },
+    weekdays: "On",
+    everyDays: "Days apart",
+    monthDays: "On these days of the month",
+    everyMonths: "Months apart",
+    clamp: "A day a month doesn't have is its last day.",
+    when: "At",
+    windows: { morning: "Morning (08:00)", midday: "Midday (13:00)", evening: "Evening (20:00)" },
+    anyTime: "With none chosen it is due at 09:00.",
+    summary: {
+      daily: "Every day",
+      weekly: "Every {days}",
+      interval: "Every {n} days",
+      monthly: "Monthly on day {days}",
+      monthlyEvery: "Every {n} months on day {days}",
+    },
+    streak: { one: "{n} in a row", many: "{n} in a row" },
+    back: "Back {date}",
+    skipped: "Skipped",
+    skip: "Skip",
+    skipLabel: "Skip {title} this time",
+    doneSaid: "{title} done.",
+    skippedSaid: "{title} skipped.",
+    undo: "Undo",
+  },
+
   listSettings: {
     title: "Customise {title}",
     details: "Details",
@@ -215,7 +246,7 @@ export const projectsEn = {
     state: "State",
     how: "How it works",
     advanced: "Advanced list",
-    advancedOn: "Every task can have a status, a priority, who does it, dates, subtasks and a cost. Switch off what this list doesn't need.",
+    advancedOn: "Every task can have a status, a priority, who does it, dates, a repeat, subtasks and a cost. Switch off what this list doesn't need.",
     advancedOff: "A plain list: a title and a box to tick. Switch it on for statuses, people, dates and more.",
     fields: "Fields",
     fieldNames: {

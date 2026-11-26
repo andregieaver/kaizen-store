@@ -3,8 +3,8 @@
 import { closestCenter, DndContext, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ChevronDown, ChevronRight, Pencil, Trash2 } from "lucide-react";
-import { useOptimistic, useState, type ReactNode } from "react";
+import { ChevronDown, ChevronRight, Pencil, Repeat, Trash2 } from "lucide-react";
+import { useEffect, useOptimistic, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/admin/ui/button";
 import { ConfirmButton } from "@/components/admin/ui/confirm-button";
@@ -15,6 +15,7 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import type { AdminLang } from "@/lib/admin-lang";
 import type { ProjectsMessages } from "@/lib/admin-messages/projects.en";
 import { formatMoney } from "@/lib/money";
+import type { ItemMoment } from "@/lib/projects-ops";
 import { dueState } from "@/lib/projects-dates";
 import type { ChecklistFeatures } from "@/lib/projects-features";
 import type { ProjectColour, StatusBucket } from "@/lib/projects-model";
@@ -22,13 +23,15 @@ import type { ProjectColour, StatusBucket } from "@/lib/projects-model";
 import { DragHandle } from "./drag-handle";
 import { ItemEditor, type EditorItem } from "./item-editor";
 import { StatusPill } from "./parts";
+import { repeatSummary } from "./repeat-field";
 import { useAct, type ProjectsAct } from "./use-act";
 
-export type ViewItem = EditorItem & { sortOrder: number; subtasks: (EditorItem["subtasks"][number] & { sortOrder?: number })[] };
+export type ViewItem = EditorItem &
+  ItemMoment & { subtasks: (EditorItem["subtasks"][number] & { sortOrder?: number })[] };
 export type ViewEntry = { kind: "section"; section: { id: string; title: string } } | { kind: "item"; item: ViewItem };
 export type ViewStatus = { id: string; name: string; colour: ProjectColour; bucket: StatusBucket };
 
-export type ChecklistWords = Pick<ProjectsMessages, "checklist" | "item" | "priorities" | "cancel" | "save" | "delete" | "none" | "nobody" | "due">;
+export type ChecklistWords = Pick<ProjectsMessages, "checklist" | "item" | "repeat" | "priorities" | "cancel" | "save" | "delete" | "none" | "nobody" | "due">;
 
 type Props = {
   list: { id: string; title: string; isRoutine: boolean; features: ChecklistFeatures };
@@ -49,14 +52,28 @@ type Props = {
   act: ProjectsAct;
 };
 
+/** How long a repeating task's Undo is offered after its tick or its skip. */
+const UNDO_MS = 15_000;
+
+const momentOf = (item: ViewItem): ItemMoment => ({
+  doneAt: item.doneAt,
+  skippedAt: item.skippedAt,
+  lastCompletedAt: item.lastCompletedAt,
+  nextDueAt: item.nextDueAt,
+  streak: item.streak,
+  sortOrder: item.sortOrder,
+  statusId: item.statusId,
+});
+
 const keyOf = (e: ViewEntry) => (e.kind === "section" ? `section:${e.section.id}` : `item:${e.item.id}`);
 
 /**
  * A checklist (D903, Life's `checklist-detail-body.tsx` and `checklist-items-sortable-list.tsx`): Homer types a task and presses Enter
  * (several pasted lines are a task each) and ticks it off; a ticked task sinks below the Done line. Lisa drags tasks and sections into one
  * order (a handle, or the keyboard), folds a section or the Done line for herself, opens a task for its fields and subtasks, and with Select
- * gives many tasks a status, moves, archives or deletes them. Every change shows at once and the page's next drawing confirms it; a refusal
- * is said in the line at the foot.
+ * gives many tasks a status, moves, archives or deletes them. A repeating task (P4.1) says how often, its run and when it is back; it can
+ * be skipped this time, and its tick or skip undone for a moment after. Every change shows at once and the page's next drawing confirms it;
+ * a refusal is said in the line at the foot.
  */
 export function ChecklistView(props: Props) {
   const { list, statuses, team, canChange, words } = props;
@@ -75,6 +92,12 @@ export function ChecklistView(props: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [draft, setDraft] = useState("");
   const [sectionDraft, setSectionDraft] = useState<string | null>(null);
+  const [undo, setUndo] = useState<{ item: ViewItem; said: string; moment: ItemMoment } | null>(null);
+  useEffect(() => {
+    if (!undo) return;
+    const timer = setTimeout(() => setUndo(null), UNDO_MS);
+    return () => clearTimeout(timer);
+  }, [undo]);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
@@ -96,7 +119,14 @@ export function ChecklistView(props: Props) {
     if (titles.length === 0) return;
     run({ op: "item.add", checklistId: list.id, titles }, (answer) => answer.ok && setDraft(""));
   };
-  const setDone = (item: ViewItem, done: boolean) => run({ op: "item.done", id: item.id, done }, undefined, () => tick({ id: item.id, done }));
+  const repeating = (item: ViewItem) => list.features.recurrence && item.recurrence !== null;
+  // A repeating task's tick and skip change its run and its next time, which unticking cannot give back: its Undo can.
+  const offerUndo = (item: ViewItem, said: string) => (answer: { ok: boolean }) => {
+    if (answer.ok && repeating(item)) setUndo({ item, said: fillWords(said, { title: item.title }), moment: momentOf(item) });
+  };
+  const setDone = (item: ViewItem, done: boolean) =>
+    run({ op: "item.done", id: item.id, done }, done ? offerUndo(item, words.repeat.doneSaid) : undefined, () => tick({ id: item.id, done }));
+  const skip = (item: ViewItem) => run({ op: "item.skip", id: item.id }, offerUndo(item, words.repeat.skippedSaid));
   const toggleFold = (key: string, sectionId: string | null) => {
     const folded = !folds.has(key);
     run({ op: "list.fold", id: list.id, sectionId, folded }, undefined, () => fold({ key, folded }));
@@ -161,9 +191,11 @@ export function ChecklistView(props: Props) {
       selected={selected.has(item.id)}
       onSelect={() => toggleSelected(item.id)}
       onDone={(done) => setDone(item, done)}
+      onSkip={canChange && repeating(item) && !isDone(item) && !selecting ? () => skip(item) : undefined}
       onOpen={() => setEditing(item.id)}
       canChange={canChange}
       words={w}
+      skipWords={words.repeat}
     >
       <ItemFacts item={item} features={list.features} status={statusOf(item.statusId)} person={personOf(item.assignedTo)} props={props} now={now} />
     </ItemRow>
@@ -323,6 +355,23 @@ export function ChecklistView(props: Props) {
         </section>
       )}
 
+      {undo && (
+        <p role="status" className="flex flex-wrap items-center gap-2 text-sm text-ink-2">
+          {undo.said}
+          <Button
+            kind="quiet"
+            size="dense"
+            onClick={() => {
+              const { item, moment } = undo;
+              setUndo(null);
+              run({ op: "item.restore", id: item.id, moment });
+            }}
+          >
+            {words.repeat.undo}
+          </Button>
+        </p>
+      )}
+
       <p role="status" aria-live="polite" className="text-sm text-danger-text">
         {said}
       </p>
@@ -337,6 +386,7 @@ export function ChecklistView(props: Props) {
           others={allItems.filter((i) => i.id !== editingItem.id).map((i) => ({ id: i.id, title: i.title }))}
           timeZone={props.timeZone}
           currency={props.currency}
+          locale={props.locale}
           words={words}
           act={props.act}
           canChange={canChange}
@@ -362,6 +412,18 @@ function ItemFacts({ item, features, status, person, props, now }: { item: ViewI
       </span>,
     );
   }
+  if (features.recurrence && item.recurrence) {
+    const r = w.repeat;
+    facts.push(
+      <span key="repeat" className="inline-flex items-center gap-1 text-chip text-ink-2">
+        <Repeat className="size-3.5" aria-hidden />
+        {repeatSummary(item.recurrence, r, props.locale)}
+      </span>,
+    );
+    if (item.streak > 0) facts.push(<span key="streak" className="text-chip text-positive-text tabular-nums">{countWords(item.streak, r.streak)}</span>);
+    if (item.done && item.nextDueAt) facts.push(<span key="back" className="text-chip text-ink-2 tabular-nums">{fillWords(r.back, { date: adminDate(props.timeZone, item.nextDueAt, "dayTime", props.lang) })}</span>);
+    if (!item.done && item.skippedAt) facts.push(<span key="skipped" className="text-chip text-warning-text">{r.skipped}</span>);
+  }
   if (features.assignment && person) facts.push(<span key="person" className="text-chip text-ink-2">{person}</span>);
   if (features.subtasks && item.subtasks.length > 0) {
     facts.push(
@@ -382,9 +444,11 @@ function ItemRow({
   selected,
   onSelect,
   onDone,
+  onSkip,
   onOpen,
   canChange,
   words,
+  skipWords,
   children,
 }: {
   item: ViewItem;
@@ -394,9 +458,12 @@ function ItemRow({
   selected: boolean;
   onSelect: () => void;
   onDone: (done: boolean) => void;
+  /** A repeating task's skip of this time, where it may be skipped. */
+  onSkip?: () => void;
   onOpen: () => void;
   canChange: boolean;
   words: ChecklistWords["checklist"];
+  skipWords: Pick<ChecklistWords["repeat"], "skip" | "skipLabel">;
   children: ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: `item:${item.id}`, disabled: !sortable });
@@ -432,6 +499,11 @@ function ItemRow({
         </button>
         {children}
       </span>
+      {onSkip && (
+        <Button kind="quiet" size="dense" aria-label={fillWords(skipWords.skipLabel, { title: item.title })} onClick={onSkip} className="shrink-0">
+          {skipWords.skip}
+        </Button>
+      )}
     </li>
   );
 }

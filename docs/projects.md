@@ -190,38 +190,38 @@ Status: Planned, Building, Done (date and commit).
 
 | Id | Step | Status |
 |---|---|---|
-| P1.1 | Tables of 4.2, rules of 4.3, `src/db/projects.test.ts`; the feature, the permission area and the store copy, export and personal-data registrations | Done, 26 Nov 2026 |
+| P1.1 | Tables of 4.2, rules of 4.3, `src/db/projects.test.ts`; the feature, the permission area and the store copy, export and personal-data registrations | Done, 26 Nov 2026 (e6afd15, bfba4d3) |
 
 ### P2: the server
 
 | Id | Step | Status |
 |---|---|---|
-| P2.1 | Pure parts (advanced fields, defaults, dates in the store's zone, the operations) with tests; recurrence is P4.1's | Done, 26 Nov 2026 |
-| P2.2 | Projects: create, edit, status and health, reorder, archive, delete; link and unlink lists, home project | Done, 26 Nov 2026 |
-| P2.3 | Lists: create, edit, advanced fields, routine, goal, reorder, archive, done, reset (untick all), delete (duplicate is P4.2) | Done, 26 Nov 2026 |
-| P2.4 | Items and sections: add, edit every field, tick, archive, delete, reorder with sections, move across lists, bulk status, delete and move | Done, 26 Nov 2026 |
-| P2.5 | Subtasks: add, edit, tick, reorder, delete, promote to an item | Done, 26 Nov 2026 |
-| P2.6 | Statuses and stages: defaults made in the store's language, per list and per project, reorder, buckets, colours, delete with a replacement | Done, 26 Nov 2026 |
-| P2.7 | Integration tests (`src/server/projects*.int.test.ts`) | Done, 26 Nov 2026 |
+| P2.1 | Pure parts (advanced fields, defaults, dates in the store's zone, the operations) with tests; recurrence is P4.1's | Done, 26 Nov 2026 (e6afd15, bfba4d3) |
+| P2.2 | Projects: create, edit, status and health, reorder, archive, delete; link and unlink lists, home project | Done, 26 Nov 2026 (e6afd15, bfba4d3) |
+| P2.3 | Lists: create, edit, advanced fields, routine, goal, reorder, archive, done, reset (untick all), delete (duplicate is P4.2) | Done, 26 Nov 2026 (e6afd15, bfba4d3) |
+| P2.4 | Items and sections: add, edit every field, tick, archive, delete, reorder with sections, move across lists, bulk status, delete and move | Done, 26 Nov 2026 (e6afd15, bfba4d3) |
+| P2.5 | Subtasks: add, edit, tick, reorder, delete, promote to an item | Done, 26 Nov 2026 (e6afd15, bfba4d3) |
+| P2.6 | Statuses and stages: defaults made in the store's language, per list and per project, reorder, buckets, colours, delete with a replacement | Done, 26 Nov 2026 (e6afd15, bfba4d3) |
+| P2.7 | Integration tests (`src/server/projects*.int.test.ts`) | Done, 26 Nov 2026 (e6afd15, bfba4d3) |
 
 ### P3: the screens
 
 | Id | Step | Status |
 |---|---|---|
-| P3.1 | Feature card, navigation section, permission area in the role editor | Done, 26 Nov 2026 |
-| P3.2 | Checklists: the list of lists (open, done and archived, routines) | Done, 26 Nov 2026 |
-| P3.3 | A list: items and sections in one dragged order, the Done line, folds, bulk actions, the item editor with the advanced fields, subtasks (filters are P4.11) | Done, 26 Nov 2026 |
-| P3.4 | A list's settings: Advanced list and its fields, routine, goal, its statuses | Done, 26 Nov 2026 |
-| P3.5 | Projects: the list with each project's status bar and health; a project's List and Board views; linked lists | Done, 26 Nov 2026 |
-| P3.6 | A project's settings: details, status and health, stages | Done, 26 Nov 2026 |
-| P3.7 | Statuses: the store's default statuses and stages | Done, 26 Nov 2026 |
-| P3.8 | Signed-in e2e spec (`e2e/signed-in/projects.spec.ts`), screenshots to the owner | Building |
+| P3.1 | Feature card, navigation section, permission area in the role editor | Done, 26 Nov 2026 (e6afd15, bfba4d3) |
+| P3.2 | Checklists: the list of lists (open, done and archived, routines) | Done, 26 Nov 2026 (e6afd15, bfba4d3) |
+| P3.3 | A list: items and sections in one dragged order, the Done line, folds, bulk actions, the item editor with the advanced fields, subtasks (filters are P4.11) | Done, 26 Nov 2026 (e6afd15, bfba4d3) |
+| P3.4 | A list's settings: Advanced list and its fields, routine, goal, its statuses | Done, 26 Nov 2026 (e6afd15, bfba4d3) |
+| P3.5 | Projects: the list with each project's status bar and health; a project's List and Board views; linked lists | Done, 26 Nov 2026 (e6afd15, bfba4d3) |
+| P3.6 | A project's settings: details, status and health, stages | Done, 26 Nov 2026 (e6afd15, bfba4d3) |
+| P3.7 | Statuses: the store's default statuses and stages | Done, 26 Nov 2026 (e6afd15, bfba4d3) |
+| P3.8 | Signed-in e2e spec (`e2e/signed-in/projects.spec.ts`), screenshots to the owner | Done, 26 Nov 2026 (e6afd15) |
 
 ### P4: the rest of Life's richness
 
 | Id | Step | Status |
 |---|---|---|
-| P4.1 | Recurrence and routines: the editor, completing moves to the next due time, streak, skip and undo; the job in the five-minute dispatcher | Planned |
+| P4.1 | Recurrence and routines: the editor, completing moves to the next due time, streak, skip and undo; the job in the five-minute dispatcher | Done, 26 Nov 2026 |
 | P4.2 | Duplicate a list with its options; templates | Planned |
 | P4.3 | Reminders: on an item (at a time or before its due time) and on a list (repeating), through Flow's push and email | Planned |
 | P4.4 | Comments on an item (Life's activity thread) | Planned |
@@ -292,3 +292,20 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
   the tab), which makes room in the menu's budget; Statuses is reached from Projects, not the menu.
 - **Tests.** `src/db/projects.test.ts` (20, the rules), `src/lib/projects*.test.ts` (the pure parts), `src/server/projects.int.test.ts` (13,
   the server against Postgres), `e2e/signed-in/projects.spec.ts`.
+
+## As built: step P4.1, repeating tasks (26 November 2026)
+
+- **The rule.** Kept on the task as `recurrence` in Life's shape (`src/lib/projects-recurrence.ts`): every day, on weekdays, every so many
+  days, or on days of the month every so many months, at one or more times of the day, read in the store's zone. The 31st is a shorter
+  month's last day. An every-so-many rule counts from the day it is set (`anchor`, kept while its kind stays the same).
+- **The editor.** *Repeats* (an Advanced list's field, switched off like the others): Homer chooses how often; the weekdays, the days of the
+  month, the gaps and the times of the day (morning, midday, evening; none is 09:00) are one look further. A rule is sent only when it
+  changed, since a task given a rule is open again.
+- **The row.** How often, the run (*3 in a row*), when a ticked task is back, *Skipped*; *Skip* on an open repeating task, and an *Undo* for
+  a moment after its tick or skip, which puts back what the tick changed (the run and the next time cannot be worked out afterwards).
+- **Coming back.** `src/server/projects-repeat.ts`: a task whose next time has passed is open again at the time after, its subtasks
+  unticked; a task ticked in time keeps its run, one not ticked loses it, and a skip is forgotten with its time. A list's page rolls its
+  tasks before drawing them, and the dispatcher's `repeats` does every store's within five minutes; each write repeats the condition, so the
+  second finds nothing and a late write never unticks a task ticked in between.
+- **Differs from Life.** Saving a task's other fields never unticks it (Life's form unticked a task whenever it carried the repeat, which
+  it always did); skipping an open task keeps its next time (it is already the next); a rollover clears the skip.

@@ -33,7 +33,7 @@ export default async function ChecklistPage({ params }: PageProps<"/admin/[store
   const lang = adminLangOf(member.account.adminLocale);
   const w = PROJECTS_WORDS[lang];
   await ensureDefaultStatuses(store.id, w.defaults);
-  const [list, lists, team] = await Promise.all([checklistDetail(store.id, checklistId, member.account.id), listChecklists(store.id), teamOf(store.id)]);
+  const [list, lists, team] = await Promise.all([checklistDetail(store.id, checklistId, member.account.id, store.timeZone), listChecklists(store.id), teamOf(store.id)]);
   if (!list) notFound();
   const canChange = memberCan(member, "projects:write");
   const act = projectsAction.bind(null, store.slug);

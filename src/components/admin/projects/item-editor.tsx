@@ -14,9 +14,10 @@ import { minorUnitDigits } from "@/lib/money";
 import { instantOf, whenFields } from "@/lib/projects-dates";
 import type { ChecklistFeatures } from "@/lib/projects-features";
 import { PRIORITIES, type Priority, type ProjectColour, type StatusBucket } from "@/lib/projects-model";
+import type { Recurrence } from "@/lib/projects-recurrence";
 
-import type { ProjectsAct } from "./use-act";
-import { useAct } from "./use-act";
+import { draftOf, RepeatField, ruleOf } from "./repeat-field";
+import { useAct, type ProjectsAct } from "./use-act";
 
 export type EditorItem = {
   id: string;
@@ -33,10 +34,11 @@ export type EditorItem = {
   blockedReason: string | null;
   blockedByItemId: string | null;
   cost: { minor: number; currency: string } | null;
+  recurrence: Recurrence | null;
   subtasks: { id: string; title: string; done: boolean; isGoal: boolean }[];
 };
 
-export type EditorWords = Pick<ProjectsMessages, "item" | "priorities" | "cancel" | "save" | "delete" | "none" | "nobody">;
+export type EditorWords = Pick<ProjectsMessages, "item" | "repeat" | "priorities" | "cancel" | "save" | "delete" | "none" | "nobody">;
 
 /**
  * A task's editor (D903, Life's `edit-checklist-item-modal.tsx`): its title and notes always, and the fields its list uses (`features`) in
@@ -51,6 +53,7 @@ export function ItemEditor({
   others,
   timeZone,
   currency,
+  locale,
   words,
   act,
   canChange,
@@ -64,6 +67,7 @@ export function ItemEditor({
   others: { id: string; title: string }[];
   timeZone: string;
   currency: string;
+  locale: string;
   words: EditorWords;
   act: ProjectsAct;
   canChange: boolean;
@@ -87,6 +91,10 @@ export function ItemEditor({
   const [blockedReason, setBlockedReason] = useState(item.blockedReason ?? "");
   const [blockedBy, setBlockedBy] = useState(item.blockedByItemId ?? "");
   const [newStep, setNewStep] = useState("");
+  const [repeat, setRepeat] = useState(() => draftOf(item.recurrence));
+  const rule = ruleOf(repeat, item.recurrence);
+  // Sent only when it changed: a task given a rule is open again.
+  const ruleChanged = JSON.stringify(rule) !== JSON.stringify(ruleOf(draftOf(item.recurrence), item.recurrence));
 
   const save = () => {
     const startAt = instantOf(startDay, startTime, timeZone);
@@ -107,6 +115,7 @@ export function ItemEditor({
           // A task is a whole day when its dates say no time.
           ...((features.startDate || features.dueDate) && { allDay: (dueAt.at ? dueAt.allDay : startAt.allDay) ?? null }),
           ...(features.cost && { cost: cost.trim() && Number.isFinite(amount) ? { minor: Math.round(amount * 10 ** digits), currency: item.cost?.currency ?? currency } : null }),
+          ...(features.recurrence && ruleChanged && { recurrence: rule }),
         },
       },
       (answer) => answer.ok && onClose(),
@@ -216,6 +225,7 @@ export function ItemEditor({
             <DayAndTime label={w.startAt} day={startDay} time={startTime} onDay={setStartDay} onTime={setStartTime} disabled={!canChange} />
           )}
           {features.dueDate && <DayAndTime label={w.dueAt} day={dueDay} time={dueTime} onDay={setDueDay} onTime={setDueTime} disabled={!canChange} />}
+          {features.recurrence && <RepeatField draft={repeat} onChange={setRepeat} words={words.repeat} locale={locale} disabled={!canChange} />}
           {features.status && (
             <>
               <Field label={w.blockedReason} hint={w.blockedReasonHint}>

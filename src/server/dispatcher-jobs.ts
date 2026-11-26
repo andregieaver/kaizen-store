@@ -33,6 +33,7 @@ import { runDueMoves } from "@/server/shopify-move";
 import { refreshEmbeddings } from "@/server/embeddings";
 import { runExperimentJobs } from "@/server/experiment-jobs";
 import { runFollowUps } from "@/server/follow-up-runner";
+import { rollOverDueTasks } from "@/server/projects-repeat";
 import { runKaizenLifeHandoffs } from "@/server/kaizen-life-handoffs";
 import { measureAutopilotEffects } from "@/server/autopilot-effects";
 import { sendAutopilotReports } from "@/server/autopilot-reports";
@@ -204,6 +205,8 @@ export const DISPATCHER_JOBS = {
   fonts: () => trimFontFiles(),
   // The AI manager's follow-ups (PSI AGT-04): a few due ones given back to it, in the asker's name, and the asker emailed.
   followUps: () => runFollowUps(),
+  // Repeating checklist tasks (D903 P4.1): those whose next time came open again at the time after, their subtasks unticked, 500 a run.
+  repeats: () => rollOverDueTasks(),
   // Tasks the assistants hand each other (docs/assistants-together.md): one from Kaizen Life whose run never started run, Kaizen Life told
   // what it has not heard, and a task it never reported on given up.
   lifeHandoffs: () => runKaizenLifeHandoffs(),

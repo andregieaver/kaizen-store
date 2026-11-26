@@ -7,11 +7,13 @@ import { db } from "@/db/client";
 import { checklistInput, problemFields } from "@/lib/projects";
 import { effectiveFeatures, storedFeatures, type ChecklistFeatures } from "@/lib/projects-features";
 import { CHECKLIST_STATES, PRIORITIES, type ChecklistState } from "@/lib/projects-model";
+import { parseRecurrence, type Recurrence } from "@/lib/projects-recurrence-schema";
 
 import type { Membership } from "./auth";
 import { memberCan } from "./permissions";
 import { assignable } from "./projects";
 import { projectsGuard, type ProjectsResult } from "./projects-errors";
+import { isDue, rollOver } from "./projects-repeat";
 import { at, everyOnce, reorderSql, setList } from "./projects-sql";
 import { allStatuses, effectiveOf, type Status } from "./projects-statuses";
 import { col, typedRow, typedRows } from "./typed-rows";
@@ -65,8 +67,12 @@ export type ChecklistItem = {
   dueAt: string | null;
   allDay: boolean | null;
   priority: (typeof PRIORITIES)[number] | null;
+  /** When it comes back once done (P4.1), its run of times done in a row, when it is next due, when it was last done and skipped. */
+  recurrence: Recurrence | null;
   streak: number;
   nextDueAt: string | null;
+  lastCompletedAt: string | null;
+  skippedAt: string | null;
   blockedReason: string | null;
   blockedByItemId: string | null;
   cost: { minor: number; currency: string } | null;
@@ -180,8 +186,11 @@ const itemRow = z.object({
   due_at: col.timestampOrNull,
   all_day: col.bool.nullable(),
   priority: z.enum(PRIORITIES).nullable(),
+  recurrence: z.unknown(),
   streak: col.int,
   next_due_at: col.timestampOrNull,
+  last_completed_at: col.timestampOrNull,
+  skipped_at: col.timestampOrNull,
   blocked_reason: col.textOrNull,
   blocked_by_item_id: col.uuid.nullable(),
   cost_minor: col.minorOrNull,
@@ -201,8 +210,11 @@ const subtaskRow = z.object({
   status_id: col.uuid.nullable(),
 });
 
-/** One list as its page shows it to `accountId` (whose folds it carries); null when it is not the store's. */
-export async function checklistDetail(storeId: string, checklistId: string, accountId: string): Promise<ChecklistDetail | null> {
+/**
+ * One list as its page shows it to `accountId` (whose folds it carries); null when it is not the store's. Given the store's zone, a
+ * repeating task whose time has come is first made due again (P4.1), as the dispatcher would within five minutes, and the list read again.
+ */
+export async function checklistDetail(storeId: string, checklistId: string, accountId: string, timeZone?: string): Promise<ChecklistDetail | null> {
   const list = await typedRow(
     listRow,
     sql`
@@ -215,8 +227,8 @@ export async function checklistDetail(storeId: string, checklistId: string, acco
     typedRows(
       itemRow,
       sql`
-        select id, title, description, done_at, archived_at, sort_order, status_id, assigned_to, start_at, due_at, all_day, priority, streak,
-          next_due_at, blocked_reason, blocked_by_item_id, cost_minor, cost_currency
+        select id, title, description, done_at, archived_at, sort_order, status_id, assigned_to, start_at, due_at, all_day, priority, recurrence,
+          streak, next_due_at, last_completed_at, skipped_at, blocked_reason, blocked_by_item_id, cost_minor, cost_currency
         from commerce.checklist_items where store_id = ${storeId}::uuid and checklist_id = ${checklistId}::uuid
         order by sort_order, created_at
       `,
@@ -248,6 +260,8 @@ export async function checklistDetail(storeId: string, checklistId: string, acco
       sql`select section_id from commerce.checklist_folds where store_id = ${storeId}::uuid and checklist_id = ${checklistId}::uuid and account_id = ${accountId}::uuid`,
     ),
   ]);
+  const due = timeZone ? items.filter((i) => isDue(i)) : [];
+  if (timeZone && due.length > 0 && (await rollOver(storeId, timeZone, due)).length > 0) return checklistDetail(storeId, checklistId, accountId);
   const stepsOf = new Map<string, Subtask[]>();
   for (const s of subtasks) {
     const steps = stepsOf.get(s.item_id) ?? [];
@@ -268,8 +282,11 @@ export async function checklistDetail(storeId: string, checklistId: string, acco
     dueAt: r.due_at,
     allDay: r.all_day,
     priority: r.priority,
+    recurrence: parseRecurrence(r.recurrence),
     streak: r.streak,
     nextDueAt: r.next_due_at,
+    lastCompletedAt: r.last_completed_at,
+    skippedAt: r.skipped_at,
     blockedReason: r.blocked_reason,
     blockedByItemId: r.blocked_by_item_id,
     cost: r.cost_minor !== null && r.cost_currency ? { minor: r.cost_minor, currency: r.cost_currency } : null,

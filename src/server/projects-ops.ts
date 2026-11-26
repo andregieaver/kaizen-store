@@ -54,6 +54,10 @@ export async function runProjectsOp(member: Membership, op: ProjectsOp): Promise
       return items.updateItem(member, op.id, op.patch);
     case "item.done":
       return items.setItemDone(member, op.id, op.done);
+    case "item.skip":
+      return items.skipItem(member, op.id);
+    case "item.restore":
+      return items.restoreItem(member, op.id, op.moment);
     case "item.archive":
       return counted(await items.setItemArchived(member, op.ids, op.archived));
     case "item.delete":

@@ -5,6 +5,9 @@ import { z } from "zod";
 
 import { db } from "@/db/client";
 import { itemFields, itemInput, problemFields, sectionTitle, sequence, subtaskInput, type ItemInput, type ListEntry } from "@/lib/projects";
+import { itemMoment } from "@/lib/projects-ops";
+import { anchored, nextOccurrence, type Recurrence } from "@/lib/projects-recurrence";
+import { parseRecurrence } from "@/lib/projects-recurrence-schema";
 
 import type { Membership } from "./auth";
 import { memberCan } from "./permissions";
@@ -67,6 +70,21 @@ function itemColumns(d: Partial<ItemInput>): [SQL, unknown][] {
   ];
 }
 
+/**
+ * The columns a rule writes (P4.1): the rule, counted from today where it counts days or months, and its next time after now; a task given
+ * a rule is open again, and one whose rule is taken off forgets its run and its skip.
+ */
+function repeatColumns(rule: Recurrence | null | undefined, timeZone: string, now = Date.now()): [SQL, unknown][] {
+  if (rule === undefined) return [];
+  if (rule === null) return [[sql`recurrence`, null], [sql`next_due_at`, null], [sql`streak`, 0], [sql`last_completed_at`, null], [sql`skipped_at`, null]];
+  const kept = anchored(rule, now, timeZone);
+  return [
+    [sql`recurrence`, sql`${JSON.stringify(kept)}::jsonb`],
+    [sql`next_due_at`, nextOccurrence(kept, now, timeZone)],
+    [sql`done_at`, null],
+  ];
+}
+
 /** A new item at the end of a list (its status the list's default, by the database). */
 export async function addItem(member: Membership, checklistId: string, raw: unknown): Promise<ProjectsResult<{ id: string }>> {
   if (!memberCan(member, WRITE)) return { ok: false, problem: "forbidden" };
@@ -75,7 +93,7 @@ export async function addItem(member: Membership, checklistId: string, raw: unkn
   const storeId = member.store.id;
   if (!(await listExists(storeId, checklistId))) return { ok: false, problem: "not_found" };
   if (!(await assignable(storeId, input.data.assignedTo))) return { ok: false, problem: "invalid", fields: ["assignedTo"] };
-  const given = itemColumns(input.data).filter(([, v]) => v !== undefined);
+  const given = [...itemColumns(input.data), ...repeatColumns(input.data.recurrence, member.store.timeZone)].filter(([, v]) => v !== undefined);
   return projectsGuard(async () => {
     const sortOrder = await endOf(db(), storeId, checklistId);
     const made = await typedRow(
@@ -118,7 +136,7 @@ export async function updateItem(member: Membership, itemId: string, raw: unknow
   if (!input.success) return { ok: false, problem: "invalid", fields: problemFields(input.error) };
   const storeId = member.store.id;
   if (!(await assignable(storeId, input.data.assignedTo))) return { ok: false, problem: "invalid", fields: ["assignedTo"] };
-  const set = setList(itemColumns(input.data));
+  const set = setList([...itemColumns(input.data), ...repeatColumns(input.data.recurrence, member.store.timeZone)]);
   if (!set) return { ok: true };
   return projectsGuard(async () => {
     const changed = await typedRows(z.object({ id: col.uuid }), sql`update commerce.checklist_items set ${set} where store_id = ${storeId}::uuid and id = ${itemId}::uuid returning id`);
@@ -128,7 +146,7 @@ export async function updateItem(member: Membership, itemId: string, raw: unknow
 
 /**
  * An item ticked or unticked; its status follows (the database). A ticked item sinks to the end, below the open ones, but in a routine,
- * which keeps the order it is followed in.
+ * which keeps the order it is followed in. A repeating task ticked now (P4.1) is due again at its next time, its run one longer.
  */
 export async function setItemDone(member: Membership, itemId: string, done: boolean): Promise<ProjectsResult> {
   if (!memberCan(member, WRITE)) return { ok: false, problem: "forbidden" };
@@ -136,24 +154,75 @@ export async function setItemDone(member: Membership, itemId: string, done: bool
   return projectsGuard(() =>
     db().transaction(async (tx): Promise<ProjectsResult> => {
       const item = await typedRow(
-        z.object({ checklist_id: col.uuid, is_routine: col.bool }),
+        z.object({ checklist_id: col.uuid, is_routine: col.bool, done: col.bool, recurrence: z.unknown() }),
         sql`
-          select i.checklist_id, c.is_routine from commerce.checklist_items i join commerce.checklists c on c.store_id = i.store_id and c.id = i.checklist_id
+          select i.checklist_id, c.is_routine, i.done_at is not null as done, i.recurrence
+          from commerce.checklist_items i join commerce.checklists c on c.store_id = i.store_id and c.id = i.checklist_id
           where i.store_id = ${storeId}::uuid and i.id = ${itemId}::uuid
         `,
         tx,
       );
       if (!item) return { ok: false as const, problem: "not_found" as const };
       const sink = done && !item.is_routine ? await endOf(tx, storeId, item.checklist_id) : null;
+      const rule = done && !item.done ? parseRecurrence(item.recurrence) : null;
+      const again = rule
+        ? sql`, last_completed_at = now(), next_due_at = ${nextOccurrence(rule, Date.now(), member.store.timeZone)}, streak = streak + 1, skipped_at = null`
+        : sql``;
       await tx.execute(sql`
         update commerce.checklist_items
         set done_at = case when ${done} then coalesce(done_at, now()) end,
-          sort_order = coalesce(${sink}::int, sort_order), updated_at = now()
+          sort_order = coalesce(${sink}::int, sort_order), updated_at = now()${again}
         where store_id = ${storeId}::uuid and id = ${itemId}::uuid
       `);
       return { ok: true as const };
     }),
   );
+}
+
+/**
+ * This time of a task passed on (P4.1, Life's `skipChecklistItem`): open, marked skipped, and a repeating one due at its next time with
+ * its run broken. A week of skips should look nothing like a week of doing.
+ */
+export async function skipItem(member: Membership, itemId: string): Promise<ProjectsResult> {
+  if (!memberCan(member, WRITE)) return { ok: false, problem: "forbidden" };
+  const storeId = member.store.id;
+  return projectsGuard(async (): Promise<ProjectsResult> => {
+    const item = await typedRow(z.object({ recurrence: z.unknown() }), sql`select recurrence from commerce.checklist_items where store_id = ${storeId}::uuid and id = ${itemId}::uuid`);
+    if (!item) return { ok: false, problem: "not_found" };
+    const rule = parseRecurrence(item.recurrence);
+    const again = rule ? sql`, next_due_at = ${nextOccurrence(rule, Date.now(), member.store.timeZone)}, streak = 0` : sql``;
+    await db().execute(sql`
+      update commerce.checklist_items set done_at = null, skipped_at = now(), updated_at = now()${again}
+      where store_id = ${storeId}::uuid and id = ${itemId}::uuid
+    `);
+    return { ok: true };
+  });
+}
+
+/**
+ * A task put back as it was before a tick or a skip (P4.1, Life's `restoreChecklistItemState`): a repeating task's run and next time
+ * cannot be worked out from the row afterwards, so the screen keeps them and gives them back. The status is checked by the database like
+ * any other.
+ */
+export async function restoreItem(member: Membership, itemId: string, raw: unknown): Promise<ProjectsResult> {
+  if (!memberCan(member, WRITE)) return { ok: false, problem: "forbidden" };
+  const input = itemMoment.safeParse(raw);
+  if (!input.success) return { ok: false, problem: "invalid" };
+  const m = input.data;
+  const storeId = member.store.id;
+  return projectsGuard(async () => {
+    const changed = await typedRows(
+      z.object({ id: col.uuid }),
+      sql`
+        update commerce.checklist_items
+        set done_at = ${at(m.doneAt)}, skipped_at = ${at(m.skippedAt)}, last_completed_at = ${at(m.lastCompletedAt)}, next_due_at = ${at(m.nextDueAt)},
+          streak = ${m.streak}, sort_order = ${m.sortOrder}, status_id = ${m.statusId}::uuid, updated_at = now()
+        where store_id = ${storeId}::uuid and id = ${itemId}::uuid
+        returning id
+      `,
+    );
+    return changed.length > 0 ? { ok: true } : { ok: false, problem: "not_found" };
+  });
 }
 
 /** An item archived (out of the list, kept) or back. */

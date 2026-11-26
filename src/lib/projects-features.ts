@@ -37,7 +37,7 @@ export type ChecklistFeatures = Record<AdvancedFeature, boolean>;
  * The fields whose editors are built so far (`docs/projects.md` section 5): the list's settings offer a switch for these only. A field joins
  * when its step lands, and appears at once on every advanced list that never switched it off.
  */
-export const BUILT_FEATURES: readonly AdvancedFeature[] = ["status", "priority", "subtasks", "assignment", "startDate", "dueDate", "cost", "goal"];
+export const BUILT_FEATURES: readonly AdvancedFeature[] = ["status", "priority", "subtasks", "assignment", "startDate", "dueDate", "recurrence", "cost", "goal"];
 
 /** Everything on: an advanced list before it is trimmed. */
 export const ALL_FEATURES: ChecklistFeatures = Object.fromEntries(ADVANCED_FEATURES.map((f) => [f, true])) as ChecklistFeatures;
