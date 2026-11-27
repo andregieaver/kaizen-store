@@ -9134,7 +9134,7 @@ describe("an owner's choices about heatmaps and recordings of the admin (D895 ph
 });
 
 describe("Guide's record and the person's choice (D909)", () => {
-  it("keeps one record per person and store, one for the platform, gone with the account, and is closed to the Data API", async () => {
+  it("keeps one record per person and store, one for the platform and one for the owner's level, gone with the account, and is closed to the Data API", async () => {
     const { id } = await one<{ id: string }>(`insert into commerce.accounts (email) values ('guide@example.com') returning id`);
     const store = await createStore("guide-shop", ["NO"]);
     const insert = (storeId: string | null, state = "{}") =>
@@ -9143,6 +9143,13 @@ describe("Guide's record and the person's choice (D909)", () => {
     await insert(null);
     await expect(insert(store)).rejects.toThrow(/guide_progress_key/);
     await expect(insert(null)).rejects.toThrow(/guide_progress_key/);
+    // The owner's level (the control center) is a record of its own beside the platform's, once, and never a store's.
+    const owner = (storeId: string | null) =>
+      db.query("insert into commerce.guide_progress (account_id, store_id, level) values ($1, $2, 'owner')", [id, storeId]);
+    await owner(null);
+    await expect(owner(null)).rejects.toThrow(/guide_progress_key/);
+    await expect(owner(store)).rejects.toThrow(/guide_progress_level/);
+    await expect(db.query("insert into commerce.guide_progress (account_id, level) values ($1, 'other')", [id])).rejects.toThrow(/guide_progress_level/);
     await expect(insert(null, "[]")).rejects.toThrow(/guide_progress_state/);
     expect((await one<{ on: boolean }>("select relrowsecurity as on from pg_class where oid = 'commerce.guide_progress'::regclass")).on).toBe(true);
     await db.query("delete from commerce.accounts where id = $1", [id]);

@@ -3,13 +3,15 @@ import "server-only";
 import type { AdminLang } from "@/lib/admin-lang";
 import { navAreasIn, navItemsIn, navWord } from "@/lib/admin-nav-words";
 import { GUIDE_WORDS } from "@/lib/admin-words/guide";
-import { PLATFORM_CORE_PLACES, STORE_CORE_PLACES, guidePlacesFromNav, type GuidePlace } from "@/lib/guide";
+import { OWNER_CORE_PLACES, PLATFORM_CORE_PLACES, STORE_CORE_PLACES, guidePlaces, guidePlacesFromNav, type GuidePlace } from "@/lib/guide";
+import { OWNER_BASE, ownerAreas, ownerTabs } from "@/lib/owner-nav";
 import { canOpenPath, permissionOfPath } from "@/lib/permissions";
 import { PLATFORM_BASE, PLATFORM_SECTIONS, platformNav } from "@/lib/platform-nav";
 import { keyAllowedWhenNotOpen } from "@/lib/store-closure";
 import { STORE_SECTIONS, storeNav } from "@/lib/store-nav";
 
-import { holderOf, type Account, type Membership } from "./auth";
+import { holderOf, listStores, type Account, type Membership } from "./auth";
+import { ownerWho } from "./owner-level";
 import { memberCan } from "./permissions";
 
 /**
@@ -48,4 +50,40 @@ export function platformGuidePlaces(account: Account, lang: AdminLang): GuidePla
     // The platform's Home has no next step's card; its AI manager is the owners' (D510).
     welcome: account.platformAdmin ? ["rail", "ai"] : ["rail"],
   });
+}
+
+/**
+ * The places of the owner's level, the control center (D909): its tabs as the person is shown them (`ownerWho()`, the layout's rule), each
+ * keyed by its address, with Account's sidebar for its everyday pages. Only an owner has its Home and so its welcome, the rail.
+ */
+const OWNER_KEYS: Record<string, string> = {
+  [`${OWNER_BASE}/stores`]: "my-stores",
+  [`${OWNER_BASE}/account/support`]: "inbox",
+  [`${OWNER_BASE}/account/books`]: "books",
+  [`${OWNER_BASE}/account`]: "account",
+};
+
+export async function ownerGuidePlaces(account: Account, lang: AdminLang): Promise<GuidePlace[]> {
+  const { who } = await ownerWho(account, await listStores(account));
+  const tabs = navItemsIn(lang, ownerTabs(who));
+  const areas = navAreasIn(lang, ownerAreas(who));
+  const sections = ownerTabs(who).flatMap((tab, i) => {
+    if (tab.home) return [];
+    const key = OWNER_KEYS[tab.href] ?? (tab.href.endsWith("/work") ? "work" : null);
+    if (!key) return [];
+    // A tab's sidebar is the area holding its address, or (Account's) the pages its tab marks.
+    const area = areas.find((a) => a.prefixes.includes(tab.href) || (tab.also ?? []).some((path) => a.prefixes.includes(path)));
+    const items = area?.groups.flatMap((g) => g.items) ?? [];
+    return [
+      {
+        key,
+        href: tab.href,
+        label: tabs[i].label,
+        exact: tab.exact,
+        within: [...(area?.prefixes ?? []), ...(tab.also ?? [])],
+        also: items.filter((item) => !item.advanced).map((item) => item.label),
+      },
+    ];
+  });
+  return guidePlaces({ home: OWNER_BASE, sections, words: GUIDE_WORDS[lang], core: OWNER_CORE_PLACES, welcome: who.owner ? ["rail"] : [] });
 }

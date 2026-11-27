@@ -142,7 +142,7 @@ function send(body: unknown): Promise<Response> {
 }
 
 export default function GuideRuntime({ level }: { level: string }) {
-  const home = level === "platform" ? "/admin/platform" : `/admin/${level}`;
+  const home = level === "platform" ? "/admin/platform" : level === "owner" ? "/admin" : `/admin/${level}`;
   const path = usePathname();
   const [read, setRead] = useState<Read | null>(null);
   const [progress, setProgress] = useState<GuideProgress | null>(null);
@@ -305,7 +305,7 @@ export default function GuideRuntime({ level }: { level: string }) {
     settings,
     places: read.places,
     home,
-    platform: level === "platform",
+    variant: level === "platform" || level === "owner" ? level : "store",
     words: read.words,
     moment,
     panel,

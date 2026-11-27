@@ -32,6 +32,12 @@ export const guideEn = {
       can: ["“Add a 15% summer discount on mugs”", "“Write descriptions for my new products”", "You see every change before it is made"],
     },
   },
+  /** The control center's welcome says the same of the owner's own level: every store, and their account. */
+  welcomeOwner: {
+    railTitle: "This is the rail: all your stores and your account",
+    railBody: "Home shows what needs you across every store. Open a store to work in it; your account waits at the foot.",
+    railCan: ["Stores lists every store you own or work in, and starts another", "Support, Books and Work when you use them", "Account: your plan and billing, your profile, apps and themes"],
+  },
   /** The platform's welcome says the same of Kaizena Flow's own admin. */
   welcomePlatform: {
     railTitle: "This is the rail: every part of the platform",
@@ -54,6 +60,11 @@ export const guideEn = {
     themes: "The themes owners choose from.",
     plans: "Kaizena Flow's plans and what they cost.",
     requests: "People asking for a store, waiting for a yes.",
+    "my-stores": "Every store you own or work in: open one, or start another.",
+    inbox: "Your stores' conversations with customers, in one inbox.",
+    books: "The books you keep for others: your clients' stores in one place.",
+    work: "Projects, time and invoices for the work you do for clients.",
+    account: "Your plan and billing, your profile, and the apps and themes you use.",
   } as Partial<Record<string, string>>,
   /** A beacon's dot and its card. */
   beacon: {

@@ -15,7 +15,7 @@ type Props = { level: string };
 export function GuideProvider({
   level,
 }: {
-  /** The store's address name, or `platform`. */
+  /** The store's address name, `platform`, or `owner` (the control center). */
   level: string;
 }) {
   const [Runtime, setRuntime] = useState<ComponentType<Props> | null>(null);

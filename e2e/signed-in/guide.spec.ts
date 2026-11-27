@@ -78,6 +78,18 @@ test("closes with Escape and keeps the person's level", async ({ page }) => {
   await expect(panel).toHaveCount(0);
 });
 
+test("lists the control center's own places and shows its rail when asked", async ({ page }) => {
+  await page.goto("/admin/stores");
+  const panel = await openGuide(page);
+  for (const place of ["The rail", "Stores", "Account"]) await expect(panel.getByRole("listitem").filter({ hasText: place }).first()).toBeVisible();
+  await panel.getByRole("listitem").filter({ hasText: "The rail" }).getByRole("button").click();
+  await page.waitForURL((url) => url.pathname === "/admin");
+  const step = page.getByRole("dialog", { name: "This is the rail: all your stores and your account" });
+  await expect(step).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(step).toHaveCount(0);
+});
+
 test.describe("on the platform", () => {
   test.use({ storageState: ADMIN.state });
 

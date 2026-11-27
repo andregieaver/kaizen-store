@@ -1,6 +1,6 @@
 {
-  "id": "888fbc60-e423-43c8-b032-23ab429a35e9",
-  "prevId": "2a8943de-0de3-4389-bb19-952e04d36d02",
+  "id": "2d3a97dc-616a-417a-afaa-fc925b5f1d1c",
+  "prevId": "e51a9bbb-57d3-4364-b52d-9e4b20dceb1c",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -43463,6 +43463,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "level": {
+          "name": "level",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "state": {
           "name": "state",
           "type": "jsonb",
@@ -43532,12 +43538,17 @@
           "nullsNotDistinct": true,
           "columns": [
             "account_id",
-            "store_id"
+            "store_id",
+            "level"
           ]
         }
       },
       "policies": {},
       "checkConstraints": {
+        "guide_progress_level": {
+          "name": "guide_progress_level",
+          "value": "\"commerce\".\"guide_progress\".\"level\" is null or (\"commerce\".\"guide_progress\".\"level\" = 'owner' and \"commerce\".\"guide_progress\".\"store_id\" is null)"
+        },
         "guide_progress_state": {
           "name": "guide_progress_state",
           "value": "jsonb_typeof(\"commerce\".\"guide_progress\".\"state\") = 'object' and pg_column_size(\"commerce\".\"guide_progress\".\"state\") < 16384"

@@ -10,11 +10,16 @@ import { owned } from "./owned";
 import { col, typedRow } from "./typed-rows";
 
 /**
- * Guide's record (D909, `src/lib/guide.ts`): one row of `commerce.guide_progress` per person and level (a store, or the platform's null),
+ * Guide's record (D909, `src/lib/guide.ts`): one row of `commerce.guide_progress` per person and level (a store, the platform's null, or
+ * the owner's control center, `level` `owner`),
  * written only here, and the person's own choice on their account (`guide_level`, `guide_off`). Read once when an admin screen's Guide
  * starts in the browser, never by the layout, so no screen waits on it.
  */
-export type GuideScope = { accountId: string; storeId: string | null };
+/** Whose record and where: a store's admin (`storeId`), the platform's (no store) or the owner's control center (no store, `owner`). */
+export type GuideScope = { accountId: string; storeId: string | null; owner?: boolean };
+
+/** The row's level: none for a store's or the platform's, `owner` for the control center. */
+const levelOf = (scope: GuideScope, column = sql`level`) => (scope.owner ? sql`${column} = 'owner'` : sql`${column} is null`);
 
 const READ = z.object({ guide_level: col.textOrNull, guide_off: z.array(z.string()), state: z.unknown() });
 const STATE = z.object({ state: z.unknown() });
@@ -25,7 +30,7 @@ export async function readGuide(scope: GuideScope): Promise<{ progress: GuidePro
     READ,
     sql`select a.guide_level, a.guide_off, g.state
         from commerce.accounts a
-        left join commerce.guide_progress g on g.account_id = a.id and ${owned(scope.storeId, sql`g.store_id`)}
+        left join commerce.guide_progress g on g.account_id = a.id and ${owned(scope.storeId, sql`g.store_id`)} and ${levelOf(scope, sql`g.level`)}
         where a.id = ${scope.accountId}::uuid`,
   );
   const now = new Date().toISOString();
@@ -37,19 +42,19 @@ export async function recordGuide(scope: GuideScope, event: GuideEvent): Promise
   return db().transaction(async (tx) => {
     const now = new Date().toISOString();
     await tx.execute(
-      sql`insert into commerce.guide_progress (account_id, store_id, state)
-          values (${scope.accountId}::uuid, ${scope.storeId}::uuid, ${JSON.stringify({ startedAt: now })}::jsonb)
+      sql`insert into commerce.guide_progress (account_id, store_id, level, state)
+          values (${scope.accountId}::uuid, ${scope.storeId}::uuid, ${scope.owner ? "owner" : null}, ${JSON.stringify({ startedAt: now })}::jsonb)
           on conflict on constraint guide_progress_key do nothing`,
     );
     const row = await typedRow(
       STATE,
-      sql`select state from commerce.guide_progress where account_id = ${scope.accountId}::uuid and ${owned(scope.storeId)} for update`,
+      sql`select state from commerce.guide_progress where account_id = ${scope.accountId}::uuid and ${owned(scope.storeId)} and ${levelOf(scope)} for update`,
       tx,
     );
     const next = applyGuideEvent(guideProgressOf(row?.state ?? null, now), event, now);
     await tx.execute(
       sql`update commerce.guide_progress set state = ${JSON.stringify(next)}::jsonb, updated_at = now()
-          where account_id = ${scope.accountId}::uuid and ${owned(scope.storeId)}`,
+          where account_id = ${scope.accountId}::uuid and ${owned(scope.storeId)} and ${levelOf(scope)}`,
     );
     return next;
   });

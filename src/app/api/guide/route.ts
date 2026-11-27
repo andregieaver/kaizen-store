@@ -7,7 +7,7 @@ import { platformRoleOf } from "@/lib/platform-access";
 import { sameSite } from "@/lib/same-site";
 import { getAccount, type Account } from "@/server/auth";
 import { readGuide, recordGuide, saveGuideSettings, type GuideScope } from "@/server/guide";
-import { platformGuidePlaces, storeGuidePlaces } from "@/server/guide-places";
+import { ownerGuidePlaces, platformGuidePlaces, storeGuidePlaces } from "@/server/guide-places";
 import { checkMemberAny } from "@/server/permissions";
 
 const NO_STORE = { "Cache-Control": "no-store" } as const;
@@ -16,10 +16,12 @@ const NO_STORE = { "Cache-Control": "no-store" } as const;
  * Guide's record (D909), for `GuideProvider` once an admin screen is drawn, instead of anything in the screen's own document or a server
  * action (which Next queues with the router's own moves): GET reads the person's record at a level, the level's places and Guide's words,
  * and marks found the place the screen is in; POST records one event or keeps the person's choice. A level is a store's address name, for
- * a member of it, or `platform`, for its team; the person's own record is the only one ever read or changed.
+ * a member of it, `platform`, for its team, or `owner`, the person's own control center; the person's own record is the only one ever read
+ * or changed.
  */
-async function scopeOf(account: Account, place: string | null): Promise<{ scope: GuideScope; places: () => GuidePlace[] } | null> {
+async function scopeOf(account: Account, place: string | null): Promise<{ scope: GuideScope; places: () => GuidePlace[] | Promise<GuidePlace[]> } | null> {
   const lang = adminLangOf(account.adminLocale);
+  if (place === "owner") return { scope: { accountId: account.id, storeId: null, owner: true }, places: () => ownerGuidePlaces(account, lang) };
   if (place === "platform") {
     return platformRoleOf(account) === null ? null : { scope: { accountId: account.id, storeId: null }, places: () => platformGuidePlaces(account, lang) };
   }
@@ -34,7 +36,7 @@ export async function GET(request: NextRequest) {
   if (!account) return NextResponse.json(null, { status: 401, headers: NO_STORE });
   const level = await scopeOf(account, request.nextUrl.searchParams.get("place"));
   if (!level) return NextResponse.json(null, { status: 404, headers: NO_STORE });
-  const places = level.places();
+  const places = await level.places();
   const read = await readGuide(level.scope);
   // The place the screen is in is found on this read, so a screen's first visit costs no second request.
   const path = request.nextUrl.searchParams.get("path") ?? "";
