@@ -652,6 +652,14 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `published_url` or Meta's refusal in `publish_problem`; it is their only writer. A published post keeps its approval and words
   (`social_posts_published`; `editSocialPost()`, the unapproval and scenes refuse it). Audited.
 
+## A social post's carousel and Story (D870 S2.1b, `src/lib/social-formats.ts` pure)
+
+- **A social post's carousel and Story (D870 S2.1b, `src/lib/social-formats.ts` pure)**: `social_posts.carousel` and `story` are written only by
+  `setPostFormat()` (`social-calendar.ts`), which refuses a carousel off `CAROUSEL_CHANNELS` or without a product, a Story off `STORY_CHANNELS`,
+  and any published post, and takes back the yes. Every slide and the Story are drawn by `socialPicture()` (a Canva copy stands in only for the
+  first picture); at most five pictures (`CAROUSEL_PHOTOS_MAX` plus two). A video goes out instead of a carousel. A Story is published after
+  the post, and its failure is the post's `publish_problem`, never a refusal of the post.
+
 ## LinkedIn for social posts (D870 S3.6, `src/lib/linkedin.ts` pure, `src/server/linkedin.ts`)
 
 - **LinkedIn for social posts (D870 S3.6, `src/lib/linkedin.ts` pure, `src/server/linkedin.ts`)**: `linkedin_accounts` (one per store) is written

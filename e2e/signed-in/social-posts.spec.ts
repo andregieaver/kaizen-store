@@ -419,3 +419,37 @@ test("a connected LinkedIn says which Page posts go to and until when, and an ap
   await card.scrollIntoViewIfNeeded();
   await card.screenshot({ path: "test-results/social-linkedin-card.png" });
 });
+
+test("an Instagram post made a carousel and a Story shows its other pictures, drawn from the same template (D870 S2.1b)", async ({ page }) => {
+  // The plan's Instagram post is about a topic; a carousel is a product's, so the post is pointed at one of the demo products with photos.
+  const sql = testDb();
+  try {
+    await sql`
+      update commerce.social_posts set product_id = (
+        select pm.product_id from commerce.product_media pm join commerce.stores s on s.id = pm.store_id where s.slug = ${SLUG}
+        group by pm.product_id order by count(*) desc limit 1)
+      where store_id = (select id from commerce.stores where slug = ${SLUG}) and channel = 'instagram' and published_at is null`;
+  } finally {
+    await sql.end();
+  }
+  await page.goto(`/admin/${SLUG}/social`);
+  const calendar = page.getByRole("region", { name: "Your posting plan" });
+  const instagram = calendar.getByRole("listitem").filter({ hasText: "Instagram" }).first();
+  await instagram.getByRole("button", { name: "Make it a carousel" }).click();
+  await expect(instagram.getByRole("button", { name: "One picture" })).toBeVisible();
+  await instagram.getByRole("button", { name: "Also as a Story" }).click();
+  await expect(instagram.getByRole("button", { name: "No Story" })).toBeVisible();
+  // New pictures go out with it, so it waits for a yes again.
+  await expect(instagram).toContainText("Draft");
+
+  const pictures = instagram.getByRole("group", { name: "The carousel's other pictures and the Story" });
+  const story = pictures.getByRole("img", { name: "The post as a Story" });
+  await expect(story).toBeVisible();
+  // The Story frame is drawn in 9:16, and every slide is a picture that loads.
+  await expect.poll(() => story.evaluate((img: HTMLImageElement) => (img.complete ? `${img.naturalWidth}x${img.naturalHeight}` : ""))).toBe("1080x1920");
+  const slides = pictures.getByRole("img", { name: /^Picture \d of the carousel$/ });
+  expect(await slides.count()).toBeGreaterThanOrEqual(1);
+  await expect.poll(() => slides.last().evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
+  await instagram.scrollIntoViewIfNeeded();
+  await instagram.screenshot({ path: "test-results/social-carousel-story.png" });
+});

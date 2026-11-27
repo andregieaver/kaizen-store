@@ -32,6 +32,8 @@ export type CalendarDraft = {
   scheduledFor?: string | null;
   /** Approved and queued by the owner's rules (S3.3), not by a person's yes. */
   byRules?: boolean;
+  /** Its formats (S2.1b): a carousel of `slides` pictures, and a Story too. */
+  formats?: { carousel: boolean; story: boolean; slides: number };
   publishProblem?: string | null;
 };
 

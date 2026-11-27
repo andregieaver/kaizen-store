@@ -7,6 +7,7 @@ import { db } from "@/db/client";
 import { decryptSecret } from "@/lib/secret-box";
 import { FACEBOOK_GRAPH } from "@/lib/facebook-pages";
 import { LINKEDIN_API, parseImageUpload, postBody, postUrl, postUrnFrom } from "@/lib/linkedin";
+import { CAROUSEL_CHANNELS, carouselSlides, mayStory } from "@/lib/social-formats";
 import { pinBody, pinIdFrom, pinUrl } from "@/lib/pinterest";
 import { parseInit, postState, privacyFor, TIKTOK_ONE_CHUNK_MAX, videoInitBody, videoUrl } from "@/lib/tiktok";
 import { POST_CHANNELS } from "@/lib/social-posts";
@@ -56,9 +57,15 @@ const POST = z.object({
   approved: col.bool,
   published: col.bool,
   video: col.textOrNull,
+  carousel: col.bool,
+  story: col.bool,
+  photos: col.int,
 });
 
 type Post = z.infer<typeof POST>;
+/** What goes up: one picture or video, a carousel's pictures, or a Story's frame (S2.1b). */
+type Media = { kind: "picture" | "video"; url: string } | { kind: "carousel"; urls: string[] } | { kind: "story"; url: string };
+type PictureOptions = { slide?: number; story?: boolean };
 type Target =
   | { kind: "instagram"; userId: string; token: string }
   | { kind: "facebook"; pageId: string; token: string }
@@ -79,7 +86,7 @@ export type PublishDeps = {
   /** LinkedIn's API, for a test. */
   linkedin?: typeof linkedinCall;
   /** The picture's public address, for a test. */
-  picture?: (member: Membership, post: Post, origin: string) => Promise<string | null>;
+  picture?: (member: Membership, post: Post, origin: string, options?: PictureOptions) => Promise<string | null>;
   wait?: (ms: number) => Promise<void>;
 };
 
@@ -122,16 +129,19 @@ async function targetOf(store: Membership["store"], channel: PublishChannel, dep
   return { kind: "facebook", pageId: page.page_id, token: decryptSecret(page.token, key) };
 }
 
-/** The post's picture as Meta will fetch it: drawn (or its Canva copy), as a JPEG kept in the store's library; its public address. */
-async function publicPicture(member: Membership, post: Post, origin: string): Promise<string | null> {
-  const drawn = await socialPicture(member, post.id, origin);
+/**
+ * The post's picture as the platform will fetch it: drawn (or its Canva copy), a carousel's later slide or its Story frame (S2.1b), as a JPEG
+ * kept in the store's library; its public address.
+ */
+async function publicPicture(member: Membership, post: Post, origin: string, options: PictureOptions = {}): Promise<string | null> {
+  const drawn = await socialPicture(member, post.id, origin, {}, options);
   if (!drawn.ok) return null;
   const sharp = await loadSharp();
   const bytes = Buffer.from(await drawn.response.arrayBuffer());
   // Instagram takes JPEG only; a quality that keeps words crisp.
   const jpeg = await sharp(bytes).flatten({ background: "#ffffff" }).jpeg({ quality: 90 }).toBuffer();
   const thumb = await sharp(jpeg).resize({ width: 480 }).jpeg({ quality: 80 }).toBuffer();
-  const name = `post-${post.ref}-${post.channel}.jpg`;
+  const name = `post-${post.ref}-${post.channel}${options.story ? "-story" : options.slide ? `-${options.slide + 1}` : ""}.jpg`;
   const stored = await storePicture(
     { storeId: member.store.id, accountId: member.account.id },
     new File([new Uint8Array(jpeg)], name, { type: "image/jpeg" }),
@@ -145,36 +155,64 @@ const pause = (ms: number) => new Promise<void>((done) => setTimeout(done, ms));
 const q = (params: Record<string, string>) => new URLSearchParams(params).toString();
 const form = (params: Record<string, string>): RequestInit => ({ method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams(params) });
 
-/** Publishes to Instagram: a container for the picture (or the video as a Reel), waited on while it is processed, then published. */
-async function toInstagram(target: Extract<Target, { kind: "instagram" }>, media: { kind: "picture" | "video"; url: string }, text: string, deps: PublishDeps) {
+/**
+ * Publishes to Instagram: a container for the picture (or the video as a Reel, or the frame as a Story), or one for each of a carousel's
+ * pictures and then the carousel's own; each waited on while it is processed, then published.
+ */
+async function toInstagram(target: Extract<Target, { kind: "instagram" }>, media: Media, text: string, deps: PublishDeps) {
   const ig = deps.instagram ?? call;
-  const container = idFrom(
-    await ig(
-      `${GRAPH}/v24.0/${target.userId}/media`,
-      form(media.kind === "video" ? { media_type: "REELS", video_url: media.url, caption: text, access_token: target.token } : { image_url: media.url, caption: text, access_token: target.token }),
-    ),
-  );
-  if (!container) throw new InstagramError("Instagram did not take the post.");
-  for (let i = 0; ; i++) {
-    const state = containerState(await ig(`${GRAPH}/v24.0/${container}?${q({ fields: "status_code", access_token: target.token })}`));
-    if (state === "ready") break;
-    if (state === "failed") throw new InstagramError("Instagram could not process the post's picture or video.");
-    if (i >= CONTAINER_CHECKS) throw new InstagramError("Instagram took too long to process the video. Try again in a moment.");
-    await (deps.wait ?? pause)(CONTAINER_WAIT_MS);
-  }
+  const make = async (params: Record<string, string>) => {
+    const id = idFrom(await ig(`${GRAPH}/v24.0/${target.userId}/media`, form({ ...params, access_token: target.token })));
+    if (!id) throw new InstagramError("Instagram did not take the post.");
+    for (let i = 0; ; i++) {
+      const state = containerState(await ig(`${GRAPH}/v24.0/${id}?${q({ fields: "status_code", access_token: target.token })}`));
+      if (state === "ready") return id;
+      if (state === "failed") throw new InstagramError("Instagram could not process the post's picture or video.");
+      if (i >= CONTAINER_CHECKS) throw new InstagramError("Instagram took too long to process the video. Try again in a moment.");
+      await (deps.wait ?? pause)(CONTAINER_WAIT_MS);
+    }
+  };
+  let container: string;
+  if (media.kind === "carousel") {
+    const children: string[] = [];
+    for (const url of media.urls) children.push(await make({ image_url: url, is_carousel_item: "true" }));
+    container = await make({ media_type: "CAROUSEL", children: children.join(","), caption: text });
+  } else if (media.kind === "story") container = await make({ media_type: "STORIES", image_url: media.url });
+  else container = await make(media.kind === "video" ? { media_type: "REELS", video_url: media.url, caption: text } : { image_url: media.url, caption: text });
   const mediaId = idFrom(await ig(`${GRAPH}/v24.0/${target.userId}/media_publish`, form({ creation_id: container, access_token: target.token })));
   if (!mediaId) throw new InstagramError("Instagram did not publish the post.");
   const url = permalinkFrom(await ig(`${GRAPH}/v24.0/${mediaId}?${q({ fields: "permalink", access_token: target.token })}`).catch(() => null));
   return { id: mediaId, url };
 }
 
-/** Publishes to the Page: a photo with the words as its message, or the video with them as its description. */
-async function toFacebook(target: Extract<Target, { kind: "facebook" }>, media: { kind: "picture" | "video"; url: string }, text: string, deps: PublishDeps) {
+/**
+ * Publishes to the Page: a photo with the words as its message, or the video with them as its description; a carousel as its photos sent
+ * unpublished, then one post holding them all; a Story as a photo sent unpublished, then made the Page's Story.
+ */
+async function toFacebook(target: Extract<Target, { kind: "facebook" }>, media: Media, text: string, deps: PublishDeps) {
   const fb = deps.facebook ?? graph;
-  const made =
-    media.kind === "video"
-      ? await fb(`${FACEBOOK_GRAPH}/${target.pageId}/videos`, form({ file_url: media.url, description: text, access_token: target.token }), 60_000)
-      : await fb(`${FACEBOOK_GRAPH}/${target.pageId}/photos`, form({ url: media.url, message: text, published: "true", access_token: target.token }), 60_000);
+  const page = `${FACEBOOK_GRAPH}/${target.pageId}`;
+  const unpublished = async (url: string) => {
+    const id = idFrom(await fb(`${page}/photos`, form({ url, published: "false", access_token: target.token }), 60_000));
+    if (!id) throw new FacebookError("Facebook did not take the picture.");
+    return id;
+  };
+  if (media.kind === "story") {
+    const photo = await unpublished(media.url);
+    const made = await fb(`${page}/photo_stories`, form({ photo_id: photo, access_token: target.token }), 60_000);
+    return { id: idFrom(made, "post_id") ?? photo, url: null };
+  }
+  let made: Record<string, unknown>;
+  if (media.kind === "carousel") {
+    const photos: string[] = [];
+    for (const url of media.urls) photos.push(await unpublished(url));
+    made = await fb(`${page}/feed`, form({ message: text, attached_media: JSON.stringify(photos.map((id) => ({ media_fbid: id }))), access_token: target.token }), 60_000);
+  } else {
+    made =
+      media.kind === "video"
+        ? await fb(`${page}/videos`, form({ file_url: media.url, description: text, access_token: target.token }), 60_000)
+        : await fb(`${page}/photos`, form({ url: media.url, message: text, published: "true", access_token: target.token }), 60_000);
+  }
   const id = idFrom(made, "post_id") ?? idFrom(made);
   if (!id) throw new FacebookError("Facebook did not publish the post.");
   const url = permalinkFrom(await fb(`${FACEBOOK_GRAPH}/${id}?${q({ fields: "permalink_url", access_token: target.token })}`).catch(() => null));
@@ -182,7 +220,7 @@ async function toFacebook(target: Extract<Target, { kind: "facebook" }>, media: 
 }
 
 /** Pins the post to the board: its picture, title, words and tagged link. A Pin is a picture: a slideshow is not pinned. */
-async function toPinterest(target: Extract<Target, { kind: "pinterest" }>, post: Post, imageUrl: string, deps: PublishDeps) {
+async function toPinterest(target: Extract<Target, { kind: "pinterest" }>, post: Post, imageUrl: string | string[], deps: PublishDeps) {
   const call = deps.pinterest ?? pinterestCall;
   const made = await call("/pins", {
     method: "POST",
@@ -247,28 +285,35 @@ async function toTiktok(target: Extract<Target, { kind: "tiktok" }>, videoAt: st
   return { id: started.publishId, url: null };
 }
 
-/** Posts to LinkedIn as the chosen profile or Page: the picture uploaded through the Images API, then the post with its words, public. */
-async function toLinkedin(target: Extract<Target, { kind: "linkedin" }>, pictureAt: string, text: string, alt: string, deps: PublishDeps) {
+/**
+ * Posts to LinkedIn as the chosen profile or Page: each picture uploaded through the Images API, then the post with its words, public, as a
+ * multi-image post where there are several (a carousel, S2.1b).
+ */
+async function toLinkedin(target: Extract<Target, { kind: "linkedin" }>, pictures: string[], text: string, alt: string, deps: PublishDeps) {
   const call = deps.linkedin ?? linkedinCall;
-  const bytes = await (deps.videoBytes ?? readBytes)(pictureAt);
-  if (!bytes || bytes.length === 0) throw new LinkedinError("The post's picture could not be read.");
-  const upload = parseImageUpload(
-    (
-      await call(`${LINKEDIN_API}/rest/images?action=initializeUpload`, {
-        method: "POST",
-        headers: restHeaders(target.token, { "Content-Type": "application/json" }),
-        body: JSON.stringify({ initializeUploadRequest: { owner: target.author } }),
-      })
-    ).json,
-  );
-  if (!upload) throw new LinkedinError("LinkedIn did not take the picture.");
-  if (!(await (deps.upload ?? putBytes)(upload.uploadUrl, bytes, { "Content-Type": "image/jpeg", Authorization: `Bearer ${target.token}` }))) {
-    throw new LinkedinError("The picture could not be sent to LinkedIn. Try again.");
+  const images: string[] = [];
+  for (const pictureAt of pictures) {
+    const bytes = await (deps.videoBytes ?? readBytes)(pictureAt);
+    if (!bytes || bytes.length === 0) throw new LinkedinError("The post's picture could not be read.");
+    const upload = parseImageUpload(
+      (
+        await call(`${LINKEDIN_API}/rest/images?action=initializeUpload`, {
+          method: "POST",
+          headers: restHeaders(target.token, { "Content-Type": "application/json" }),
+          body: JSON.stringify({ initializeUploadRequest: { owner: target.author } }),
+        })
+      ).json,
+    );
+    if (!upload) throw new LinkedinError("LinkedIn did not take the picture.");
+    if (!(await (deps.upload ?? putBytes)(upload.uploadUrl, bytes, { "Content-Type": "image/jpeg", Authorization: `Bearer ${target.token}` }))) {
+      throw new LinkedinError("The picture could not be sent to LinkedIn. Try again.");
+    }
+    images.push(upload.image);
   }
   const made = await call(`${LINKEDIN_API}/rest/posts`, {
     method: "POST",
     headers: restHeaders(target.token, { "Content-Type": "application/json" }),
-    body: JSON.stringify(postBody(target.author, text, upload.image, alt)),
+    body: JSON.stringify(postBody(target.author, text, images.length === 1 ? images[0] : images, alt)),
   });
   const urn = postUrnFrom(made.restliId);
   if (!urn) throw new LinkedinError("LinkedIn did not publish the post.");
@@ -288,7 +333,8 @@ export async function publishSocialPost(member: Membership, postId: unknown, ori
   const [post] = await typedRows(
     POST,
     sql`select p.id, p.channel, p.ref, p.title, p.caption, p.hashtags, p.link, p.price_line, p.approved_at is not null as approved,
-        p.published_at is not null as published, v.url as video
+        p.published_at is not null as published, v.url as video, p.carousel, p.story,
+        (select count(*)::int from commerce.product_media pm where pm.store_id = p.store_id and pm.product_id = p.product_id) as photos
       from commerce.social_posts p left join commerce.media v on v.id = p.video_media_id and v.store_id = p.store_id and v.kind = 'video'
       where p.store_id = ${store.id}::uuid and p.id = ${id.data}::uuid`,
   );
@@ -311,24 +357,47 @@ export async function publishSocialPost(member: Membership, postId: unknown, ori
 
   try {
     const kind = target.kind === "pinterest" || target.kind === "linkedin" ? "picture" : target.kind === "tiktok" ? "video" : publishKind(Boolean(post.video));
-    const url = kind === "video" ? post.video : await (deps.picture ?? publicPicture)(member, post, origin);
+    const picture = (options?: PictureOptions) => (deps.picture ?? publicPicture)(member, post, origin, options);
+    const url = kind === "video" ? post.video : await picture();
     if (!url) throw new InstagramError("The post's picture could not be made ready to publish.");
+    // A carousel (S2.1b): the drawn picture, the product's other photos and its closing slide; a video goes out as itself instead.
+    const slides = post.carousel && kind === "picture" && post.photos > 0 && CAROUSEL_CHANNELS.includes(post.channel) ? carouselSlides(post.photos) : [];
+    const urls = [url];
+    for (let n = 1; n < slides.length; n++) {
+      const slide = await picture({ slide: n });
+      if (!slide) throw new InstagramError("A picture of the carousel could not be made ready to publish.");
+      urls.push(slide);
+    }
+    const media: Media = urls.length > 1 ? { kind: "carousel", urls } : { kind, url };
     const text = publishedText({ channel: post.channel, title: post.title, caption: post.caption, hashtags: post.hashtags, link: post.link, priceLine: post.price_line });
     const done =
       target.kind === "instagram"
-        ? await toInstagram(target, { kind, url }, text, deps)
+        ? await toInstagram(target, media, text, deps)
         : target.kind === "facebook"
-          ? await toFacebook(target, { kind, url }, text, deps)
+          ? await toFacebook(target, media, text, deps)
           : target.kind === "pinterest"
-            ? await toPinterest(target, post, url, deps)
+            ? await toPinterest(target, post, urls.length > 1 ? urls : url, deps)
             : target.kind === "tiktok"
               ? await toTiktok(target, url, text, deps)
-              : await toLinkedin(target, url, text, post.title || post.caption, deps);
+              : await toLinkedin(target, urls, text, post.title || post.caption, deps);
+    // The Story (S2.1b), after the post: one that fails leaves the post out, with why on it.
+    let storyProblem: string | null = null;
+    if (post.story && mayStory(post.channel) && (target.kind === "instagram" || target.kind === "facebook")) {
+      try {
+        const frame = await picture({ story: true });
+        if (!frame) throw new InstagramError("The Story's picture could not be made ready.");
+        if (target.kind === "instagram") await toInstagram(target, { kind: "story", url: frame }, text, deps);
+        else await toFacebook(target, { kind: "story", url: frame }, text, deps);
+      } catch (error) {
+        if (!(error instanceof InstagramError || error instanceof FacebookError)) log("error", "social.story_failed", { post: post.id }, error);
+        storyProblem = `Posted, but the Story was not: ${error instanceof InstagramError || error instanceof FacebookError ? error.message : "it could not be published."}`.slice(0, 300);
+      }
+    }
     await db().execute(sql`
       update commerce.social_posts set published_at = now(), published_by = ${member.account.id}::uuid, published_id = ${done.id},
-        published_url = ${done.url}, publish_problem = null, publish_started_at = null
+        published_url = ${done.url}, publish_problem = ${storyProblem}, publish_started_at = null
       where store_id = ${store.id}::uuid and id = ${post.id}::uuid`);
-    await audit(member.account.id, store.id, "store.social_post_published", { channel: post.channel, kind });
+    await audit(member.account.id, store.id, "store.social_post_published", { channel: post.channel, kind: media.kind, story: post.story && !storyProblem });
     return { ok: true, url: done.url };
   } catch (error) {
     const said = error instanceof InstagramError || error instanceof FacebookError || error instanceof PinterestError || error instanceof TiktokError || error instanceof LinkedinError;

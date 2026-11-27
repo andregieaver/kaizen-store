@@ -93,14 +93,19 @@ export function parseImageUpload(json: unknown): { uploadUrl: string; image: str
   return uploadUrl && image ? { uploadUrl, image } : null;
 }
 
-/** The post: its words, public in the main feed, with the picture where it has one. */
-export function postBody(author: string, text: string, image: string | null, altText: string) {
+/** The post: its words, public in the main feed, with its picture where it has one, or several as a multi-image post (S2.1b). */
+export function postBody(author: string, text: string, image: string | readonly string[] | null, altText: string) {
+  const alt = altText.slice(0, 300);
   return {
     author,
     commentary: text.slice(0, LINKEDIN_TEXT_MAX),
     visibility: "PUBLIC",
     distribution: { feedDistribution: "MAIN_FEED", targetEntities: [], thirdPartyDistributionChannels: [] },
-    ...(image ? { content: { media: { id: image, altText: altText.slice(0, 300) } } } : {}),
+    ...(typeof image === "string"
+      ? { content: { media: { id: image, altText: alt } } }
+      : image && image.length > 0
+        ? { content: { multiImage: { images: image.slice(0, 20).map((id) => ({ id, altText: alt })) } } }
+        : {}),
     lifecycleState: "PUBLISHED",
     isReshareDisabledByAuthor: false,
   };

@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { sameSite } from "@/lib/same-site";
 import { checkPermission } from "@/server/permissions";
-import { approveSocialPosts, editSocialPost } from "@/server/social-calendar";
+import { approveSocialPosts, editSocialPost, setPostFormat } from "@/server/social-calendar";
 import { saveSocialRules } from "@/server/social-rules";
 import { dropSocialScene, makeSocialScene } from "@/server/social-scenes";
 import { keepSlideshow, startSlideshowUpload } from "@/server/social-slideshow";
@@ -30,6 +30,8 @@ export async function POST(request: NextRequest, { params }: RouteContext<"/admi
   }
   // *Post on its own within my rules* (S3.3): the owner's switch and limits; switched off, the posts the rules queued wait for a yes again.
   if (body?.do === "rules") return NextResponse.json(await saveSocialRules(member, body));
+  // A carousel or one picture, a Story too or not (S2.1b).
+  if (body?.do === "format") return NextResponse.json(await setPostFormat(member, body));
   if (body?.do === "unapprove") return NextResponse.json(await approveSocialPosts(member, body.ids, false));
   if (body?.do === "schedule" || body?.do === "unschedule") return NextResponse.json(await scheduleSocialPosts(member, body.ids, body.do === "schedule"));
   if (body?.do === "edit") return NextResponse.json(await editSocialPost(member, body));

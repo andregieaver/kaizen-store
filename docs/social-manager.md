@@ -108,7 +108,7 @@ manager's tools and the weekly review carry them. Pages of other businesses need
 
 | Step | What |
 |---|---|
-| S2.1 | Templates and the composer (picture from code + photo + made background). **Done 2026-11-26** for made scenes (below); carousels and Story frames are S2.1b |
+| S2.1 | Templates and the composer (picture from code + photo + made background). **Done 2026-11-26** for made scenes (below); carousels and Story frames (S2.1b) **done 2026-11-27** (below) |
 | S2.2 | The caption writer per channel, with the filters and the tagged link |
 | S2.3 | The vision check. **Done 2026-11-25** (below) |
 | S2.4 | The calendar screen, approval per post and per week. **Done 2026-11-25** (below) |
@@ -192,6 +192,12 @@ S3.6 as built: a LinkedIn card on Social posts connects (`src/server/linkedin.ts
 API, `r_organization_admin` and `w_organization_social`). Posts go to the member's profile or a Page they administer, chosen like a board
 (`linkedin_accounts`, tokens encrypted); an approved LinkedIn post goes out public with its picture (the Images API) by every path. The 60-day
 token is renewed where LinkedIn gives a refresh token; otherwise the card says until when it lasts. Every channel now posts.
+
+S2.1b as built: a product's post on Instagram, Facebook, Pinterest or LinkedIn can be *a carousel*: the drawn picture, up to three more of
+the product's own photos and a closing slide with its title and price (`carouselSlides()`, `src/lib/social-formats.ts`), drawn by the same
+template (`socialPicture()`, `?slide=n`); an Instagram or Facebook post can go out *as a Story too*, the same picture in 9:16 (`?story=1`).
+Both are choices on the calendar that take back the post's yes (`setPostFormat()`). Published as an Instagram carousel or Story, a Page's
+photos in one post or its photo Story, a carousel Pin, a LinkedIn multi-image post; a Story that fails leaves the post out with why.
 
 | Step | What |
 |---|---|

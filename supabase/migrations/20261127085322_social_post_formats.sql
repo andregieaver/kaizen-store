@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."social_posts" ADD COLUMN "carousel" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."social_posts" ADD COLUMN "story" boolean DEFAULT false NOT NULL;

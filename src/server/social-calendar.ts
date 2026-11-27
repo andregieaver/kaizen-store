@@ -8,6 +8,7 @@ import { AVOIDED_LABEL } from "@/lib/brand";
 import { CLAIM_LABELS } from "@/lib/claims";
 import { addDays, startOfWeek } from "@/lib/analytics-period";
 import { CALENDAR_WEEKS, socialCalendar, type CalendarDraft, type CalendarWeek } from "@/lib/social-calendar";
+import { carouselSlides, mayCarousel, mayStory } from "@/lib/social-formats";
 import type { CalendarSlot } from "@/lib/social-advice";
 import { CHANNEL_SPECS, POST_CHANNELS, postClaims } from "@/lib/social-posts";
 
@@ -42,6 +43,9 @@ const DRAFT_ROW = z.object({
   publish_problem: col.textOrNull,
   scheduled_for: col.timestampOrNull,
   by_rules: col.bool,
+  carousel: col.bool,
+  story: col.bool,
+  photos: col.int,
 });
 
 /** The calendar of the store's two weeks from today's Monday: the advice's plan and the drafts written for its days. */
@@ -50,13 +54,14 @@ export async function calendarOf(storeId: string, today: string, slots: readonly
   const rows = await typedRows(
     DRAFT_ROW,
     sql`
-      select p.id, p.planned_for::text as day, p.channel, p.caption, p.approved_at is not null as approved, p.product_id, p.topic, p.edited_at, p.checked_at, p.check_problems, p.check_note, p.scene_media_id is not null as scene, p.scene_tries, v.url as video, p.published_at, p.published_url, p.publish_problem, p.scheduled_for, p.rules_queued_at is not null as by_rules
+      select p.id, p.planned_for::text as day, p.channel, p.caption, p.approved_at is not null as approved, p.product_id, p.topic, p.edited_at, p.checked_at, p.check_problems, p.check_note, p.scene_media_id is not null as scene, p.scene_tries, v.url as video, p.published_at, p.published_url, p.publish_problem, p.scheduled_for, p.rules_queued_at is not null as by_rules, p.carousel, p.story,
+        (select count(*)::int from commerce.product_media pm where pm.store_id = p.store_id and pm.product_id = p.product_id) as photos
       from commerce.social_posts p left join commerce.media v on v.id = p.video_media_id and v.store_id = p.store_id
       where p.store_id = ${storeId}::uuid and p.planned_for between ${first}::date and ${addDays(first, CALENDAR_WEEKS * 7 - 1)}::date
       order by p.created_at desc
     `,
   );
-  const drafts: CalendarDraft[] = rows.map((r) => ({ id: r.id, day: r.day, channel: r.channel, caption: r.caption, approved: r.approved, productId: r.product_id, topic: r.topic, editedAt: r.edited_at, check: r.checked_at ? { problems: r.check_problems, note: r.check_note } : null, scene: { on: r.scene, tries: r.scene_tries }, video: r.video, published: r.published_at ? { url: r.published_url } : null, publishProblem: r.publish_problem, scheduledFor: r.scheduled_for, byRules: r.by_rules }));
+  const drafts: CalendarDraft[] = rows.map((r) => ({ id: r.id, day: r.day, channel: r.channel, caption: r.caption, approved: r.approved, productId: r.product_id, topic: r.topic, editedAt: r.edited_at, check: r.checked_at ? { problems: r.check_problems, note: r.check_note } : null, scene: { on: r.scene, tries: r.scene_tries }, video: r.video, published: r.published_at ? { url: r.published_url } : null, publishProblem: r.publish_problem, scheduledFor: r.scheduled_for, byRules: r.by_rules, formats: { carousel: r.carousel, story: r.story, slides: carouselSlides(r.photos).length } }));
   return socialCalendar(today, slots, drafts);
 }
 
@@ -110,5 +115,34 @@ export async function editSocialPost(member: Membership, raw: unknown): Promise<
       checked_at = null, check_problems = '{}', check_note = ''
     where store_id = ${member.store.id}::uuid and id = ${parsed.data.id}::uuid`);
   await audit(member.account.id, member.store.id, "store.social_post_edited", {});
+  return { ok: true };
+}
+
+const format = z.object({ id: z.uuid(), carousel: z.boolean().optional(), story: z.boolean().optional() });
+
+/**
+ * A post made a carousel or one picture, or sent as a Story too or not (S2.1b): only where its channel publishes that format (a carousel only
+ * for a product's post), never once published. New pictures go out with it, so it takes back the post's yes.
+ */
+export async function setPostFormat(member: Membership, raw: unknown): Promise<{ ok: true } | { ok: false; problem: string }> {
+  if (!memberCan(member, "marketing:write")) return { ok: false, problem: NO_ACCESS };
+  const parsed = format.safeParse(raw);
+  if (!parsed.success) return { ok: false, problem: "Choose a post." };
+  const { id, carousel, story } = parsed.data;
+  const [post] = await typedRows(
+    z.object({ channel: z.enum(POST_CHANNELS), product: col.bool, published: col.bool }),
+    sql`select channel, product_id is not null as product, published_at is not null or publish_started_at is not null as published
+      from commerce.social_posts where store_id = ${member.store.id}::uuid and id = ${id}::uuid`,
+  );
+  if (!post) return { ok: false, problem: "That post is not this store's." };
+  if (post.published) return { ok: false, problem: "This post is published: it can no longer change." };
+  if (carousel && !mayCarousel(post.channel, post.product)) return { ok: false, problem: "Only a post about a product, on Instagram, Facebook, Pinterest or LinkedIn, can be a carousel." };
+  if (story && !mayStory(post.channel)) return { ok: false, problem: "Only an Instagram or Facebook post can go out as a Story too." };
+  await db().execute(sql`
+    update commerce.social_posts set
+      carousel = coalesce(${carousel ?? null}::boolean, carousel), story = coalesce(${story ?? null}::boolean, story),
+      approved_at = null, approved_by = null, scheduled_for = null, scheduled_by = null, next_try_at = null, rules_queued_at = null
+    where store_id = ${member.store.id}::uuid and id = ${id}::uuid`);
+  await audit(member.account.id, member.store.id, "store.social_post_format", { carousel: carousel ?? null, story: story ?? null });
   return { ok: true };
 }

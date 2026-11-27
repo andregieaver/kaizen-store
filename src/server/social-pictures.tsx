@@ -8,6 +8,7 @@ import { baseScheme } from "@/lib/color-mode";
 import { HEADING_WEIGHTS } from "@/lib/theme";
 import { parseNavigation } from "@/lib/navigation-schema";
 import { publicEnv } from "@/lib/public-env";
+import { carouselSlides, slideAt, STORY_SIZE } from "@/lib/social-formats";
 import { PICTURE_SIZES, pictureFileName, pictureHeadline, POST_CHANNELS, type PostChannel } from "@/lib/social-posts";
 
 import type { Membership } from "./auth";
@@ -23,7 +24,8 @@ import { col, typedRows } from "./typed-rows";
  * store's live colours (each pair already at 4.5:1, `themeWarnings()`), its title and the price line the post was written with, and the
  * store's name, in the channel's shape (`PICTURE_SIZES`). A post with no product shows its headline (`pictureHeadline()`) on the store's
  * accent. Made on request and never stored: the same post always gives the same picture. A post the owner edited in Canva (D898 C3) shows
- * that copy instead, a library item (`social_posts.picture_media_id`), until they choose the drawn one again.
+ * that copy instead, a library item (`social_posts.picture_media_id`), until they choose the drawn one again. The same template draws a
+ * carousel's other slides (the product's other photos, then its title and price) and the Story frame in 9:16 (S2.1b, `social-formats.ts`).
  */
 
 const POST = z.object({
@@ -164,7 +166,13 @@ async function keptPicture(storeId: string, mediaId: string): Promise<{ bytes: U
  * The picture of one of the store's posts, or not found: its own from Canva where it has one, else drawn (`drawn` asks for the drawn one
  * always). `origin` is the address the request came to, for the store's own files.
  */
-export async function socialPicture(member: Membership, postId: string, origin: string, deps: PictureDeps = {}, options: { drawn?: boolean } = {}): Promise<PictureResult> {
+export async function socialPicture(
+  member: Membership,
+  postId: string,
+  origin: string,
+  deps: PictureDeps = {},
+  options: { drawn?: boolean; slide?: number; story?: boolean } = {},
+): Promise<PictureResult> {
   if (!z.uuid().safeParse(postId).success) return { ok: false };
   const { store } = member;
   const [post] = await typedRows(
@@ -174,7 +182,8 @@ export async function socialPicture(member: Membership, postId: string, origin: 
       where p.store_id = ${store.id}::uuid and p.id = ${postId}::uuid`,
   );
   if (!post) return { ok: false };
-  if (post.picture_media_id && !options.drawn) {
+  const slideNo = options.story ? 0 : (options.slide ?? 0);
+  if (post.picture_media_id && !options.drawn && slideNo === 0 && !options.story) {
     const kept = await keptPicture(store.id, post.picture_media_id);
     if (kept) {
       return {
@@ -184,7 +193,7 @@ export async function socialPicture(member: Membership, postId: string, origin: 
       };
     }
   }
-  const size = PICTURE_SIZES[post.channel as PostChannel];
+  const size = options.story ? STORY_SIZE : PICTURE_SIZES[post.channel as PostChannel];
   const palette = paletteOf(store);
   const market = store.markets[0];
   const found =
@@ -218,12 +227,51 @@ export async function socialPicture(member: Membership, postId: string, origin: 
     fontsOf(store, deps),
   ]);
   const price = post.price_line && found ? post.price_line.slice(found.title.length).replace(/^\s*·\s*/, "") : null;
+  // A carousel's later slide (S2.1b): one of the product's other photos, or its closing slide; none past the last.
+  let slide: ReturnType<typeof slideAt> = { kind: "cover" };
+  let slidePhoto: string | null = null;
+  if (slideNo > 0) {
+    if (!found) return { ok: false };
+    const photos = await typedRows(
+      z.object({ url: col.text }),
+      sql`select url from commerce.product_media where store_id = ${store.id}::uuid and product_id = ${found.id}::uuid order by position, id limit 4`,
+    );
+    slide = slideAt(carouselSlides(photos.length), slideNo);
+    if (!slide) return { ok: false };
+    if (slide.kind === "photo") slidePhoto = await photoOf(photos[slide.photo]?.url ?? null, origin, size, deps);
+  }
   const scale = scaleOf;
   const px = (n: number) => Math.round(n * scale);
   // A family only where it was loaded: next/og cannot read an empty one.
   const face = (family: string | undefined) => (family ? { fontFamily: family } : {});
 
-  const element = product ? (
+  const mark = logo ? (
+    // eslint-disable-next-line @next/next/no-img-element -- drawn by next/og, not a page
+    <img src={logo.src} width={logo.width} height={logo.height} alt="" />
+  ) : (
+    <div style={{ display: "flex", fontSize: px(42), opacity: 0.85 }}>{store.name}</div>
+  );
+  const element = slide?.kind === "photo" ? (
+    // A carousel's photo slide: the product's own photo fills it, the shop's mark on a band of its page colour.
+    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "flex-end", position: "relative", background: palette.surface, ...face(type.body) }}>
+      {slidePhoto ? (
+        // eslint-disable-next-line @next/next/no-img-element -- drawn by next/og, not a page
+        <img src={slidePhoto} width={size.width} height={size.height} alt="" style={{ position: "absolute", top: 0, left: 0, objectFit: "cover" }} />
+      ) : null}
+      <div style={{ display: "flex", alignItems: "center", background: palette.background, color: palette.text, padding: `${px(24)}px ${pad}px`, margin: pad, borderRadius: px(999) }}>{mark}</div>
+    </div>
+  ) : slide?.kind === "offer" && product ? (
+    // A carousel's closing slide: the product's title and price on the page's colour, and the shop's mark.
+    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", gap: px(40), background: palette.background, color: palette.text, padding: pad * 1.5, ...face(type.body) }}>
+      <div style={{ display: "flex", fontSize: product.title.length > 28 ? px(76) : px(96), ...face(type.heading), lineHeight: 1.08 }}>{product.title.slice(0, 70)}</div>
+      {price ? (
+        <div style={{ display: "flex" }}>
+          <div style={{ display: "flex", background: palette.accent, color: palette.accentText, fontSize: px(60), fontWeight: 700, padding: `${px(20)}px ${px(44)}px`, borderRadius: px(999) }}>{price}</div>
+        </div>
+      ) : null}
+      {mark}
+    </div>
+  ) : product ? (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: palette.background, color: palette.text, padding: pad, ...face(type.body) }}>
       <div style={{ display: "flex", width: photoBox.width, height: photoBox.height, background: palette.surface, borderRadius: px(28), overflow: "hidden" }}>
         {photo ? (
@@ -234,12 +282,7 @@ export async function socialPicture(member: Membership, postId: string, origin: 
       <div style={{ display: "flex", flex: 1, flexDirection: "column", justifyContent: "center", gap: px(18), paddingTop: pad }}>
         <div style={{ display: "flex", fontSize: product.title.length > 28 ? px(62) : px(80), ...face(type.heading), lineHeight: 1.1 }}>{product.title.slice(0, 70)}</div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          {logo ? (
-            // eslint-disable-next-line @next/next/no-img-element -- drawn by next/og, not a page
-            <img src={logo.src} width={logo.width} height={logo.height} alt="" />
-          ) : (
-            <div style={{ display: "flex", fontSize: px(42), opacity: 0.85 }}>{store.name}</div>
-          )}
+          {mark}
           {price ? (
             <div style={{ display: "flex", background: palette.accent, color: palette.accentText, fontSize: px(48), fontWeight: 700, padding: `${px(16)}px ${px(34)}px`, borderRadius: px(999) }}>
               {price}
@@ -268,7 +311,7 @@ export async function socialPicture(member: Membership, postId: string, origin: 
 
   return {
     ok: true,
-    fileName: pictureFileName(post.channel as PostChannel, post.ref),
+    fileName: pictureFileName(post.channel as PostChannel, post.ref).replace(/\.png$/, options.story ? "-story.png" : slideNo > 0 ? `-${slideNo + 1}.png` : ".png"),
     response: new ImageResponse(element, { width: size.width, height: size.height, ...(type.fonts.length > 0 ? { fonts: type.fonts } : {}), headers: { "Cache-Control": "private, max-age=300" } }),
   };
 }

@@ -1646,6 +1646,13 @@
       "when": 1795768175500,
       "tag": "20261127082935_checklist_item_deal_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 235,
+      "version": "7",
+      "when": 1795769602539,
+      "tag": "20261127085322_social_post_formats",
+      "breakpoints": true
     }
   ]
 }
