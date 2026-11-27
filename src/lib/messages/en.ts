@@ -500,7 +500,6 @@ export const en = {
   problemProcessing: "Payment for this cart is still being processed.",
   shipping: "Shipping",
   freeShipping: "Free shipping",
-  /** A price of nothing (D913: a product, a purchase option or a plan at 0, where its setting says so), and a product a campaign gives (D114). */
   freeGift: "Free",
   giftFrom: (campaign: string) => `Gift: ${campaign}`,
   /** A campaign the cart does not use because a discount code it does not combine with gives more (D367). */
@@ -1081,8 +1080,7 @@ export const en = {
   purchaseOptions: "Purchase option",
   planSave: (percent: number) => `Save ${percent}%`,
   perDelivery: "per delivery",
-  /** A subscription that costs nothing (D913): never charged, ended at once when cancelled. */
-  freeSubscription: "Free until you cancel. Nothing is ever charged, and you can cancel any time.",
+  freeSubscription: "Free until you cancel.",
   renewsEvery: (every: string, amount: string) =>
     `Renews ${every.toLowerCase()} at ${amount} until you cancel. You can cancel any time.`,
   subscriptionConsent: (every: string, amount: string) =>

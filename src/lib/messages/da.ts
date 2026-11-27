@@ -1045,7 +1045,7 @@ export const da: Messages = {
   purchaseOptions: "Købsmulighed",
   planSave: (percent: number) => `Spar ${percent} %`,
   perDelivery: "pr. levering",
-  freeSubscription: "Gratis, indtil du opsiger det. Der trækkes aldrig noget, og du kan opsige når som helst.",
+  freeSubscription: "Gratis, indtil du opsiger det.",
   renewsEvery: (every: string, amount: string) =>
     `Fornyes ${every.toLowerCase()} for ${amount}, indtil du opsiger det. Du kan opsige når som helst.`,
   subscriptionConsent: (every: string, amount: string) =>

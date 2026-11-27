@@ -1051,7 +1051,7 @@ export const nb: Messages = {
   purchaseOptions: "Kjøpsalternativ",
   planSave: (percent: number) => `Spar ${percent} %`,
   perDelivery: "per levering",
-  freeSubscription: "Gratis til du sier opp. Ingenting blir trukket, og du kan si opp når som helst.",
+  freeSubscription: "Gratis til du sier opp.",
   renewsEvery: (every: string, amount: string) =>
     `Fornyes ${every.toLowerCase()} for ${amount} til du sier opp. Du kan si opp når som helst.`,
   subscriptionConsent: (every: string, amount: string) =>

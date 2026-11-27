@@ -172,7 +172,7 @@ const text = {
     downloadsReady: "Filene dine er klare til nedlasting fra bestillingssiden.",
     subscription: (every: string, amount: string) =>
       `Abonnement: fornyes ${every.toLowerCase()} for ${amount} til du sier opp.`,
-    subscriptionFree: "Abonnement: gratis til du sier opp. Ingenting blir trukket.",
+    subscriptionFree: "Abonnement: gratis til du sier opp.",
     manageSubscription: "Se eller endre abonnementet",
     account: "Min konto",
     questions: (email: string) => `Spørsmål? Svar på denne e-posten eller skriv til ${email}.`,
@@ -475,7 +475,7 @@ const text = {
     downloadsReady: "Dina filer är redo att laddas ned från beställningssidan.",
     subscription: (every: string, amount: string) =>
       `Prenumeration: förnyas ${every.toLowerCase()} för ${amount} tills du säger upp den.`,
-    subscriptionFree: "Prenumeration: gratis tills du säger upp den. Inget dras.",
+    subscriptionFree: "Prenumeration: gratis tills du säger upp den.",
     manageSubscription: "Se eller ändra prenumerationen",
     account: "Mitt konto",
     questions: (email: string) => `Frågor? Svara på det här mejlet eller skriv till ${email}.`,
@@ -778,7 +778,7 @@ const text = {
     downloadsReady: "Dine filer er klar til download fra bestillingssiden.",
     subscription: (every: string, amount: string) =>
       `Abonnement: fornyes ${every.toLowerCase()} for ${amount}, indtil du opsiger det.`,
-    subscriptionFree: "Abonnement: gratis, indtil du opsiger det. Der trækkes intet.",
+    subscriptionFree: "Abonnement: gratis, indtil du opsiger det.",
     manageSubscription: "Se eller ændr abonnementet",
     account: "Min konto",
     questions: (email: string) => `Spørgsmål? Svar på denne mail, eller skriv til ${email}.`,
@@ -1083,7 +1083,7 @@ const text = {
     subscription: (every: string, amount: string) =>
       `Subscription: renews ${every.toLowerCase()} at ${amount} until you cancel.`,
     /** A subscription that costs nothing (D913). */
-    subscriptionFree: "Subscription: free until you cancel. Nothing is ever charged.",
+    subscriptionFree: "Subscription: free until you cancel.",
     manageSubscription: "See or change the subscription",
     account: "My account",
     questions: (email: string) => `Questions? Reply to this email or write to ${email}.`,
