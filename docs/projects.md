@@ -228,7 +228,7 @@ Status: Planned, Building, Done (date and commit).
 | P4.4 | Comments on an item (Life's activity thread) | Done, 26 Nov 2026 (a9d0ea8) |
 | P4.5 | Attachments from the media library | Planned |
 | P4.6 | Category and tags (Life's taxonomy) | Done, 26 Nov 2026 (a9d0ea8) |
-| P4.7 | A customer on an item (Life's contacts) | Built 26 November 2026 (below) |
+| P4.7 | A customer on an item (Life's contacts) | Done 27 November 2026 (ebb27f2; below) |
 | P4.8 | Every task across lists (Life's *All items*, with P4.11's filters); a list's cost summary; its due countdown (calendar and timeline are P4.13) | Done, 26 Nov 2026 (87d9db8) |
 | P4.9 | What is due on Home's attention list | Done, 26 Nov 2026 (a190512) |
 | P4.10 | A light refresh while a list is open, for a team working together | Done, 26 Nov 2026 (9fbb82c) |
