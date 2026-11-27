@@ -311,7 +311,7 @@ export async function getProductForEdit(
   const [product] = await db().execute<Row>(sql`
     select id, handle, status, tax_code, withdrawal_exclusion, manufacturer_id, responsible_person_id,
            delivery, download_limit, download_days, subscription_only, audience, vat_category, kind, host_id, product_layout_id, sold_by_measure, shipping_profile_id,
-           standard_category, standard_attributes, price_words, price_on_request
+           standard_category, standard_attributes, price_words, price_on_request, zero_free, skip_cart
     from commerce.products where store_id = ${store.id}::uuid and id = ${productId}::uuid
   `);
   if (!product) return null;
@@ -546,6 +546,7 @@ export async function getProductForEdit(
     standardAttributes: (product.standard_attributes ?? {}) as StandardAttributes,
     priceWords: parseProductPriceWords(product.price_words),
     zeroFree: product.zero_free === null || product.zero_free === undefined ? null : Boolean(product.zero_free),
+    skipCart: product.skip_cart === null || product.skip_cart === undefined ? null : Boolean(product.skip_cart),
     availability: await availabilityOf(store.id, productId),
     countryTexts: await countryTextsOf(store.id, productId),
     appointment: isBooked(kind)
@@ -1104,7 +1105,8 @@ async function upsertProduct(
         standard_attributes = ${input.standardCategory === undefined ? sql`standard_attributes` : sql`${JSON.stringify(input.standardAttributes ?? {})}::jsonb`},
         standard_shown = ${input.standardCategory === undefined ? sql`standard_shown` : sql`${shownJson}::jsonb`},
         price_words = ${input.priceWords === undefined ? sql`price_words` : priceWordsValue(input.priceWords)},
-        zero_free = ${input.zeroFree === undefined ? sql`zero_free` : input.zeroFree}
+        zero_free = ${input.zeroFree === undefined ? sql`zero_free` : input.zeroFree},
+        skip_cart = ${input.skipCart === undefined ? sql`skip_cart` : input.skipCart}
       where store_id = ${storeId}::uuid and id = ${productId}::uuid
       returning id
     `);
@@ -1116,7 +1118,7 @@ async function upsertProduct(
       store_id, handle, status, manufacturer_id, responsible_person_id, tax_code, withdrawal_exclusion,
       delivery, download_limit, download_days, subscription_only, audience, vat_category, kind, host_id, product_layout_id,
       sold_by_measure, shipping_profile_id, bundle_pricing, bundle_percent_off, standard_category, standard_attributes, standard_shown, price_words,
-      price_on_request, zero_free
+      price_on_request, zero_free, skip_cart
     ) values (
       ${storeId}::uuid, ${input.handle}, 'draft', ${manufacturerId}::uuid, ${responsibleId}::uuid,
       ${input.taxCode}, ${input.withdrawalExclusion}, ${input.delivery}, ${input.downloadLimit}, ${input.downloadDays},
@@ -1124,7 +1126,7 @@ async function upsertProduct(
       ${input.layoutId}::uuid, ${input.soldByMeasure && input.kind === "goods"}, (select sp.id from commerce.shipping_profiles sp where sp.store_id = ${storeId}::uuid and sp.id = ${input.shippingProfileId ?? null}::uuid),
       ${bundlePricing(input)}, ${bundlePercent(input)}, ${input.standardCategory ?? null},
       ${JSON.stringify(input.standardCategory ? (input.standardAttributes ?? {}) : {})}::jsonb, ${shownJson}::jsonb,
-      ${priceWordsValue(input.priceWords ?? INHERIT_WORDS)}, ${input.priceOnRequest && input.kind === "goods"}, ${input.zeroFree ?? null}
+      ${priceWordsValue(input.priceWords ?? INHERIT_WORDS)}, ${input.priceOnRequest && input.kind === "goods"}, ${input.zeroFree ?? null}, ${input.skipCart ?? null}
     )
     returning id
   `);

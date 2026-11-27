@@ -33,6 +33,8 @@ export type Term = {
   requiresUnitPrice?: boolean;
   /** A store's product category's or tag's choice for its products' price of nothing (D913): Free, the amount, or null as the level above. */
   zeroFree?: boolean | null;
+  /** Its choice for whether Buy now goes past the cart page for its products (D915): skip, show, or null as the level above. */
+  skipCart?: boolean | null;
   /**
    * The category's or tag's own title and description for search results and shares, per language (wave 2, D168: `terms.seo`). Absent where it is not read
    * (Kaizen's own terms); `{}` when the term has none.

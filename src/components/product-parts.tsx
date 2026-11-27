@@ -52,7 +52,8 @@ import { marketPath, marketUrl, storeSiteUrl } from "@/lib/paths";
 import type { VariantStock } from "@/lib/stock-availability";
 import { canOffer, stockNote } from "@/lib/stock-words";
 import { productJsonLd } from "@/lib/structured-data";
-import { lowestPlanPrice } from "@/lib/subscriptions";
+import { lowestPlanPrice, planPrice } from "@/lib/subscriptions";
+import { checkoutConsents } from "@/lib/checkout-consents";
 import { unitLabelsOf } from "@/lib/unit-price-text";
 import { db } from "@/db/client";
 import { memberDiscountFor } from "@/server/customer-tiers";
@@ -1082,6 +1083,32 @@ async function VariantsWithStock({
       .join(" · "),
   }));
 
+  // Straight to payment (D915): what pressing Buy now agrees to, in the cart's own words (`checkoutConsents()`), for each variant (a download's
+  // withdrawal) and each purchase option it can be bought with (a renewal at its price); the server checks them against the basket (`startDirect()`).
+  const money = (minor: number) => formatMoney(minor, market.currency, market.locale, market.priceStyle);
+  // Its words are loaded only for a product that skips the cart (the storefront messages budget).
+  const directWords = product.skipsCart ? (await import("@/lib/direct-buy-words")).directBuyWords(market.lang) : null;
+  const direct = directWords
+    ? {
+        lead: directWords.lead,
+        byVariant: Object.fromEntries(
+          product.kind === "gift_card" ? [] : product.variants.filter((v) => v.delivery === "digital").map((v) => [v.id, [m.digitalConsent]]),
+        ),
+        // A subscription sent by post adds shipping to each renewal, which the cart says: its terms are asked there.
+        byPlan: Object.fromEntries(
+          product.variants.filter((v) => v.delivery !== "physical").flatMap((v) =>
+            product.plans
+              .filter((plan) => plan.variantId === null || plan.variantId === v.id)
+              .flatMap((plan) => {
+                const renewal = planPrice(offered(v).price.amountMinor, plan.discountPercent);
+                const said = checkoutConsents(m, { digital: false, service: false, plan, renewal }, money).subscription;
+                return said ? [[`${v.id}:${plan.id}`, said] as const] : [];
+              }),
+          ),
+        ),
+      }
+    : undefined;
+
   // One price drawn per distinct price (D320): a product of 2,048 variants in a few prices sends a few, each variant naming its own by place.
   const priced = (() => {
     const places = new Map<string, number>();
@@ -1190,8 +1217,9 @@ async function VariantsWithStock({
               : undefined
           }
           klarna={klarna ? { ...klarna, currency: market.currency, country: market.code, locale: stripeLocale(market.lang), amounts: priced.amounts } : undefined}
+          direct={direct}
           labels={{
-            addToCart: m.addToCart,
+            addToCart: directWords ? directWords.buyNow : m.addToCart,
             adding: m.adding,
             added: m.added,
             capped: m.capped,

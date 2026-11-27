@@ -56,8 +56,10 @@ const lineInput = z
   .refine((line) => line.startsAt !== null || line.quantity <= MAX_ORDER_QUANTITY);
 
 export type AddToCartState = {
-  outcome: "idle" | "added" | "capped" | "unavailable" | "plan_conflict" | "slot_taken" | "error" | "gift_card";
+  outcome: "idle" | "added" | "capped" | "unavailable" | "plan_conflict" | "slot_taken" | "error" | "gift_card" | "checkout";
   quantity: number;
+  /** Straight to payment (D915): the payment page's address, which the browser opens (outcome `checkout`). */
+  to?: string;
   /** The cart's units after the add, for the header's count (bloat review step 2.4). */
   count?: number;
   /** What was wrong with *Send it to someone* (D300), field by field; the card was not added. */
@@ -80,6 +82,7 @@ async function parse(formData: FormData) {
   return shop
     ? {
         shop: { storeId: shop.store.id, market: shop.market },
+        store: shop.store,
         timeZone: shop.store.timeZone,
         giftCardKey: parsed.data.giftCardKey,
         variantId: parsed.data.variantId,
@@ -141,6 +144,14 @@ export async function addToCart(
   // count, which the header shows, and Next keeps the page it has (bloat review step 2.4).
   if (formData.get("redraw") === "1") refresh();
   const count = await getCartCount(input.shop);
+  // A product's page whose product skips the cart (D915): straight to payment where the whole basket may, its terms said beside the button;
+  // else to the cart page, where what the basket needs is asked (Buy now never leaves the shopper on the product's page).
+  if (formData.get("direct") === "1" && result.outcome === "added") {
+    const header = (await headers()).get("origin");
+    const direct = await import("@/server/direct-start");
+    const to = await direct.startDirect(input.store, input.shop.market, header ? new URL(header).origin : siteUrl(), direct.shownWith(formData));
+    return { outcome: "checkout", quantity: result.quantity, count, to: to ?? marketPath(input.store.slug, input.shop.market.slug, "/cart") };
+  }
   // Adding follows the variant's rule (D323) and is never refused by it; only setting a line can be.
   return result.outcome === "removed" || result.outcome === "quantity"
     ? { outcome: "error", quantity: 0, count }

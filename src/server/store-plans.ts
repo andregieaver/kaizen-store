@@ -27,7 +27,9 @@ const PLAN_ROW = z.object({
   interval: z.enum(["month", "year"]),
   discount_percent: col.int,
   trial_days: col.int,
+  min_cycles: col.int,
   zero_free: col.bool,
+  skips_cart: col.bool,
   store_audience: col.text,
   vat_rate: col.decimal,
 });
@@ -55,8 +57,8 @@ export async function getStorePlans(storeId: string, market: Market): Promise<St
       coalesce(tl.excerpt, tf.excerpt, '') as excerpt,
       coalesce(tl.description, tf.description, '') as description,
       v.id as variant_id, cp.amount_minor, cp.currency,
-      sp.id as selling_plan_id, sp.interval::text as interval, sp.discount_percent, sp.trial_days,
-      commerce.zero_shows_free(p.store_id, p.id) as zero_free,
+      sp.id as selling_plan_id, sp.interval::text as interval, sp.discount_percent, sp.trial_days, sp.min_cycles,
+      commerce.zero_shows_free(p.store_id, p.id) as zero_free, commerce.skips_cart(p.store_id, p.id) as skips_cart,
       ${STORE_AUDIENCE} as store_audience, commerce.vat_rate(${market.code}, p.vat_category) as vat_rate
     from commerce.products p
     join commerce.stores s on s.id = p.store_id
@@ -89,6 +91,7 @@ export async function getStorePlans(storeId: string, market: Market): Promise<St
           line: row.excerpt.trim(),
           included: includedLines(row.description),
           zeroFree: row.zero_free,
+          skipsCart: row.skips_cart,
           prices: [],
           all: [],
         })
@@ -100,6 +103,8 @@ export async function getStorePlans(storeId: string, market: Market): Promise<St
       variantId: row.variant_id,
       sellingPlanId: row.selling_plan_id,
       trialDays: row.trial_days,
+      renewalMinor: gross,
+      minCycles: row.min_cycles,
     });
   }
   return { plans: [...plans.values()].map(({ all, ...plan }) => ({ ...plan, prices: lowestPerInterval(all) })), withVat };

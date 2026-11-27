@@ -130,6 +130,8 @@ export type ProductDetail = {
   plans: SellingPlan[];
   /** Sold only through its purchase options. */
   subscriptionOnly: boolean;
+  /** Buying it goes straight to payment, past the cart page (D915), as it, its tags, categories or the store choose; the basket may still keep the cart. */
+  skipsCart: boolean;
   /** Only sold as a subscription, and the currency shown is not the country's own, the only one subscriptions are in (D109). */
   needsNativeCurrency: boolean;
   /** Who it is for (B2B); always `all` unless the store sells to both. */
@@ -403,7 +405,7 @@ export async function getProduct(storeId: string, market: Market, handle: string
     select
       p.id, p.handle, p.group_id::text as group_id, p.withdrawal_exclusion, p.subscription_only, p.kind, p.standard_category, p.standard_attributes, p.standard_shown, p.price_on_request,
       p.audience, p.price_words, ${STORE_AUDIENCE} as store_audience, commerce.vat_rate(${marketCode}, p.vat_category) as vat_rate,
-      commerce.zero_shows_free(p.store_id, p.id) as zero_free,
+      commerce.zero_shows_free(p.store_id, p.id) as zero_free, commerce.skips_cart(p.store_id, p.id) as skips_cart,
       coalesce(tl.title, tf.title) as title,
       -- The country's own description over its language's (D338), else the language's. A country whose language the product is not
       -- written in reads the description in the language it falls back to, so the country's own is the one written in that language.
@@ -557,6 +559,7 @@ export async function getProduct(storeId: string, market: Market, handle: string
     })),
     // Without an option to subscribe to, it can only be bought once.
     subscriptionOnly: Boolean(product.subscription_only) && plans.length > 0,
+    skipsCart: product.skips_cart === true,
     needsNativeCurrency: !isNative(market) && Boolean(product.subscription_only) && plans.length > 0,
     hostName: product.host_name ? String(product.host_name) : null,
     fields,

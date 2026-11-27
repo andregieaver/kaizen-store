@@ -25,6 +25,8 @@ export const termInput = z
     requiresUnitPrice: z.boolean().optional(),
     /** A price of nothing on its products (D913): true Free, false the amount, null as the level above; left out means unchanged. Products' only. */
     zeroFree: z.boolean().nullable().optional(),
+    /** Buy now past the cart page for its products (D915): true skips, false shows the cart, null as the level above; left out, unchanged. Products' only. */
+    skipCart: z.boolean().nullable().optional(),
     /**
      * Search title and description per language (D168): left out means unchanged on an update and none on a new one; a language with both empty is removed.
      * The shape is held here; the server checks the languages against the store's own (`termSeoInput(locales)`).

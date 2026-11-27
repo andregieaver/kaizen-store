@@ -1,3 +1,4 @@
+import { checkoutConsents } from "./checkout-consents";
 import type { PublicPlans, PublicPrice } from "./plan-offer";
 import type { PlanInterval } from "./plans";
 
@@ -12,8 +13,11 @@ export const INCLUDED_MAX = 30;
 /** The most characters of one line. */
 export const INCLUDED_LINE_MAX = 160;
 
-/** A price on a plan's card, and what its button buys: the variant (its billing period) with the purchase option renewing at it. */
-export type StorePlanPrice = PublicPrice & { variantId: string; sellingPlanId: string; trialDays: number };
+/**
+ * A price on a plan's card, and what its button buys: the variant (its billing period) with the purchase option renewing at it. `renewalMinor` is
+ * what each renewal charges, with VAT, as the cart's consent says it (D915); `minCycles` the payments committed to (D29).
+ */
+export type StorePlanPrice = PublicPrice & { variantId: string; sellingPlanId: string; trialDays: number; renewalMinor: number; minCycles: number };
 
 export type StorePlan = {
   id: string;
@@ -27,6 +31,8 @@ export type StorePlan = {
   prices: StorePlanPrice[];
   /** Whether a price of nothing says Free (D913), as the plan, its tags, its categories or the store choose; absent is Free. */
   zeroFree?: boolean;
+  /** Choosing it goes straight to payment, past the cart page (D915); its terms are said beside its button. */
+  skipsCart?: boolean;
 };
 
 /**
@@ -101,4 +107,26 @@ export function lowestPerInterval(prices: readonly StorePlanPrice[]): StorePlanP
     const price = best.get(interval);
     return price ? [price] : [];
   });
+}
+
+/**
+ * What pressing a plan's button agrees to (D915), for the plans that skip the cart: each price's renewals in the cart's own words
+ * (`checkoutConsents()`), by `{variant}:{option}`; none for a plan renewing at nothing (D913). `money` writes an amount as the cart does.
+ */
+export function planAgreements(
+  plans: readonly StorePlan[],
+  m: Parameters<typeof checkoutConsents>[0],
+  money: (minor: number) => string,
+  lead: string,
+): { lead: string; byChoice: Record<string, string> } | undefined {
+  const byChoice: Record<string, string> = {};
+  for (const plan of plans) {
+    if (!plan.skipsCart) continue;
+    for (const price of plan.prices) {
+      const terms = { interval: price.interval, intervalCount: 1, trialDays: price.trialDays, minCycles: price.minCycles };
+      const said = checkoutConsents(m, { digital: false, service: false, plan: terms, renewal: price.renewalMinor }, money).subscription;
+      if (said) byChoice[`${price.variantId}:${price.sellingPlanId}`] = said;
+    }
+  }
+  return Object.keys(byChoice).length > 0 ? { lead, byChoice } : undefined;
 }

@@ -8,7 +8,7 @@
     "api": {
       "route": "/api/cron/cart-reminders/route",
       "bytes": 10594493,
-      "max": 11018273
+      "max": 11018820
     },
     "store": {
       "route": "/s/[store]/[market]/(shop)/search/page",

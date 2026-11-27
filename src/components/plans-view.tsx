@@ -46,6 +46,11 @@ export type PlanSale = {
   market: string;
   plans: StorePlan[];
   withVat: boolean;
+  /**
+   * Straight to payment (D915): for a plan that skips the cart, what pressing its button agrees to, by `{variant}:{option}`, in the cart's words
+   * (`checkoutConsents()`), said under the button and sent with it; the other billing period's link goes by the cart.
+   */
+  agreed?: { lead: string; byChoice: Record<string, string> };
 };
 
 /**
@@ -81,24 +86,31 @@ export function PlansView({ block, data, lang = "en", sale }: { block: PlansBloc
     }
     // A plain form for each billing period the card offers: it works before any script, and the cart takes it from there.
     const plan = sale.plans.find((p) => p.id === card.id);
-    const form = (interval: PlanInterval, content: ReactNode, className: string, style?: CSSProperties) => {
+    const form = (interval: PlanInterval, content: ReactNode, className: string, style?: CSSProperties, says = false) => {
       const choice = choiceOf(plan, interval);
+      const sentence = says && choice ? sale.agreed?.byChoice[`${choice.variantId}:${choice.sellingPlanId}`] : undefined;
       return choice ? (
-        <form action={sale.action}>
+        <form action={sale.action} className="flex flex-col gap-2">
           <input type="hidden" name="store" value={sale.store} />
           <input type="hidden" name="market" value={sale.market} />
           <input type="hidden" name="variantId" value={choice.variantId} />
           <input type="hidden" name="sellingPlanId" value={choice.sellingPlanId} />
+          {sentence && <input type="hidden" name="agreed" value={sentence} />}
           <button type="submit" className={className} style={style} data-kz-text="button">
             {content}
             <span className="sr-only"> – {card.name}</span>
           </button>
+          {sentence && (
+            <p className="text-xs opacity-75" data-direct-agreement="">
+              {sale.agreed?.lead} {sentence}
+            </p>
+          )}
         </form>
       ) : null;
     };
     return (
       <>
-        {form(card.main.interval, label, look.className, look.style)}
+        {form(card.main.interval, label, look.className, look.style, true)}
         {card.other && card.main.amountMinor > 0 && form(card.other.interval, m.yearlyPrice(money(card.other)), "text-sm underline underline-offset-2 hover:no-underline")}
       </>
     );

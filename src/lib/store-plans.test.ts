@@ -12,6 +12,8 @@ const price = (interval: "month" | "year", amountMinor: number, variantId = `v-$
   variantId,
   sellingPlanId: `sp-${variantId}`,
   trialDays: 0,
+  renewalMinor: amountMinor,
+  minCycles: 0,
 });
 
 const plan = (id: string, name: string, included: string[], prices: StorePlanPrice[]): StorePlan => ({

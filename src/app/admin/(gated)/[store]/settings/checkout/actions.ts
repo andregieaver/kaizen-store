@@ -17,6 +17,7 @@ import {
 import type { AccountsMode } from "@/lib/customer-accounts";
 import { saveAccountsMode } from "@/server/customer-accounts";
 import { saveCheckoutContact } from "@/server/checkout-contact";
+import { saveSkipCart } from "@/server/skip-cart";
 import type { CheckoutContactSettings } from "@/lib/checkout-contact";
 import { COMMON_WORDS } from "@/lib/admin-words/common";
 import { ORDER_WORDS } from "@/lib/admin-words/order";
@@ -97,6 +98,15 @@ export async function saveAccountsModeAction(storeSlug: string, mode: AccountsMo
 }
 
 /** The phone and name the checkout asks besides the email (D357): `settings:write`. */
+/** Buy now straight to payment, past the cart page (D915): the store's choice. */
+export async function saveSkipCartAction(storeSlug: string, on: boolean): Promise<{ ok: true } | { ok: false; problems: string[] }> {
+  const member = await checkPermission(storeSlug, "settings:write");
+  if (!member) return { ok: false, problems: [await noAccess()] };
+  const saved = await saveSkipCart(member, on === true);
+  if (saved.ok) refresh();
+  return saved;
+}
+
 export async function saveContactFieldsAction(storeSlug: string, settings: CheckoutContactSettings): Promise<{ ok: true } | { ok: false; problems: string[] }> {
   const member = await checkPermission(storeSlug, "settings:write");
   if (!member) return { ok: false, problems: [await noAccess()] };

@@ -8,7 +8,7 @@ import { OPTIONS_FROM, buyableValues, nearestVariant, optionsOf } from "@/lib/va
 
 import { TrackContext, trackedItem, type ShopTrack } from "./shop-track";
 
-import { AddToCart, type AddToCartLabels, type QuantityOffer } from "./add-to-cart";
+import { AddToCart, type AddToCartLabels, type DirectBuy, type QuantityOffer } from "./add-to-cart";
 import { AddToDelivery, type AddToDeliveryLabels } from "./add-to-delivery";
 import { BackInStock, type BackInStockLabels } from "./back-in-stock";
 import { Dropdown } from "./dropdown";
@@ -114,6 +114,7 @@ export function VariantPurchase({
   express,
   klarna,
   quantity,
+  direct,
 }: {
   variants: OfferedVariant[];
   prices: OfferedPrice[];
@@ -138,6 +139,8 @@ export function VariantPurchase({
   klarna?: KlarnaSetup & { amounts: number[] };
   /** The quantity chooser (D430): with − and + or the number alone, for each variant that has a `rule`; absent where it is hidden. */
   quantity?: Omit<QuantityOffer, "rule">;
+  /** The product skips the cart (D915): what the press agrees to, and on to payment. */
+  direct?: DirectBuy;
 }) {
   const [chosen, setChosen] = useVariantChoice(variants[0]?.id ?? "");
   const variant = variants.find((v) => v.id === chosen) ?? variants[0];
@@ -192,6 +195,7 @@ export function VariantPurchase({
             labels={labels}
             capped={variant.capped}
             quantity={quantity && variant.rule ? { ...quantity, rule: variant.rule } : undefined}
+            direct={direct}
           />
           {klarna && klarna.amounts[variant.priceIndex] !== undefined && (
             <KlarnaMessage key={`klarna-${variant.id}`} {...klarna} amountMinor={klarna.amounts[variant.priceIndex]} />

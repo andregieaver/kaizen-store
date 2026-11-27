@@ -10,6 +10,7 @@ import { fillWords } from "@/lib/admin-fill";
 import { useAdminText } from "./admin-text";
 import { openCheckoutQuestion } from "./checkout-rules";
 import { Button } from "./ui/button";
+import { Select } from "./ui/field";
 import { CARD_CLASS } from "./ui/card";
 
 type Answer = { ok: true } | { ok: false; problems: string[] };
@@ -30,6 +31,8 @@ export function CheckoutAsksCard({
   canWrite,
   saveMode,
   saveContact,
+  skipCart,
+  saveSkip,
   questions = [],
 }: {
   mode: AccountsMode;
@@ -37,6 +40,9 @@ export function CheckoutAsksCard({
   canWrite: boolean;
   saveMode: (mode: AccountsMode) => Promise<Answer>;
   saveContact: (settings: CheckoutContactSettings) => Promise<Answer>;
+  /** Buy now goes straight to payment, past the cart page (D915): the store's choice, which categories, tags and products can override. */
+  skipCart: boolean;
+  saveSkip: (on: boolean) => Promise<Answer>;
   /** The questions the checkout asks (those switched on), in order, by their words in the store's main language. */
   questions?: { id: string; label: string; required: boolean }[];
 }) {
@@ -50,6 +56,8 @@ export function CheckoutAsksCard({
   const [said, setSaid] = useState<{ ok: boolean; lines: string[] } | null>(null);
   const modeChanged = chosenMode !== mode;
   const contactChanged = chosen.phone !== contact.phone || chosen.name !== contact.name;
+  const [skip, setSkip] = useState(skipCart);
+  const skipChanged = skip !== skipCart;
   const save = () =>
     start(async () => {
       const problems: string[] = [];
@@ -59,6 +67,10 @@ export function CheckoutAsksCard({
       }
       if (contactChanged) {
         const answer = await saveContact(chosen);
+        if (!answer.ok) problems.push(...answer.problems);
+      }
+      if (skipChanged) {
+        const answer = await saveSkip(skip);
         if (!answer.ok) problems.push(...answer.problems);
       }
       setSaid(problems.length === 0 ? { ok: true, lines: [w.saved] } : { ok: false, lines: problems });
@@ -193,10 +205,26 @@ export function CheckoutAsksCard({
                 </select>
               </div>
             ))}
+            <div className="flex min-h-13 flex-wrap items-center justify-between gap-3">
+              <label htmlFor="cart-page" className="text-sm text-ink">
+                {w.cartPage}
+              </label>
+              <Select
+                id="cart-page"
+                value={skip ? "skip" : "show"}
+                onChange={(e) => {
+                  setSkip(e.target.value === "skip");
+                  setSaid(null);
+                }}
+              >
+                <option value="show">{w.cartModes.show}</option>
+                <option value="skip">{w.cartModes.skip}</option>
+              </Select>
+            </div>
           </fieldset>
           {canWrite && (
             <div className="flex flex-wrap items-center gap-3">
-              <Button type="submit" kind="main" disabled={pending || (!modeChanged && !contactChanged)}>
+              <Button type="submit" kind="main" disabled={pending || (!modeChanged && !contactChanged && !skipChanged)}>
                 {w.save}
               </Button>
               {said ? (
@@ -215,6 +243,7 @@ export function CheckoutAsksCard({
             <p className="mt-2">{cw.phoneHint}</p>
             <p className="mt-1">{cw.nameHint}</p>
             <p className="mt-1">{cw.where}</p>
+            <p className="mt-1">{w.skipHint}</p>
           </details>
         </form>
       </section>

@@ -36,6 +36,13 @@ export type AddToCartLabels = {
  */
 export type QuantityOffer = { rule: QuantityRule; buttons: boolean; labels: QuantityStepperLabels };
 
+/**
+ * Straight to payment, past the cart (D915): what pressing the button agrees to, said beside it (the owner's choice: the press is the agreement,
+ * 27 November 2026). `byVariant`: a variant's own (a download's withdrawal); `byPlan`: a purchase option's renewals for a variant, keyed
+ * `{variant}:{option}`. The server presses on to payment only where the whole basket may (`startDirect()`); else the shopper is shown the cart.
+ */
+export type DirectBuy = { lead: string; byVariant: Record<string, string[]>; byPlan: Record<string, string> };
+
 const initial: AddToCartState = { outcome: "idle", quantity: 0 };
 
 /** Adds, and puts the cart's new count in the header as the answer arrives, even if the tile that asked has left the page meanwhile (bloat review step 2.4). */
@@ -56,6 +63,7 @@ export function AddToCart({
   openCart = false,
   capped,
   quantity,
+  direct,
 }: {
   store: string;
   market: string;
@@ -71,16 +79,24 @@ export function AddToCart({
   capped?: string;
   /** How many to add, chosen by the shopper (D430); absent adds one. */
   quantity?: QuantityOffer;
+  /** The product skips the cart (D915): the agreement said beside the button, and the press goes on to payment. */
+  direct?: DirectBuy;
 }) {
   const [state, action, pending] = useActionState(addAndCount, initial);
   const keepFocus = useKeepFocus(pending);
   useOpenCartAfterAdd(openCart, cartHref, state);
   const plan = useChosenPlan();
   const track = useShopTrack();
+  // What the press agrees to (D915): the variant's own, and the chosen option's renewals for it.
+  const agreed = direct ? [...(direct.byVariant[variantId] ?? []), ...(plan && direct.byPlan[`${variantId}:${plan.id}`] ? [direct.byPlan[`${variantId}:${plan.id}`]] : [])] : [];
   // What was asked for, so the tags hear the units added (D303 I1), once the server accepted them.
   const asked = useRef(1);
+  // Straight to payment (D915): a full page load, as the payment page needs (PCI).
   useEffect(() => {
-    if (state.outcome !== "added") return;
+    if (state.outcome === "checkout" && state.to) window.location.assign(state.to);
+  }, [state]);
+  useEffect(() => {
+    if (state.outcome !== "added" && state.outcome !== "checkout") return;
     const event = trackedItem(track, variantId, asked.current);
     if (event) trackShop({ kind: "add_to_cart", ...event });
   }, [state, track, variantId]);
@@ -114,6 +130,15 @@ export function AddToCart({
       <AffiliateField store={store} />
       <RecommendField />
       {plan && <input type="hidden" name="sellingPlanId" value={plan.id} />}
+      {direct && <input type="hidden" name="direct" value="1" />}
+      {agreed.map((sentence) => (
+        <input key={sentence} type="hidden" name="agreed" value={sentence} />
+      ))}
+      {direct && agreed.length > 0 && (
+        <p className="max-w-sm text-right text-xs text-muted" data-direct-agreement="">
+          {direct.lead} {agreed.join(" ")}
+        </p>
+      )}
       <div className="flex flex-wrap items-end justify-end gap-2">
         {quantity && <ChosenQuantity variantId={variantId} offer={quantity} disabled={disabled} />}
         <button

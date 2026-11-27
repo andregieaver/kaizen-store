@@ -79,7 +79,7 @@ import {
   rhythmIn,
 } from "@/lib/subscriptions";
 import { slugify } from "@/lib/slug";
-import { ZeroFreeChoice } from "@/components/admin/zero-free-choice";
+import { InheritChoice } from "@/components/admin/zero-free-choice";
 import { uploadToSignedUrl } from "@/lib/supabase/signed-upload";
 import type { EditorContext, Operator } from "@/server/products";
 import { ProductPreview } from "./product-preview";
@@ -3041,7 +3041,7 @@ function PriceWordsSection({
 }: SectionProps & { context: EditorContext; languageNames: Record<string, string> }) {
   const w = useAdminText("product").priceWords;
   // The same words as a category's and a tag's (D913), which the product page hands too.
-  const zero = useAdminText("productsEditor").terms.zero;
+  const { zero, skip } = useAdminText("productsEditor").terms;
   const choice = product.priceWords ?? INHERIT_WORDS;
   const ownWords = choice.mode === "own" ? choice.words : {};
   // The store's words (an editor context from before D429 has none).
@@ -3131,9 +3131,10 @@ function PriceWordsSection({
           })}
         </div>
       )}
-      {/* A price of nothing (D913): the product's own choice, over its tags', categories' and the store's. */}
-      <div className="mt-4 border-t border-line pt-4">
-        <ZeroFreeChoice id="product-zero-free" value={product.zeroFree ?? null} onChange={(zeroFree) => update((p) => ({ ...p, zeroFree }))} words={zero} />
+      {/* A price of nothing (D913) and Buy now past the cart page (D915): the product's own choices, over its tags', categories' and the store's. */}
+      <div className="mt-4 flex flex-wrap gap-3 border-t border-line pt-4">
+        <InheritChoice id="product-zero-free" value={product.zeroFree ?? null} onChange={(zeroFree) => update((p) => ({ ...p, zeroFree }))} words={zero} />
+        <InheritChoice id="product-skip-cart" value={product.skipCart ?? null} onChange={(skipCart) => update((p) => ({ ...p, skipCart }))} words={{ ...skip, inherit: zero.inherit }} />
       </div>
     </section>
   );

@@ -39,6 +39,7 @@ const toTerm = (row: Row): Term => ({
   slug: String(row.slug),
   ...(row.requires_unit_price === undefined ? {} : { requiresUnitPrice: Boolean(row.requires_unit_price) }),
   ...(row.zero_free === undefined ? {} : { zeroFree: row.zero_free === null ? null : Boolean(row.zero_free) }),
+  ...(row.skip_cart === undefined ? {} : { skipCart: row.skip_cart === null ? null : Boolean(row.skip_cart) }),
   ...(row.seo === undefined ? {} : { seo: parseTermSeo(row.seo) }),
   ...(row.texts === undefined ? {} : { texts: parseTermTexts(row.texts) }),
   ...(row.description === undefined ? {} : { description: parseTermDescription(row.description) }),
@@ -49,7 +50,7 @@ const toTerm = (row: Row): Term => ({
 });
 
 /** The columns every reader of terms selects. */
-const TERM_COLUMNS = sql.raw("id, kind, parent_id, name, slug, requires_unit_price, zero_free, seo, description, image_url, image_thumbnail_url, texts, rules");
+const TERM_COLUMNS = sql.raw("id, kind, parent_id, name, slug, requires_unit_price, zero_free, skip_cart, seo, description, image_url, image_thumbnail_url, texts, rules");
 
 const scopeWhere = (scope: TermScope) =>
   sql`${owned(scope.storeId)} and content_type = ${scope.contentType}`;
@@ -278,7 +279,7 @@ export async function createTerm(account: Account, scope: TermScope, input: unkn
 /** Renames, re-addresses or moves a category or tag; its kind stays. */
 export async function updateTerm(account: Account, scope: TermScope, id: string, input: unknown): Promise<TermsResult> {
   const [existing] = await db().execute<Row>(sql`
-    select kind, slug, requires_unit_price, zero_free, seo, description, image_url, texts, rules from commerce.terms where ${scopeWhere(scope)} and id = ${id}::uuid
+    select kind, slug, requires_unit_price, zero_free, skip_cart, seo, description, image_url, texts, rules from commerce.terms where ${scopeWhere(scope)} and id = ${id}::uuid
   `);
   if (!existing) return { ok: false, problems: ["This category or tag no longer exists. It may have been deleted."] };
   const kind = existing.kind as TermKind;
@@ -322,6 +323,7 @@ export async function updateTerm(account: Account, scope: TermScope, id: string,
         update commerce.terms set name = ${term.name}, slug = ${term.slug}, parent_id = ${term.parentId}::uuid,
           requires_unit_price = ${marked}, seo = ${seoChecked.seo === undefined ? sql`seo` : sql`${JSON.stringify(seoChecked.seo)}::jsonb`},
           zero_free = ${term.zeroFree === undefined || scope.contentType !== "product" ? sql`zero_free` : term.zeroFree},
+          skip_cart = ${term.skipCart === undefined || scope.contentType !== "product" ? sql`skip_cart` : term.skipCart},
           description = ${page.description === undefined ? sql`description` : sql`${page.description ? JSON.stringify(page.description) : null}::jsonb`},
           image_url = ${page.image === undefined ? sql`image_url` : sql`${page.image?.url ?? null}`},
           image_thumbnail_url = ${page.image === undefined ? sql`image_thumbnail_url` : sql`${page.image?.thumbnailUrl ?? null}`},
@@ -346,6 +348,7 @@ export async function updateTerm(account: Account, scope: TermScope, id: string,
       slug: term.slug,
       ...(marked !== Boolean(existing.requires_unit_price) ? { requiresUnitPrice: marked } : {}),
       ...(term.zeroFree !== undefined && term.zeroFree !== existing.zero_free ? { zeroFree: term.zeroFree } : {}),
+      ...(term.skipCart !== undefined && term.skipCart !== existing.skip_cart ? { skipCart: term.skipCart } : {}),
       ...(seoChanged ? { seo: true } : {}),
       ...(pageChanged ? { page: true } : {}),
       ...(rulesChanged ? { rules: rules ? rules.conditions.length : 0, ...(rules === null && term.keepMatches ? { keptMatches: true } : {}) } : {}),

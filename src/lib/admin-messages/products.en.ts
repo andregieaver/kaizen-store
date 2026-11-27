@@ -438,8 +438,8 @@ export const productsEn = {
     name: "Name",
     address: "Address",
     redirectNote: "If you change the address, the old address redirects to the new one.",
-    /** A price of nothing (D913): a category's, tag's or product's choice, over the store's. */
-    zero: { label: "A price of nothing", inherit: "As above", free: "Free", amount: "The amount" },
+    zero: { label: "A price of nothing", inherit: "As above", on: "Free", off: "The amount" },
+    skip: { label: "Cart page", on: "Skipped", off: "Shown" },
     save: "Save",
     cancel: "Cancel",
     seoIn: "Search results text in {languages}",

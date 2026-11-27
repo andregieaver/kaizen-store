@@ -852,6 +852,11 @@ export const stores = commerce.table(
      * when nothing is sent to an address), written only by `saveCheckoutContact()`. A copy of a store starts with `off`.
      */
     checkoutPhone: text("checkout_phone").notNull().default("off"),
+    /**
+     * Buying goes straight to payment, past the cart page (D915), where no category, tag or product says otherwise and nothing must be asked on
+     * the cart first (`commerce.skips_cart()`; one product that needs the cart keeps it for the whole basket). Written only by `saveSkipCart()`.
+     */
+    skipCart: boolean("skip_cart").notNull().default(false),
     checkoutName: text("checkout_name").notNull().default("off"),
     /**
      * How many months the AI manager's conversations about the store are kept after their last message (wave 11 unit L, D391); null is the
@@ -3201,6 +3206,8 @@ export const products = commerce.table(
     subscriptionOnly: boolean("subscription_only").notNull().default(false),
     /** Whether its price of nothing shows as Free (D913): null as its tags, categories and the store say (`commerce.zero_shows_free()`). */
     zeroFree: boolean("zero_free"),
+    /** Whether buying it skips the cart page (D915): null as its tags, categories and the store say (`commerce.skips_cart()`). */
+    skipCart: boolean("skip_cart"),
     /** In stores selling to both (B2B): shown to everyone, only to private shoppers or only to businesses. */
     audience: text("audience").notNull().default("all"),
     /** Which VAT rate it takes (D65, D157): a row of `vat_categories` (standard, accommodation, exempt, food, books, ...). */
@@ -10611,6 +10618,8 @@ export const terms = commerce.table(
      * too), null as the level above (`commerce.zero_shows_free()`). Products' categories and tags only.
      */
     zeroFree: boolean("zero_free"),
+    /** Whether buying its products skips the cart page (D915), as `zeroFree` chooses Free: null as the level above (`commerce.skips_cart()`). */
+    skipCart: boolean("skip_cart"),
     /**
      * A product category's or tag's own title and description for search results and shares, per language (wave 2, D168):
      * `{ "nb-NO": { "title": "…", "description": "…" } }`, keyed by the store's locale strings as `product_translations.locale` is. The shape,
@@ -10646,6 +10655,7 @@ export const terms = commerce.table(
     check("terms_content_type", sql`${t.contentType} in ('page', 'article', 'product')`),
     check("terms_kind", sql`${t.kind} in ('category', 'tag')`),
     check("terms_zero_free", sql`${t.zeroFree} is null or ${t.contentType} = 'product'`),
+    check("terms_skip_cart", sql`${t.skipCart} is null or ${t.contentType} = 'product'`),
     check("terms_products_in_stores", sql`${t.contentType} <> 'product' or ${t.storeId} is not null`),
     check("terms_product_layout", sql`${t.productLayoutId} is null or ${t.contentType} = 'product'`),
     check("terms_tags_flat", sql`${t.kind} = 'category' or ${t.parentId} is null`),

@@ -1,4 +1,6 @@
 import type { PlansBlock } from "@/lib/page-content";
+import { t } from "@/lib/i18n";
+import { formatMoney } from "@/lib/money";
 import { plansIn } from "@/lib/plan-words";
 import type { GridPlace } from "@/server/content-grid";
 import { storeSlugOf } from "@/server/menus";
@@ -24,18 +26,22 @@ export async function PlansSection({ block, place }: { block: PlansBlock; place:
       const market = marketIn(store, place.market);
       if (!market) return null;
       // Loaded where a store's plans are drawn only: every other page with a grid keeps out the cart and its action.
-      const [{ getStorePlans }, { storePlansData }, { choosePlanAction }] = await Promise.all([
+      const [{ getStorePlans }, { storePlansData, planAgreements }, { choosePlanAction }] = await Promise.all([
         import("@/server/store-plans"),
         import("@/lib/store-plans"),
         import("@/app/s/[store]/[market]/(shop)/cart/plan-action"),
       ]);
       const { plans, withVat } = await getStorePlans(store.id, market);
+      // What a plan's button agrees to, where a plan skips the cart (D915): its words loaded only then.
+      const agreed = plans.some((plan) => plan.skipsCart)
+        ? planAgreements(plans, t(market.lang), (minor) => formatMoney(minor, market.currency, market.locale, market.priceStyle), (await import("@/lib/direct-buy-words")).directBuyWords(market.lang).lead)
+        : undefined;
       return (
         <PlansView
           block={{ ...block, currency: undefined }}
           data={storePlansData(plans)}
           lang={await placeLang(place)}
-          sale={{ action: choosePlanAction, store: store.slug, market: market.slug, plans, withVat }}
+          sale={{ action: choosePlanAction, store: store.slug, market: market.slug, plans, withVat, agreed }}
         />
       );
     }

@@ -18,6 +18,7 @@ import { VatNotes } from "@/components/vat-notes";
 import { discountNote } from "@/lib/customer-tiers";
 import { deliveryRowLabel, priceLaterFrom } from "@/lib/delivery-words";
 import { withoutVat } from "@/lib/b2b";
+import { checkoutConsents } from "@/lib/checkout-consents";
 import { bookingWhen, isRange, rangeLength } from "@/lib/booking-text";
 import { creditsNet } from "@/lib/bonus-shopper";
 import { nextStepText } from "@/lib/campaign-notices";
@@ -653,7 +654,7 @@ function creditsForm({ store, market, m, view }: Draw) {
 }
 
 function checkoutAction({ store, market, m, view }: Draw) {
-  const { summary, business, money, saved, addressChoices, companyNeeded, company, every, cart, vatWords, onTerms, cardsPayAll } = view;
+  const { summary, business, money, saved, addressChoices, companyNeeded, company, cart, vatWords, onTerms, cardsPayAll } = view;
   const { checkout, blocked, atVenueOnly, digital, serviceRequest, renewal, plan, tax } = summary;
   const asksCompany = business || companyNeeded;
   // The EU VAT number (D157): offered under the company's fields when the cart could take the VAT off; the sentence under
@@ -787,21 +788,8 @@ function checkoutAction({ store, market, m, view }: Draw) {
             labels: m.company,
           }}
           vat={vat}
-          consents={{
-            digital: digital ? m.digitalConsent : undefined,
-            service: serviceRequest ? m.serviceRequest : undefined,
-            // A subscription that costs nothing (D913) charges nothing ever: no consent to charges is asked (`placeOrder()` asks none either).
-            subscription:
-              renewal !== null && renewal > 0 && plan
-                ? [
-                    m.subscriptionConsent(every, money(renewal)),
-                    plan.trialDays > 0 && m.trialNote(plan.trialDays),
-                    plan.minCycles > 0 && m.commitmentNote(plan.minCycles),
-                  ]
-                    .filter(Boolean)
-                    .join(" ")
-                : undefined,
-          }}
+          // A subscription that costs nothing (D913) charges nothing ever: no consent to charges is asked (`placeOrder()` asks none either).
+          consents={checkoutConsents(m, { digital, service: serviceRequest, plan, renewal }, money)}
         />
       ) : (
         // A store template (D175) is a preview: it says so instead of the button.

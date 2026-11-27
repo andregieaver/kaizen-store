@@ -1195,6 +1195,17 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `none` (`subscriptions_free`): switched on by `activate_free_subscription()` when its order is paid, never sent to Stripe (`openPaymentSession()`
   drops it), ended at once by `endFreeSubscription()`, skipped by charge reminders. A free trial of a paid one is not free: Stripe takes the card.
 
+## Buy now past the cart page (D915, `commerce.skips_cart()`, `startDirect()`, `checkoutConsents()`)
+
+- **Chosen at four levels**: the product, then its tags, then its categories' nearest, then Settings > Checkout (`stores.skip_cart`, off by
+  default; the cart wins a disagreement). A product that skips shows Buy now, and a pricing table's plan that skips says its terms under Choose
+  plan. A basket goes past the cart only when every product in it skips (`cartSkips()`), and never when the cart must ask something first
+  (`startDirect()`: payments off or Mollie's, nothing due, a company, terms or rules, questions, signing in first, a delivery's postal code).
+- **The press is the agreement** (the owner's choice, 27 November 2026): what the cart would tick (a download's withdrawal, a subscription's
+  renewals at their price, trial and commitment) is said beside the button in the cart's own words (`checkoutConsents()`, the one writer of
+  them), sent with the press (`agreed`), and checked against the basket: a sentence the basket asks and the button did not say shows the cart.
+  A new consent the cart asks goes in `checkoutConsents()`, so both say it alike.
+
 ## Subscription boxes (D102, named so in every text shoppers and staff read; `src/lib/standing-orders.ts`, `src/server/standing-orders.ts`,…
 
 - Subscription boxes (D102, named so in every text shoppers and staff read; `src/lib/standing-orders.ts`, `src/server/standing-orders.ts`,

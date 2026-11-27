@@ -310,6 +310,8 @@ export const productInput = z.object({
    * it has.
    */
   zeroFree: z.boolean().nullable().optional(),
+  /** Buy now past the cart page (D915): true skips, false shows the cart, null as its tags', categories' and the store's; left out, unchanged. */
+  skipCart: z.boolean().nullable().optional(),
   /**
    * Its own words before and after its price (D429, `price-words.ts`): the store's, none, or its own by language. Left out, the product keeps
    * what it has (an import, the AI manager, an older editor); the server checks each word (`priceWordProblem()`) for the store's languages.

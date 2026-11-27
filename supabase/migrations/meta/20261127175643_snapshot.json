@@ -1,6 +1,6 @@
 {
-  "id": "a29197b5-55a8-45ec-9950-005ac285a0c9",
-  "prevId": "20a22f37-9176-48f1-8855-cab87ed520a3",
+  "id": "02735313-d01c-4976-8cb7-6d7e0f746d9b",
+  "prevId": "cf8c8937-1c04-49ba-a5ba-71823aac7ff5",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -75554,6 +75554,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "skip_cart": {
+          "name": "skip_cart",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
         "audience": {
           "name": "audience",
           "type": "text",
@@ -98167,6 +98173,13 @@
           "notNull": true,
           "default": "'off'"
         },
+        "skip_cart": {
+          "name": "skip_cart",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
         "checkout_name": {
           "name": "checkout_name",
           "type": "text",
@@ -103527,6 +103540,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "skip_cart": {
+          "name": "skip_cart",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
         "seo": {
           "name": "seo",
           "type": "jsonb",
@@ -103695,6 +103714,10 @@
         "terms_zero_free": {
           "name": "terms_zero_free",
           "value": "\"commerce\".\"terms\".\"zero_free\" is null or \"commerce\".\"terms\".\"content_type\" = 'product'"
+        },
+        "terms_skip_cart": {
+          "name": "terms_skip_cart",
+          "value": "\"commerce\".\"terms\".\"skip_cart\" is null or \"commerce\".\"terms\".\"content_type\" = 'product'"
         },
         "terms_products_in_stores": {
           "name": "terms_products_in_stores",

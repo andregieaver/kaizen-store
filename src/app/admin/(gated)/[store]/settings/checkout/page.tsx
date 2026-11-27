@@ -19,8 +19,9 @@ import { SHIPPING_WORDS } from "@/lib/admin-words/shipping";
 import { db } from "@/db/client";
 import { listCheckoutFields, listCheckoutRules, ruleChoices } from "@/server/checkout-rules";
 import { memberCan, requirePermission } from "@/server/permissions";
+import { storeSkipsCart } from "@/server/skip-cart";
 
-import { saveAccountsModeAction, saveContactFieldsAction, deleteFieldAction, deleteRuleAction, moveFieldAction, moveRuleAction, saveFieldAction, saveRuleAction, switchFieldAction, switchRuleAction } from "./actions";
+import { saveAccountsModeAction, saveContactFieldsAction, saveSkipCartAction, deleteFieldAction, deleteRuleAction, moveFieldAction, moveRuleAction, saveFieldAction, saveRuleAction, switchFieldAction, switchRuleAction } from "./actions";
 
 export const metadata: Metadata = { title: "Checkout rules" };
 
@@ -34,7 +35,12 @@ export default async function CheckoutRulesPage({ params }: PageProps<"/admin/[s
   const w = SHIPPING_WORDS[lang].checkoutRules;
   const facts = ADMIN_LANG_FACTS[lang];
   const canWrite = memberCan(member, "settings:write");
-  const [rules, fields, found] = await Promise.all([listCheckoutRules(store.id), listCheckoutFields(db(), store.id), ruleChoices(store.id, store.localization.locales[0] ?? "en")]);
+  const [rules, fields, found, skipCart] = await Promise.all([
+    listCheckoutRules(store.id),
+    listCheckoutFields(db(), store.id),
+    ruleChoices(store.id, store.localization.locales[0] ?? "en"),
+    storeSkipsCart(store.id),
+  ]);
   const when = (iso: string) => adminDate(store, iso, "dayTime", lang);
   const choices: RuleChoices = {
     ...found,
@@ -113,6 +119,8 @@ export default async function CheckoutRulesPage({ params }: PageProps<"/admin/[s
           canWrite={canWrite}
           saveMode={saveAccountsModeAction.bind(null, slug)}
           saveContact={saveContactFieldsAction.bind(null, slug)}
+          skipCart={skipCart}
+          saveSkip={saveSkipCartAction.bind(null, slug)}
           questions={fields.filter((f) => f.enabled).map((f) => ({ id: f.id, label: f.label.text, required: f.required }))}
         />
         <RuleList
