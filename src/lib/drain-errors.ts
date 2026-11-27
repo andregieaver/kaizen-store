@@ -9,7 +9,17 @@
 
 import { cleanTitle, fingerprintOf } from "./incidents";
 
-export type DrainError = { fingerprint: string; title: string; route: string; name: string; message: string; count: number; deployment: string | null };
+export type DrainError = {
+  fingerprint: string;
+  /** `warning` for a line Node itself wrote about the process (`(node:8) [DEP0169] DeprecationWarning: …`), `error` for everything else. */
+  kind: "error" | "warning";
+  title: string;
+  route: string;
+  name: string;
+  message: string;
+  count: number;
+  deployment: string | null;
+};
 
 /** At most this many entries from one batch; the rest wait for the next error of their kind. */
 export const MAX_DRAIN_ERRORS = 20;
@@ -19,6 +29,12 @@ const isRecord = (value: unknown): value is Record<string, unknown> => typeof va
 
 /** Events of the incident log and its jobs: never logged as incidents, or a failure to log one would log another. */
 const OWN_EVENTS = /^(incidents?|autopilot|drain|admin_heat|admin_recordings)\./;
+
+/**
+ * Node's own process warnings, written to stderr and so at Vercel's level error: `(node:8) [DEP0169] DeprecationWarning: …`. They come from a
+ * library (web-push's `url.parse()`, incident 1af5e1d0) and nothing failed, so they are warnings named by their code, not errors.
+ */
+const NODE_WARNING = /^\(node:\d+\) (?:\[([A-Z]+\d+)\] )?([A-Za-z]*Warning):/;
 
 /** A path's shape: no query, a store's slug and every id, number or hash replaced, so one route is one entry and names no store. */
 export function routeOf(path: string): string {
@@ -70,8 +86,9 @@ export function drainErrors(objects: readonly Record<string, unknown>[]): DrainE
     if (level !== "error") continue;
     const event = typeof line?.event === "string" ? line.event : null;
     if (event && OWN_EVENTS.test(event)) continue;
+    const warning = line ? null : NODE_WARNING.exec(raw);
     const errorName = typeof line?.errorName === "string" ? line.errorName : (/^([A-Z][A-Za-z]*Error|Error)\b/.exec(raw)?.[1] ?? null);
-    const name = (event ?? errorName ?? "error").slice(0, 80);
+    const name = (warning ? (warning[1] ?? warning[2]) : (event ?? errorName ?? "error")).slice(0, 80);
     const proxy = isRecord(o.proxy) ? o.proxy : {};
     const path = typeof o.path === "string" ? o.path : typeof proxy.path === "string" ? proxy.path : "";
     const route = routeOf(path);
@@ -85,7 +102,8 @@ export function drainErrors(objects: readonly Record<string, unknown>[]): DrainE
     if (groups.size >= MAX_DRAIN_ERRORS) continue;
     groups.set(fingerprint, {
       fingerprint,
-      title: cleanTitle(`Runtime error: ${name} on ${route}`),
+      kind: warning ? "warning" : "error",
+      title: cleanTitle(`Runtime ${warning ? "warning" : "error"}: ${name} on ${route}`),
       route,
       name,
       message,

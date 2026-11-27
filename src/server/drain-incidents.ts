@@ -15,7 +15,7 @@ export async function logDrainErrors(errors: readonly DrainError[]): Promise<num
   for (const e of errors) {
     try {
       const row = await logIncident({
-        kind: "error",
+        kind: e.kind,
         source: "runtime",
         fingerprint: e.fingerprint,
         title: e.title,

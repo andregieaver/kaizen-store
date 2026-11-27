@@ -34,6 +34,7 @@ describe("runtime errors from the drain", () => {
     expect(errors).toEqual([
       {
         fingerprint: "runtime:/s/:store/no/products/:id:typeerror",
+        kind: "error",
         title: "Runtime error: TypeError on /s/:store/no/products/:id",
         route: "/s/:store/no/products/:id",
         name: "TypeError",
@@ -43,6 +44,7 @@ describe("runtime errors from the drain", () => {
       },
       {
         fingerprint: "runtime:/api/cron/dispatch:cron.job_failed",
+        kind: "error",
         title: "Runtime error: cron.job_failed on /api/cron/dispatch",
         route: "/api/cron/dispatch",
         name: "cron.job_failed",
@@ -53,6 +55,18 @@ describe("runtime errors from the drain", () => {
     ]);
     const text = JSON.stringify(errors);
     for (const word of ["120.75", "Mozilla", "kari", "ref=mail"]) expect(text, word).not.toContain(word);
+  });
+
+  it("counts Node's own process warnings as warnings named by their code, not errors (incident 1af5e1d0)", () => {
+    const message = "(node:8) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications.";
+    const [warning] = drainErrors([line({ path: "/api/cron/cart-reminders", message })]);
+    expect(warning).toMatchObject({
+      fingerprint: "runtime:/api/cron/cart-reminders:dep0169",
+      kind: "warning",
+      title: "Runtime warning: DEP0169 on /api/cron/cart-reminders",
+      name: "DEP0169",
+    });
+    expect(drainErrors([line({ message: "(node:8) ExperimentalWarning: x" })])[0]).toMatchObject({ kind: "warning", name: "ExperimentalWarning" });
   });
 
   it("leaves out the incident log's own lines, so it never feeds itself", () => {
