@@ -101,11 +101,22 @@ const q = (params: Record<string, string>) => new URLSearchParams(params).toStri
  * is; one linked through another Page is replaced, and taken away when the Page has none. The account's name, or null.
  */
 async function linkInstagram(storeId: string, accountId: string, page: { id: string; token: string }, granted: unknown, key: Buffer): Promise<string | null> {
-  const linked = grantsPermission(granted, "instagram_basic")
-    ? linkedAccount(await graph(`${FACEBOOK_GRAPH}/${page.id}?${q({ fields: "instagram_business_account{id,username}", access_token: page.token })}`).catch(() => null))
-    : null;
+  // Why no account came with the Page is kept in the audit log (no person's data): Instagram not allowed, none linked, or Facebook's refusal.
+  let reason: string | null = null;
+  let linked: { id: string; username: string } | null = null;
+  if (!grantsPermission(granted, "instagram_basic")) reason = "instagram_basic not granted";
+  else {
+    try {
+      linked = linkedAccount(await graph(`${FACEBOOK_GRAPH}/${page.id}?${q({ fields: "instagram_business_account{id,username}", access_token: page.token })}`));
+      if (!linked) reason = "no Instagram business account linked to the Page";
+    } catch (error) {
+      if (!(error instanceof FacebookError)) throw error;
+      reason = error.message.slice(0, 200);
+    }
+  }
   if (!linked) {
     await db().execute(sql`delete from commerce.instagram_accounts where store_id = ${storeId}::uuid and via = 'facebook'`);
+    await audit(accountId, storeId, "store.instagram_not_linked", { reason });
     return null;
   }
   const insights = grantsPermission(granted, "instagram_manage_insights");
