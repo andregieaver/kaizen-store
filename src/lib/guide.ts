@@ -305,6 +305,8 @@ export function guidePlaces({
 export const STORE_CORE_PLACES = ["orders", "products", "customers", "marketing", "website", "settings"] as const;
 /** The platform's. */
 export const PLATFORM_CORE_PLACES = ["stores", "plans", "requests", "website", "support", "settings"] as const;
+/** The owner's control center's: their stores and their account; the inbox, Books and Work wait for Hands-on or the panel. */
+export const OWNER_CORE_PLACES = ["my-stores", "account"] as const;
 
 /**
  * A level's places from its menu as the frame draws it (`tabs` and `areas`, labels already in the person's language): each section's tab,

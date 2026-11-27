@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { AdminFrame } from "@/components/admin/admin-frame";
 import { AdminAccountMenu, LevelSwitcher, storesOf } from "@/components/admin/admin-shell-parts";
 import { AdminViewProvider, AdminViewToggle } from "@/components/admin/admin-view";
+import { GuideProvider } from "@/components/admin/guide/guide-provider";
 import { PageFinder } from "@/components/admin/page-finder";
 import type { NavArea, NavItem } from "@/components/admin/store-admin-nav";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -76,6 +77,8 @@ export default async function OwnerLayout({ children }: LayoutProps<"/admin">) {
       >
         {children}
       </AdminFrame>
+      {/* Guide (D909), as in a store and on the platform: the control center's places come from its route. */}
+      <GuideProvider level="owner" />
     </AdminViewProvider>
   );
 }

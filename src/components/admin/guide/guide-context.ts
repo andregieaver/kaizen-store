@@ -18,7 +18,8 @@ export type GuideState = {
   settings: GuideSettings;
   places: GuidePlace[];
   home: string;
-  platform: boolean;
+  /** Which level's words the welcome's rail takes: a store's, the platform's or the owner's control center's. */
+  variant: "store" | "platform" | "owner";
   words: GuideMessages;
   moment: GuideMoment;
   panel: boolean;

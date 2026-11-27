@@ -28,6 +28,11 @@ export const guideNb: GuideMessages = {
       can: ["«Legg inn 15 % sommerrabatt på krus»", "«Skriv beskrivelser til de nye produktene mine»", "Du ser hver endring før den gjøres"],
     },
   },
+  welcomeOwner: {
+    railTitle: "Dette er menystripen: alle butikkene dine og kontoen din",
+    railBody: "Hjem viser hva som trenger deg på tvers av alle butikkene. Åpne en butikk for å jobbe i den; kontoen din venter nederst.",
+    railCan: ["Butikker viser alle butikkene du eier eller jobber i, og starter en ny", "Kundestøtte, Regnskap og Arbeid når du bruker dem", "Konto: abonnement og fakturering, profilen din, apper og temaer"],
+  },
   welcomePlatform: {
     railTitle: "Dette er menystripen: alle deler av plattformen",
     railBody: "Hver flis er en seksjon av Kaizena Flows egen administrasjon. Start på Hjem; Innstillinger venter nederst.",
@@ -48,6 +53,11 @@ export const guideNb: GuideMessages = {
     themes: "Temaene eierne velger mellom.",
     plans: "Kaizena Flows abonnementer og hva de koster.",
     requests: "Folk som ber om en butikk og venter på et ja.",
+    "my-stores": "Alle butikkene du eier eller jobber i: åpne en, eller start en ny.",
+    inbox: "Butikkenes samtaler med kundene, i én innboks.",
+    books: "Regnskapet du fører for andre: kundenes butikker på ett sted.",
+    work: "Prosjekter, timer og fakturaer for arbeidet du gjør for kunder.",
+    account: "Abonnement og fakturering, profilen din, og appene og temaene du bruker.",
   },
   beacon: {
     label: "Guide har et tips om {place}",

@@ -110,10 +110,11 @@ function trapTab(event: ReactKeyboardEvent<HTMLElement>, root: HTMLElement | nul
   }
 }
 
-/** The welcome's words for a step: the platform's rail speaks of the platform. */
+/** The welcome's words for a step: the platform's rail speaks of the platform, the control center's of the owner's stores. */
 function stepWords(guide: GuideState, step: WelcomeStep) {
   const w = guide.words.welcome[step];
-  if (step === "rail" && guide.platform) return { title: guide.words.welcomePlatform.railTitle, body: guide.words.welcomePlatform.railBody, can: guide.words.welcomePlatform.railCan };
+  const rail = step === "rail" && guide.variant !== "store" ? (guide.variant === "platform" ? guide.words.welcomePlatform : guide.words.welcomeOwner) : null;
+  if (rail) return { title: rail.railTitle, body: rail.railBody, can: rail.railCan };
   return { title: w.title, body: w.body, can: w.can };
 }
 

@@ -182,8 +182,9 @@ under *What the router fetches ahead*.
 
 ## Guide: the admin shown around a little at a time (D909, `src/lib/guide.ts`, `src/server/guide.ts`, `src/components/admin/guide`)
 
-- Guide shows a person around each level's admin where they already are, a little at a time, at a store's level and the platform's (a
-  sandbox store has none; the owner's level is its next step). Its rules are pure in `src/lib/guide.ts` and read the same in the browser
+- Guide shows a person around each level's admin where they already are, a little at a time, at a store's level, the platform's and the
+  owner's control center (`level` `owner`, its places from `ownerGuidePlaces()`: the tabs `ownerWho()` gives the person); a sandbox store
+  has none. Its rules are pure in `src/lib/guide.ts` and read the same in the browser
   and on the server: three ways to speak up, loudest first, each with a budget. A **spotlight** dims the page around one place: only the
   welcome on Home (the rail, the next step, the AI manager: `WELCOME_TARGETS`, a step whose place is not drawn is skipped), at most one a
   day (`SPOTLIGHT_GAP_MS`). A **beacon** is a dot after a section's page title (or beside a part marked `data-guide-beacon="{key}"`) on the
@@ -197,7 +198,8 @@ under *What the router fetches ahead*.
   pages), so a new section is a place with no change here; its line is in the `guide` area's `places` by the section's key, else the
   menu's intro (`storeGuidePlaces()`, `platformGuidePlaces()` in `src/server/guide-places.ts`, the store layout's rule of what a member may
   open). Guide's words are a server area (`GUIDE_WORDS[lang]`), sent by its route.
-- The record is one row of `commerce.guide_progress` per person and level (`store_id`, null for the platform), written only by
+- The record is one row of `commerce.guide_progress` per person and level (`store_id`, null for the platform; null with `level` `owner`
+  for the control center), written only by
   `recordGuide()`, events checked by `guideEventOf()` and read back through `guideProgressOf()`; the person's choice
   (`accounts.guide_level`, null for automatic, and `accounts.guide_off`) follows them to every level. Everything goes through Guide's route
   (`/api/guide`: GET reads the record, places and words and marks found the screen's place; POST takes an event or the choice),

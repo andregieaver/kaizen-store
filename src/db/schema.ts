@@ -9383,7 +9383,7 @@ export const pluginSignIns = commerce.table(
 
 /**
  * What Guide has shown one person at one level (D909, `src/lib/guide.ts`, `src/server/guide.ts`, its only writer): a store's admin
- * (`store_id`) or the platform's (null). `state` is `GuideProgress`: the places found, each moment's visits and whether it is done, the
+ * (`store_id`), the platform's (null), or the owner's control center (null, `level` `owner`). `state` is `GuideProgress`: the places found, each moment's visits and whether it is done, the
  * "Later"s by kind and when the last spotlight was. Read back through `guideProgressOf()`, which drops what it does not know. Never a
  * person's data: keys of places and moments only.
  */
@@ -9395,11 +9395,14 @@ export const guideProgress = commerce.table(
       .notNull()
       .references(() => accounts.id, { onDelete: "cascade" }),
     storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    /** Null for a store's admin or the platform's (as `store_id` says); `owner` for the owner's level, the control center (no store). */
+    level: text("level"),
     state: jsonb("state").notNull().default({}),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    unique("guide_progress_key").on(t.accountId, t.storeId).nullsNotDistinct(),
+    unique("guide_progress_key").on(t.accountId, t.storeId, t.level).nullsNotDistinct(),
+    check("guide_progress_level", sql`${t.level} is null or (${t.level} = 'owner' and ${t.storeId} is null)`),
     index("guide_progress_store_idx").on(t.storeId),
     check("guide_progress_state", sql`jsonb_typeof(${t.state}) = 'object' and pg_column_size(${t.state}) < 16384`),
   ],
