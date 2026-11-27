@@ -10,6 +10,7 @@ import { RULE_POSTS_MAX } from "@/lib/social-rules";
 import { SocialFacebookCard } from "@/components/admin/social-facebook-card";
 import { SocialPinterestCard } from "@/components/admin/social-pinterest-card";
 import { SocialTiktokCard } from "@/components/admin/social-tiktok-card";
+import { SocialLinkedinCard } from "@/components/admin/social-linkedin-card";
 import { SocialFactsCard } from "@/components/admin/social-facts-card";
 import { SocialInsightsCard } from "@/components/admin/social-insights-card";
 import { SocialPostCreator } from "@/components/admin/social-posts";
@@ -26,6 +27,7 @@ import { publishTargets } from "@/server/social-publish";
 import { socialRulesOf } from "@/server/social-rules";
 import { pinterestAppOn, pinterestView } from "@/server/pinterest";
 import { tiktokAppOn, tiktokAudited, tiktokView } from "@/server/tiktok";
+import { linkedinAppOn, linkedinView } from "@/server/linkedin";
 import { facebookAppOn, facebookView } from "@/server/facebook-pages";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { mainRecommendation } from "@/lib/social-advice";
@@ -74,12 +76,13 @@ export default async function SocialPostsPage({
     canvaForField(`/admin/${store.slug}/social/canva`, store.slug, "marketing:write"),
   ]);
   // The adviser's two-week plan with the drafts written for its days (S2.4).
-  const [weeks, publishTo, rules, pinterest, tiktok] = await Promise.all([
+  const [weeks, publishTo, rules, pinterest, tiktok, linkedin] = await Promise.all([
     calendarOf(store.id, todayIn(new Date(), store.timeZone), advice?.advice.calendar ?? []),
     publishTargets(store),
     socialRulesOf(store.id),
     pinterestView(store.id),
     tiktokView(store.id),
+    linkedinView(store.id),
   ]);
   const titles = Object.fromEntries([
     ...products.map((p) => [p.id, p.title]),
@@ -163,6 +166,16 @@ export default async function SocialPostsPage({
         appOn={tiktokAppOn()}
         audited={tiktokAudited()}
         done={typeof query.tiktok === "string" ? query.tiktok : null}
+      />
+      <SocialLinkedinCard
+        view={linkedin}
+        words={w.linkedin}
+        action={`/admin/${store.slug}/social/linkedin`}
+        mayConnect={memberCan(member, "marketing:write")}
+        appOn={linkedinAppOn()}
+        done={typeof query.linkedin === "string" ? query.linkedin : null}
+        dateLocale={ADMIN_LANG_FACTS[lang].locale}
+        timeZone={store.timeZone}
       />
       <SocialFactsCard facts={facts} words={w.facts} locale={ADMIN_LANG_FACTS[lang].locale} />
     </div>

@@ -1618,6 +1618,13 @@
       "when": 1795725894991,
       "tag": "20261126204454_checklist_item_customer_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 231,
+      "version": "7",
+      "when": 1795763503356,
+      "tag": "20261127071143_linkedin_accounts",
+      "breakpoints": true
     }
   ]
 }

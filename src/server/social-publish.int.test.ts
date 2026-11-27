@@ -58,21 +58,21 @@ describe("publishing an approved social post", () => {
   it("asks for a connection that allows posting, and an approved post", async () => {
     const member = (await passMembership(store.slug, store.account.id))!;
     const ig = await post("publishigaaa", "instagram", true);
-    expect(await publishTargets(member.store)).toEqual({ instagram: false, facebook: false, pinterest: false, tiktok: false });
+    expect(await publishTargets(member.store)).toEqual({ instagram: false, facebook: false, pinterest: false, tiktok: false, linkedin: false });
     expect(await publishSocialPost(member, ig, "https://example.com", deps)).toMatchObject({ ok: false, problem: expect.stringContaining("Connect the store's Instagram") });
     await db().execute(sql`
       insert into commerce.instagram_accounts (store_id, ig_user_id, username, token_encrypted, token_expires_at, publish)
       values (${store.id}::uuid, '17841400000000009', 'shop', ${encryptSecret("ig-token", key)}, now() + interval '50 days', false)`);
     expect(await publishSocialPost(member, ig, "https://example.com", deps)).toMatchObject({ ok: false, problem: expect.stringContaining("allow publishing") });
     await db().execute(sql`update commerce.instagram_accounts set publish = true where store_id = ${store.id}::uuid`);
-    expect(await publishTargets(member.store)).toEqual({ instagram: true, facebook: false, pinterest: false, tiktok: false });
+    expect(await publishTargets(member.store)).toEqual({ instagram: true, facebook: false, pinterest: false, tiktok: false, linkedin: false });
     const draft = await post("publishdraft", "instagram", false);
     expect(await publishSocialPost(member, draft, "https://example.com", deps)).toMatchObject({ ok: false, problem: "Approve the post before it is published." });
-    // Pinterest is published to from S3.4, once connected; LinkedIn is still copied by hand.
+    // Pinterest (S3.4) and LinkedIn (S3.6) are published to once connected.
     const pin = await post("publishpinaa", "pinterest", true);
     expect(await publishSocialPost(member, pin, "https://example.com", deps)).toMatchObject({ ok: false, problem: expect.stringContaining("Connect the store's Pinterest") });
     const linkedin = await post("publishlinka", "linkedin", true);
-    expect(await publishSocialPost(member, linkedin, "https://example.com", deps)).toMatchObject({ ok: false, problem: expect.stringContaining("copy the post") });
+    expect(await publishSocialPost(member, linkedin, "https://example.com", deps)).toMatchObject({ ok: false, problem: expect.stringContaining("Connect the store's LinkedIn") });
   });
 
   it("publishes to Instagram once: container, published, permalink kept, and never twice", async () => {

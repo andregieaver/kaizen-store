@@ -399,3 +399,23 @@ test("a connected TikTok account says where videos go, and that they stay privat
   await card.scrollIntoViewIfNeeded();
   await card.screenshot({ path: "test-results/social-tiktok-card.png" });
 });
+
+test("a connected LinkedIn says which Page posts go to and until when, and an approved post can be posted to it (D870 S3.6)", async ({ page }) => {
+  await page.goto(`/admin/${SLUG}/social`);
+  const card = page.getByRole("region", { name: "LinkedIn" });
+  await expect(card).toContainText("LinkedIn cannot be connected here yet.");
+  const sql = testDb();
+  try {
+    await sql`
+      insert into commerce.linkedin_accounts (store_id, member_name, access_token_encrypted, token_expires_at, author_urn, author_name, publish)
+      select id, 'Kari Nordmann', 'x', now() + interval '50 days', 'urn:li:organization:2414183', 'The Shop', true from commerce.stores where slug = ${SLUG}
+      on conflict (store_id) do nothing`;
+  } finally {
+    await sql.end();
+  }
+  await page.reload();
+  await expect(card).toContainText("Posts go to the Page The Shop.");
+  await expect(card).toContainText("connect again before then to keep posting");
+  await card.scrollIntoViewIfNeeded();
+  await card.screenshot({ path: "test-results/social-linkedin-card.png" });
+});

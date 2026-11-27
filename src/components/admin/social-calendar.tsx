@@ -213,7 +213,7 @@ export function SocialCalendar({
                             {!it.draft.published && it.draft.publishProblem && (
                               <p className="text-caption text-danger-text">{fillWords(w.postFailed, { problem: it.draft.publishProblem })}</p>
                             )}
-                            {it.draft.approved && !it.draft.published && (it.channel === "instagram" || it.channel === "facebook" || it.channel === "pinterest" || it.channel === "tiktok") && !publishTo[it.channel] && (
+                            {it.draft.approved && !it.draft.published && !publishTo[it.channel] && (
                               <span className="text-caption text-ink-2">{fillWords(w.connectToPost, { channel: CHANNEL_SPECS[it.channel].label })}
                             {it.draft.approved && !it.draft.published && it.channel === "tiktok" && publishTo.tiktok && !it.draft.video && (
                               <span className="text-caption text-ink-2">{w.tiktokNeedsVideo}</span>

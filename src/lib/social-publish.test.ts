@@ -4,9 +4,9 @@ import { containerState, idFrom, isPublishChannel, permalinkFrom, publishedText,
 import { grantsPagePublish, grantsPublish } from "./social-publish-grants";
 
 describe("publishing an approved social post (D870 S3.1)", () => {
-  it("publishes to Instagram, Facebook, Pinterest and TikTok, not yet LinkedIn; a post's video where it has one, else its picture", () => {
-    expect(["instagram", "facebook", "pinterest", "tiktok"].every(isPublishChannel)).toBe(true);
-    expect(isPublishChannel("linkedin")).toBe(false);
+  it("publishes to every channel; a post's video where it has one, else its picture", () => {
+    expect(["instagram", "facebook", "pinterest", "tiktok", "linkedin"].every(isPublishChannel)).toBe(true);
+    expect(isPublishChannel("x")).toBe(false);
     expect(publishKind(true)).toBe("video");
     expect(publishKind(false)).toBe("picture");
   });

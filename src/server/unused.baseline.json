@@ -249,6 +249,7 @@
     "src/db/schema.ts#legalSnapshots",
     "src/db/schema.ts#legalSourceReads",
     "src/db/schema.ts#limitOverrides",
+    "src/db/schema.ts#linkedinAccounts",
     "src/db/schema.ts#liveDrills",
     "src/db/schema.ts#lookVersions",
     "src/db/schema.ts#marketAvailability",

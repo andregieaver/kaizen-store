@@ -648,6 +648,14 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `published_url` or Meta's refusal in `publish_problem`; it is their only writer. A published post keeps its approval and words
   (`social_posts_published`; `editSocialPost()`, the unapproval and scenes refuse it). Audited.
 
+## LinkedIn for social posts (D870 S3.6, `src/lib/linkedin.ts` pure, `src/server/linkedin.ts`)
+
+- **LinkedIn for social posts (D870 S3.6, `src/lib/linkedin.ts` pure, `src/server/linkedin.ts`)**: `linkedin_accounts` (one per store) is written
+  only by `src/server/linkedin.ts`, its tokens encrypted; `linkedinTarget()` is the only reader of a token, renews it within `LINKEDIN_RENEW_DAYS`
+  where a refresh token is kept, and otherwise uses it until it ends. Page scopes are asked only with `LINKEDIN_PAGES=1`; each place carries
+  whether the token may post there (`grantsPosting()`), kept as `publish` when chosen. A post is public in the main feed with its picture
+  (`toLinkedin()`: `images?action=initializeUpload`, the bytes, then `rest/posts`), each call with `LinkedIn-Version` (`LINKEDIN_VERSION`).
+
 ## TikTok for social posts (D870 S3.5, `src/lib/tiktok.ts` pure, `src/server/tiktok.ts`)
 
 - **TikTok for social posts (D870 S3.5, `src/lib/tiktok.ts` pure, `src/server/tiktok.ts`)**: `tiktok_accounts` (one per store) is written only by

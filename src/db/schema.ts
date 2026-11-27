@@ -12147,6 +12147,46 @@ export const tiktokAccounts = commerce
   .enableRLS();
 
 /**
+ * A store's LinkedIn connection (D870 S3.6, `src/lib/linkedin.ts`, `src/server/linkedin.ts`): the member who connected it, their tokens
+ * (encrypted; the access token runs 60 days, renewed with a refresh token where LinkedIn gives one), and where posts go: the member's own
+ * profile or a Company Page they administer (`author_urn`), or the places to choose among. Kaizena Flow's own posts are its own store's row.
+ */
+export const linkedinAccounts = commerce
+  .table(
+    "linkedin_accounts",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      storeId: uuid("store_id")
+        .notNull()
+        .references(() => stores.id, { onDelete: "cascade" }),
+      memberName: text("member_name").notNull().default(""),
+      accessTokenEncrypted: text("access_token_encrypted").notNull(),
+      refreshTokenEncrypted: text("refresh_token_encrypted"),
+      tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true }).notNull(),
+      refreshExpiresAt: timestamp("refresh_expires_at", { withTimezone: true }),
+      /** Where posts go: `urn:li:person:…` or `urn:li:organization:…`; null while the owner chooses among `choices`. */
+      authorUrn: text("author_urn"),
+      authorName: text("author_name").notNull().default(""),
+      choices: jsonb("choices").notNull().default(sql`'[]'::jsonb`),
+      /** The token carries a posting scope for the chosen author. */
+      publish: boolean("publish").notNull().default(false),
+      problem: text("problem"),
+      connectedBy: uuid("connected_by").references(() => accounts.id, { onDelete: "set null" }),
+      createdAt: createdAt(),
+      updatedAt: updatedAt(),
+    },
+    (t) => [
+      unique("linkedin_accounts_store_key").on(t.storeId),
+      index("linkedin_accounts_connected_by_idx").on(t.connectedBy),
+      check("linkedin_accounts_author", sql`${t.authorUrn} is null or ${t.authorUrn} ~ '^urn:li:(person|organization):[A-Za-z0-9_-]{1,64}$'`),
+      check("linkedin_accounts_names", sql`char_length(${t.memberName}) <= 200 and char_length(${t.authorName}) <= 200`),
+      check("linkedin_accounts_choices", sql`jsonb_typeof(${t.choices}) = 'array' and octet_length(${t.choices}::text) < 20000`),
+      check("linkedin_accounts_problem", sql`${t.problem} is null or char_length(${t.problem}) <= 300`),
+    ],
+  )
+  .enableRLS();
+
+/**
  * How each of a connected Instagram account's own posts did (D870 S1.2, `src/lib/social-insights.ts`, `src/server/social-insights.ts`): the
  * post (its id, kind, when, its caption's start and its address) and its totals as Instagram counts them, read again daily while the post is
  * under 90 days old, kept 400 days. A store's or, with no store, Kaizena Flow's own (as `instagram_accounts`); a Facebook Page's posts too

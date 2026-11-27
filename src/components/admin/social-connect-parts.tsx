@@ -1,4 +1,8 @@
-import { Button, Field, Select } from "@/components/admin/ui";
+import type { ReactNode } from "react";
+
+import { Button, EmptyState, Field, Select } from "@/components/admin/ui";
+
+import { InsightsFrame } from "./social-insights-card";
 
 /**
  * The forms every connected social account's card has on Social posts (D870: Facebook S1.2b, Pinterest S3.4), each a plain form posted to
@@ -53,5 +57,55 @@ export function DoneNote({ said, bad }: { said: string | null; bad: boolean }) {
     <p role="status" className={bad ? "text-body text-danger-text" : "text-body text-ink"}>
       {said}
     </p>
+  );
+}
+
+type FrameWords = { title: string; lead: string; none: string; connect: string; askOwner: string; off: string; disconnect: string; done: Record<string, string> };
+
+/**
+ * A connected account's whole card (Pinterest, TikTok, LinkedIn): how the last try went, *Connect* while there is none, the choice among the
+ * person's places where there is one, the card's own words once connected (`children`), and connecting again or disconnecting.
+ */
+export function ConnectionCard({
+  id,
+  words: w,
+  state,
+  choose,
+  action,
+  mayConnect,
+  appOn,
+  done,
+  bad = ["failed"],
+  children,
+}: {
+  id: string;
+  words: FrameWords;
+  state: "none" | "choose" | "ready";
+  /** The places to choose among, and the form's name and words for the choice. */
+  choose?: { field: string; label: string; keep: string; choices: readonly { id: string; name: string }[] };
+  action: string;
+  mayConnect: boolean;
+  /** The platform's app is set up here. */
+  appOn: boolean;
+  /** How the last connect or choice went, from the address. */
+  done: string | null;
+  /** The statuses that say it did not work. */
+  bad?: readonly string[];
+  children?: ReactNode;
+}) {
+  const said = done && Object.hasOwn(w.done, done) ? w.done[done] : null;
+  return (
+    <InsightsFrame id={id} title={w.title} lead={w.lead}>
+      <DoneNote said={said} bad={Boolean(done && bad.includes(done))} />
+      {state === "none" && <EmptyState compact title={w.none} action={<ConnectAction action={action} mayConnect={mayConnect} appOn={appOn} words={w} />} />}
+      {state === "choose" && choose && (mayConnect ? <ChooseForm action={action} {...choose} /> : <p className="text-caption text-ink-2">{w.askOwner}</p>)}
+      {state === "ready" && children}
+      {state !== "none" && mayConnect && (
+        <div className="flex flex-wrap gap-2">
+          {appOn && <ActionForm action={action} what="connect" label={w.connect} kind="quiet" />}
+          <ActionForm action={action} what="disconnect" label={w.disconnect} kind="quiet" />
+        </div>
+      )}
+    </InsightsFrame>
   );
 }
