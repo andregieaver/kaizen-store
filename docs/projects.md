@@ -255,7 +255,7 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
 | Id | Step | Status |
 |---|---|---|
 | P6.1 | Work's tasks become checklist items: an assignment has its list; time entries and timers point at items | Replaced 26 November 2026 by P8.3d: Work stands alone (D904), so its tasks stay its own; a list sends its time to an assignment and its tasks log time there |
-| P6.2 | CRM tasks (`activities` of kind `task`): weighed against items linked to a customer | Built 27 November 2026 (D910; below): Deals keeps its activities; where both arms meet, a deal's next steps are tasks |
+| P6.2 | CRM tasks (`activities` of kind `task`): weighed against items linked to a customer | Done 27 November 2026 (3e0cee7, 7405bdd; D910; below): Deals keeps its activities; where both arms meet, a deal's next steps are tasks |
 | P6.3 | A won deal starts a project from a template | Done 26 November 2026 as P8.3b (3d7ee2c) |
 | P6.4 | Kaizen Life shows the projects of a linked account (the door of D511) | Planned |
 
