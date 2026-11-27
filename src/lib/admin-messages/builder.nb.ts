@@ -939,6 +939,8 @@ export const builderNb: BuilderMessages = {
     firstYearly: "Årlig",
     wholeAmounts: "Hele beløp uten desimaler",
     wholeAmountsHint: "200 kr i stedet for 200,00 kr. En pris med øre beholder dem, så ingenting rundes av.",
+    which: "Planer som vises",
+    whichAll: "Alle planer",
     recommend: "Plan som skal anbefales",
     noneChoice: "Ingen",
     comparison: "Vis sammenligningstabellen",

@@ -823,6 +823,7 @@ export function PageEditor({
           menusHref: context.menusHref,
           plans: context.plans,
           ownPlans: context.ownPlans,
+          planGroups: context.planGroups ?? [],
           extensionChoices: context.extensionChoices ?? null,
           themeStore: context.themeStore ?? null,
           features: context.features ?? null,

@@ -951,6 +951,8 @@ export const builderEn = {
     firstYearly: "Yearly",
     wholeAmounts: "Whole amounts without decimals",
     wholeAmountsHint: "€20, not €20.00; cents are kept, never rounded.",
+    which: "Plans to show",
+    whichAll: "All plans",
     recommend: "Plan to recommend",
     noneChoice: "None",
     comparison: "Show the comparison table",
@@ -1379,7 +1381,7 @@ export const builderEn = {
   },
   /** What differs between two versions of a page (D358, `compareVersions()`). */
   differences: { ...DIFFERENCES_EN },
-  /** The page checker's panel and the question before publishing with a blocking problem (wave 1, 1e). The findings' own words stay the checker's. */
+  /** The page checker's panel and the question before publishing with a blocking problem (wave 1, 1e). */
   issues: {
     title: "Checks",
     noProblems: "No problems found.",
@@ -1609,7 +1611,7 @@ export const builderEn = {
     share: "{n} percent for the column before it. Arrow keys move it by one percent, with Shift by five; Delete gives back the layout's widths",
     shareTitle: "Drag to share the row's width; double-click for the layout's",
   },
-  /** Responsive editing (D179 phase 2): the size marks beside fields, Visibility, the bar over the canvas and the toolbar switches. */
+  /** Responsive editing (D179 phase 2): size marks, Visibility, the canvas bar and toolbar switches. */
   responsive: {
     editedAt: "{label}: edited at {size}. Choose a screen size",
     editAtSize: "Edit at a screen size",

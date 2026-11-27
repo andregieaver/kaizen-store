@@ -96,6 +96,20 @@ describe("a plan (D912)", () => {
     expect(quarterly.ok).toBe(false);
   });
 
+  it("keeps its variants when a save sends them without their ids, by their SKUs (D914)", async () => {
+    const store = (await getStore(fx.slug))!;
+    const editor = await getEditorContext(store);
+    const read = (await getProductForEdit(store, editor, product.id))!;
+    const ids = read.variants.map((v) => v.id);
+    // An editor holding a copy made before the save, or one that made the variants again, sends them as new: never a second of each SKU.
+    const saved = await saveProduct(store, editor, product.id, { ...read, variants: read.variants.map((v) => ({ ...v, id: null })) });
+    if (!saved.ok) throw new Error(saved.problems.join(" "));
+    const after = (await getProductForEdit(store, editor, product.id))!;
+    expect(after.variants.map((v) => v.id)).toEqual(ids);
+    const [{ count }] = await db().execute<Row>(sql`select count(*)::int as count from commerce.product_variants where product_id = ${product.id}::uuid`);
+    expect(count).toBe(ids.length);
+  });
+
   it("is in no list and has no product page, and its pricing table has it at its monthly and yearly prices", async () => {
     const { store, market } = await shopOf();
     expect((await listProducts(store.id, market)).map((p) => p.id)).not.toContain(product.id);
@@ -109,6 +123,21 @@ describe("a plan (D912)", () => {
       ["month", 19900, "NOK", 14],
       ["year", 199000, "NOK", 0],
     ]);
+  });
+
+  it("carries its product categories and the ones above them, for a pricing table of one category (D914)", async () => {
+    const { store, market } = await shopOf();
+    const [top] = await db().execute<Row>(sql`
+      insert into commerce.terms (store_id, content_type, kind, name, slug) values (${store.id}::uuid, 'product', 'category', 'Life', 'life') returning id
+    `);
+    const [under] = await db().execute<Row>(sql`
+      insert into commerce.terms (store_id, content_type, kind, parent_id, name, slug)
+      values (${store.id}::uuid, 'product', 'category', ${top.id}::uuid, 'Life plans', 'life-plans') returning id
+    `);
+    await db().execute(sql`insert into commerce.product_terms (store_id, product_id, term_id) values (${store.id}::uuid, ${product.id}::uuid, ${under.id}::uuid)`);
+    // The catalogue is cached in Next; here each read is fresh.
+    const plus = (await getStorePlans(store.id, market)).plans.find((p) => p.id === product.id)!;
+    expect([...plus.categoryIds].sort()).toEqual([String(top.id), String(under.id)].sort());
   });
 
   it("goes in the cart as its one plan, one of it: choosing yearly after monthly leaves yearly alone", async () => {

@@ -19,6 +19,7 @@ import type { TranslateResult } from "@/lib/page-translate-ai";
 import type { DuplicateResult } from "@/lib/page-duplicate";
 import type { PageLanguage } from "@/lib/page-translation";
 import type { TemplateActions } from "@/lib/templates";
+import type { PlanGroup } from "@/lib/store-plans";
 import type { SectionResult, ThemeSectionsOffer } from "@/lib/theme-sections";
 import type { ThemeStorePart } from "@/lib/theme-store-parts";
 import type { VisibilityChoices } from "@/lib/visibility";
@@ -178,6 +179,8 @@ export type PageOwnerContext = {
   plans: PlanChoice[] | null;
   /** The plans are the store's own (D912): only the Plans component is offered of the plan parts, and its button is the cart's. */
   ownPlans?: boolean;
+  /** The store's product categories holding plans (D914), for a Plans component that shows one category's; absent or empty offers no choice. */
+  planGroups?: PlanGroup[];
   /** The extensions and bundles the Extensions component can switch off (D748 E8), where it is offered; absent elsewhere. */
   extensionChoices?: ExtensionChoice[] | null;
   /** Kaizena Flow's own store (D466), which serves Kaizena Flow's site (D484): its headers offer *Start your store* too. */

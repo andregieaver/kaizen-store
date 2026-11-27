@@ -65,6 +65,8 @@ import { type ColumnSpot, type DroppedColumns, columnsLostTo, copyBlock, copyCol
 import { blockTextFields, setBlockText } from "@/lib/page-translation";
 import type { ExtensionChoice } from "@/lib/extension-offer";
 import { planCurrencies, type PlanChoice } from "@/lib/plan-offer";
+import type { PlanGroup } from "@/lib/store-plans";
+import { Select } from "@/components/admin/ui/field";
 import type { FieldEntity, FieldGroup } from "@/lib/custom-fields";
 import { siteFontFamilies } from "@/lib/fonts";
 import { type SiteFonts } from "@/lib/fonts-schema";
@@ -313,6 +315,8 @@ export type GridContext = {
   plans: PlanChoice[] | null;
   /** The plans are the store's own (D912): the palette offers the Plans component alone, and its button is the cart's. */
   ownPlans?: boolean;
+  /** The store's product categories holding plans (D914): a Plans component may show one category's plans. */
+  planGroups?: PlanGroup[];
   /** The extensions and bundles the Extensions component can switch off (D748 E8); absent where it is not offered. */
   extensionChoices?: ExtensionChoice[] | null;
   /** The theme store's components the page may hold (D285); absent or null on a store's pages and Kaizena Flow's other kinds of page. */
@@ -4202,6 +4206,7 @@ function Dialogs({
                 block={block}
                 plans={grid.plans ?? []}
                 own={grid.ownPlans === true}
+                groups={grid.ownPlans === true ? (grid.planGroups ?? []) : []}
                 onChange={(patch) => onRows((current) => patchBlock<PlansBlock>(current, block.id, patch))}
               />),
             font: dw.fonts.site,
@@ -5375,8 +5380,23 @@ function SavedPartDialog({
  * The Plans component's settings (D142): the currency and price shown, the highlighted plan, the comparison table and the buttons. A store's
  * own plans (D912, `own`) are priced in the shopper's country and bought through the cart, so they take no currency or button address.
  */
-function PlansFields({ block, plans, own = false, onChange }: { block: PlansBlock; plans: PlanChoice[]; own?: boolean; onChange: (patch: BlockPatch<PlansBlock>) => void }) {
+function PlansFields({
+  block,
+  plans: every,
+  own = false,
+  groups = [],
+  onChange,
+}: {
+  block: PlansBlock;
+  plans: PlanChoice[];
+  own?: boolean;
+  groups?: PlanGroup[];
+  onChange: (patch: BlockPatch<PlansBlock>) => void;
+}) {
   const id = useId();
+  // A store's table of one product category (D914) recommends one of that category's plans.
+  const group = groups.find((g) => g.id === block.categoryId);
+  const plans = group ? every.filter((plan) => group.planIds.includes(plan.id)) : every;
   const currencies = planCurrencies(plans);
   const input = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
   const pw = useAdminText("builder").plans;
@@ -5401,6 +5421,28 @@ function PlansFields({ block, plans, own = false, onChange }: { block: PlansBloc
           ))}
         </select>
       </label>
+      )}
+      {/* Which plans (D914): every plan by default; a store whose plans are for different products picks the category of one. */}
+      {groups.length > 0 && (
+        <label htmlFor={`${id}-group`} className="flex flex-col gap-1 text-sm font-medium">
+          {pw.which}
+          <Select
+            id={`${id}-group`}
+            value={group ? group.id : ""}
+            onChange={(event) => {
+              const next = groups.find((g) => g.id === event.target.value);
+              // A recommended plan outside the chosen category is let go.
+              onChange({ categoryId: next?.id, ...(next && block.highlightId && !next.planIds.includes(block.highlightId) ? { highlightId: undefined } : {}) });
+            }}
+          >
+            <option value="">{pw.whichAll}</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {`${g.name} (${g.planIds.length})`}
+              </option>
+            ))}
+          </Select>
+        </label>
       )}
       <label htmlFor={`${id}-interval`} className="flex flex-col gap-1 text-sm font-medium">
         {pw.prices}
