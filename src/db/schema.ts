@@ -42,7 +42,7 @@ import {
   type PgTableExtraConfigValue,
 } from "drizzle-orm/pg-core";
 import { FLOW_TRIGGERS } from "../lib/flow-triggers";
-import { AUTOPILOT_GAPS, AUTOPILOT_REASONS, ENHANCEMENT_ONLY, INCIDENT_KINDS, INCIDENT_LIMITS, INCIDENT_SOURCES, INCIDENT_STATUSES, PROBLEM_ONLY } from "../lib/incidents";
+import { AUTO_APPROVE_WAITS, AUTOPILOT_GAPS, AUTOPILOT_REASONS, ENHANCEMENT_ONLY, INCIDENT_KINDS, INCIDENT_LIMITS, INCIDENT_SOURCES, INCIDENT_STATUSES, PROBLEM_ONLY } from "../lib/incidents";
 import { CHANNEL_KEYS } from "../lib/analytics-channels";
 import { CHECKLIST_STATES, LABEL_KINDS, PRIORITIES, PROJECT_COLOURS, PROJECT_HEALTHS, PROJECT_LIMITS, PROJECT_STATUSES, REMINDER_CHANNELS, STATUS_BUCKETS } from "../lib/projects-model";
 import { LIMIT_KEYS } from "../lib/limits";
@@ -2082,6 +2082,14 @@ export const platformSettings = commerce.table(
     adminSignalsOpen: boolean("admin_signals_open").notNull().default(false),
     adminSignalsOpenedAt: timestamp("admin_signals_opened_at", { withTimezone: true }),
     adminSignalsOpenedBy: uuid("admin_signals_opened_by").references(() => accounts.id, { onDelete: "set null" }),
+    /**
+     * Small improvements approved automatically (D895 IA-19): off until a platform owner turns it on; how long a small proposal waits for
+     * their answer first, how many a week at most, and who set the rule (each approval is theirs, under it).
+     */
+    autoApproveOn: boolean("auto_approve_on").notNull().default(false),
+    autoApproveWaitHours: smallint("auto_approve_wait_hours").notNull().default(24),
+    autoApprovePerWeek: smallint("auto_approve_per_week").notNull().default(2),
+    autoApproveBy: uuid("auto_approve_by").references(() => accounts.id, { onDelete: "set null" }),
     /** Raised by one by every writer of commerce.ui_translations (bloat review step 0.8): an instance polls this one row, not the table. */
     uiTextVersion: bigint("ui_text_version", { mode: "number" }).notNull().default(0),
     updatedAt: updatedAt(),
@@ -2090,6 +2098,8 @@ export const platformSettings = commerce.table(
   (t) => [
     check("platform_settings_briefing", sql`${t.briefing} in ('off', 'daily', 'weekly')`),
     check("platform_settings_autopilot_gap", sql`${t.autopilotGapHours} in (${sqlNumbers(...AUTOPILOT_GAPS)})`),
+    check("platform_settings_auto_approve_wait", sql`${t.autoApproveWaitHours} in (${sqlNumbers(...AUTO_APPROVE_WAITS)})`),
+    check("platform_settings_auto_approve_week", sql`${t.autoApprovePerWeek} between 1 and 5`),
     check("platform_settings_founding_months", sql`${t.extensionFoundingMonths} between 1 and 36`),
     check("platform_settings_price_tuning", sql`${t.priceTuning} in ('off', 'propose', 'auto')`),
     check("platform_settings_extension_upsell", sql`${t.extensionUpsellPercent} between 0 and 100`),
@@ -2110,6 +2120,7 @@ export const platformSettings = commerce.table(
     index("platform_settings_sandbox_source_idx").on(t.sandboxSource),
     index("platform_settings_site_from_store_by_idx").on(t.siteFromStoreBy),
     index("platform_settings_admin_signals_opened_by_idx").on(t.adminSignalsOpenedBy),
+    index("platform_settings_auto_approve_by_idx").on(t.autoApproveBy),
   ],
 );
 
@@ -23699,6 +23710,31 @@ export const platformAdminClickCells = commerce.table(
     check("platform_admin_click_cells_device", sql`${t.device} in ('mobile', 'tablet', 'desktop')`),
     check("platform_admin_click_cells_anchor", sql`char_length(${t.anchor}) between 1 and 60`),
     check("platform_admin_click_cells_cell", sql`${t.cx} between 0 and 9 and ${t.cy} between 0 and 9`),
+  ],
+).enableRLS();
+
+/**
+ * Which stores an incident touched (D895 IA-18): filled from the log drain, where an error line's address names the store (its slug or
+ * its own domain), so a store's owner can see what affected their store and where it stands. One bug stays one incident for the autopilot;
+ * this says where it was seen, with counts and times, nothing of a visitor. Goes with the incident or the store. Never copied with a store.
+ */
+export const platformIncidentStores = commerce.table(
+  "platform_incident_stores",
+  {
+    incidentId: uuid("incident_id")
+      .notNull()
+      .references(() => platformIncidents.id, { onDelete: "cascade" }),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    occurrences: integer("occurrences").notNull().default(1),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.incidentId, t.storeId] }),
+    index("platform_incident_stores_store_idx").on(t.storeId, t.lastSeenAt),
+    check("platform_incident_stores_occurrences", sql`${t.occurrences} > 0`),
   ],
 ).enableRLS();
 

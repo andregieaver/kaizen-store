@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 import { usageDrainEnv } from "@/lib/env";
-import { drainErrors } from "@/lib/drain-errors";
+import { drainErrors, storePath } from "@/lib/drain-errors";
 import { objectsOf, parseDrainBody, trafficHours, trafficTotals } from "@/lib/usage-drain";
 import { logDrainErrors } from "@/server/drain-incidents";
 import { addTraffic, addTrafficHours, storeResolver } from "@/server/usage-traffic";
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     // Each store's hour too (F4, D669): the autopilot's watch judges a change on server errors by the hour.
     await addTrafficHours(trafficHours(entries, storeOf, drain.sampleRate));
     // Production's runtime errors reach the incident log within a minute (D895 IA-17), grouped and stripped of everything personal.
-    const incidents = await logDrainErrors(drainErrors(objectsOf(body)));
+    const incidents = await logDrainErrors(drainErrors(objectsOf(body)), (host, path) => storeOf(host, storePath(path)));
     return Response.json({ written, unknownHosts, incidents }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("[usage] drain", error instanceof Error ? error.message : "failed");

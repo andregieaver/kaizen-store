@@ -9095,6 +9095,24 @@ describe("the incident log moves only as INCIDENT_MOVES allows (D895)", () => {
   });
 });
 
+describe("the stores an incident touched and the rule for small improvements (D895 IA-18, IA-19)", () => {
+  it("links an incident to a store once, goes with either, and holds the rule's wait and weekly number to their choices", async () => {
+    const { id: storeId } = await one<{ id: string }>(`insert into commerce.stores (slug, name) values ('incident-link-d895', 'Incident link') returning id`);
+    const { id: incidentId } = await one<{ id: string }>(
+      `insert into commerce.platform_incidents (kind, source, fingerprint, title, status) values ('error', 'runtime', 'runtime:/x:d895-link', 'X', 'open') returning id`,
+    );
+    const link = () => db.query("insert into commerce.platform_incident_stores (incident_id, store_id) values ($1, $2)", [incidentId, storeId]);
+    await link();
+    await expect(link()).rejects.toThrow(/platform_incident_stores_incident_id_store_id_pk/);
+    await db.query("delete from commerce.platform_incidents where id = $1", [incidentId]);
+    expect((await one<{ n: number }>("select count(*)::int as n from commerce.platform_incident_stores where store_id = $1", [storeId])).n).toBe(0);
+    expect((await one<{ on: boolean }>("select relrowsecurity as on from pg_class where oid = 'commerce.platform_incident_stores'::regclass")).on).toBe(true);
+    await expect(db.query("update commerce.platform_settings set auto_approve_wait_hours = 5")).rejects.toThrow(/platform_settings_auto_approve_wait/);
+    await expect(db.query("update commerce.platform_settings set auto_approve_per_week = 6")).rejects.toThrow(/platform_settings_auto_approve_week/);
+    expect((await one<{ on: boolean }>("select auto_approve_on as on from commerce.platform_settings")).on).toBe(false);
+  });
+});
+
 describe("an owner's choices about heatmaps and recordings of the admin (D895 phase 3b)", () => {
   it("never keeps recordings without heatmaps, takes a notice's version only in its shape, and is closed to the Data API", async () => {
     const { id } = await one<{ id: string }>(`insert into commerce.accounts (email) values ('admin-use-d895@example.com') returning id`);

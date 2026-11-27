@@ -82,6 +82,21 @@ export function incidentGroup(status: IncidentStatus): "needs_you" | "waiting" |
 export const AUTOPILOT_GAPS = [1, 2, 4, 8, 12, 24] as const;
 export const DEFAULT_AUTOPILOT_GAP = 4;
 
+/**
+ * Small improvements approved automatically (D895 IA-19), off until the owner turns it on: a nightly proposal the session marked small and
+ * clear of every sensitive area, unanswered for the chosen hours, at most the chosen number in seven days.
+ */
+export const AUTO_APPROVE_WAITS = [6, 12, 24, 48] as const;
+export const DEFAULT_AUTO_APPROVE_WAIT = 24;
+export const AUTO_APPROVE_MAX_PER_WEEK = 5;
+export const DEFAULT_AUTO_APPROVE_PER_WEEK = 2;
+
+/** Whether a proposal's evidence lets it be approved automatically: the session said small, and said it touches no sensitive area. */
+export const autoApprovable = (evidence: Record<string, unknown> | null | undefined) => evidence?.size === "small" && evidence?.sensitive === false;
+
+/** How long an entry about a store stays on that store's home after it was last seen (IA-18). */
+export const STORE_INCIDENT_DAYS = 14;
+
 /** Why a run started (`platform_autopilot_runs.reason`). */
 export const AUTOPILOT_REASONS = ["nightly", "work", "approve", "idea", "run_now", "manual"] as const;
 export type AutopilotReason = (typeof AUTOPILOT_REASONS)[number];

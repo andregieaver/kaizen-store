@@ -10,7 +10,13 @@ export const INCIDENT_ACT = "/admin/platform/incidents/act";
 export function IncidentNotice({ query, w, use }: { query: Record<string, string | string[] | undefined>; w: W; use?: AdminUseMessages["platform"] }) {
   const done = typeof query.done === "string" ? query.done : null;
   const problem = typeof query.problem === "string" ? query.problem : null;
-  const done_: Record<string, string> = { idea: w.idea.saved, settings: w.autopilot.saved, moved: w.moved, run_now: w.autopilot.runNowDone };
+  const done_: Record<string, string> = {
+    idea: w.idea.saved,
+    settings: w.autopilot.saved,
+    auto_approve: w.autoApprove.saved,
+    moved: w.moved,
+    run_now: w.autopilot.runNowDone,
+  };
   if (use) Object.assign(done_, { signals_open: use.opened, signals_close: use.closed });
   const problems_: Record<string, string> = { ...w.problems };
   if (use) Object.assign(problems_, { signals_locked: use.problems.locked, signals_signed: use.problems.signed });

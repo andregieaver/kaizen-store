@@ -444,6 +444,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   return_exchange_lines: never("The replacement goods of the original's exchanges (D239): copied orders have no returns."),
   search_clicks: never("A log of the original's searches."),
   live_drills: never("Drills run on the original's test payments (D406); a copy is drilled on its own."),
+  platform_incident_stores: never("Kaizena Flow's record of problems it saw on the original (D895 IA-18): a copy has seen none."),
   page_heat_days: never("Heatmaps' daily totals of the original's visitors (D656); a copy counts its own."),
   click_cells: never("Clicks per part of the original's pages (D656); a copy counts its own."),
   recordings: never("Recordings of visits to the original's pages (D656): another store's visitors, never copied."),

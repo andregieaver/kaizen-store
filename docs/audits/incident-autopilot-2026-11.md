@@ -368,8 +368,14 @@ These are the owner's to write (legal texts are never written by a model, D656 s
       November 2026, without a new drain: the usage drain (D314, `/api/usage/drain`, already signed and filtered to production) also hands
       its error lines to the log (`drain-errors.ts`): grouped by route shape and event or error name, the runbook's fingerprint, messages
       masked, at most 20 a batch, the log's own lines left out.
-- [ ] **IA-18** A store owner's view of the entries about their store.
-- [ ] **IA-19** If the owner wants it after IA-13: small enhancements approved automatically, under rules the owner sets.
+- [x] **IA-18** A store owner's view of the entries about their store. Done 27 November 2026: the log drain links each runtime entry to
+      the stores its addresses name (`platform_incident_stores`, the usage counting's resolver, an admin address read as its store's), and
+      the store's home shows its owner those of the last 14 days: where (their pages, their admin, a background task, a connection) and
+      where it stands (being fixed, fixed and watched, fixed), never a message or a fingerprint.
+- [x] **IA-19** If the owner wants it after IA-13: small enhancements approved automatically, under rules the owner sets. Built 27
+      November 2026 at the owner's word, before IA-13, and off by default: Incidents → Approve small improvements automatically, a wait
+      (6 to 48 hours, 24 by default) and a weekly number (1 to 5, 2 by default). Only a nightly proposal the session marked `size: "small"`
+      and `sensitive: false` (the runbook says when), approved as the owner who set the rule, with a note in its history.
 
 ## 11. The owner's answers (20 November 2026)
 

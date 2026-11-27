@@ -757,7 +757,10 @@ under *What the router fetches ahead*.
   `/admin/platform/incidents` posts to `incidents/act` (no server action). The session reaches the log only through the platform API's
   `incidents` scope (`incident-api.ts`) and follows `docs/runbooks/incident-autopilot.md`. Sources inside the app (`alertFailingJob()`,
   `runWatchdog()`, `runStatusChecks()`, and the log drain's runtime errors, `drain-errors.ts`) name a fingerprint with `fingerprintOf()`,
-  never a person's data. Admin heatmaps and recordings
+  never a person's data. The drain links each entry to the stores its addresses name (`platform_incident_stores`), and a
+  store's owner sees those of the last 14 days on the store's home in plain words (`store-incidents.ts`), never a message. Small nightly
+  proposals may be approved automatically only under the owner's rule (`autoApproveDue()`, off by default, `size` and `sensitive` from
+  the proposal). Admin heatmaps and recordings
   are built locked (`admin-signals.ts`): the switch opens only once a Legal account has answered every question of the review `admin-use`
   and the owner confirms the signed assessment; only a store's owner is asked, about their own use; each choice is a kept row. Heatmaps (`admin-heat.ts`, `/api/admin-use/heat`) keep
   daily totals per screen key, only for screens on `admin-screens.ts`'s allow-list, reusing the storefront heatmaps' engine.

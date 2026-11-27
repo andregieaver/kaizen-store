@@ -19,6 +19,8 @@ export type DrainError = {
   message: string;
   count: number;
   deployment: string | null;
+  /** Where it was seen (host and path, at most 20), only to find the stores it touched (IA-18); never stored or logged. */
+  places: { host: string; path: string }[];
 };
 
 /** At most this many entries from one batch; the rest wait for the next error of their kind. */
@@ -94,9 +96,12 @@ export function drainErrors(objects: readonly Record<string, unknown>[]): DrainE
     const route = routeOf(path);
     const message = maskMessage(typeof line?.errorMessage === "string" ? `${errorName ?? ""} ${line.errorMessage}` : raw);
     const fingerprint = fingerprintOf("runtime", route, name);
+    const host = typeof proxy.host === "string" ? proxy.host.toLowerCase().replace(/:\d+$/, "") : typeof o.host === "string" ? o.host.toLowerCase() : "";
+    const place = { host, path: path.split(/[?#]/)[0] };
     const seen = groups.get(fingerprint);
     if (seen) {
       seen.count += 1;
+      if (seen.places.length < MAX_DRAIN_ERRORS && !seen.places.some((p) => p.host === place.host && p.path === place.path)) seen.places.push(place);
       continue;
     }
     if (groups.size >= MAX_DRAIN_ERRORS) continue;
@@ -109,7 +114,14 @@ export function drainErrors(objects: readonly Record<string, unknown>[]): DrainE
       message,
       count: 1,
       deployment: typeof o.deploymentId === "string" ? o.deploymentId.slice(0, 60) : null,
+      places: [place],
     });
   }
   return [...groups.values()];
+}
+
+/** An admin address (`/admin/{slug}/…`) as its store's (`/s/{slug}`), so the usage counting's resolver finds the store; any other as it is. */
+export function storePath(path: string): string {
+  const match = /^\/admin\/([a-z0-9][a-z0-9-]{0,62})(?:[/?#]|$)/.exec(path);
+  return match ? `/s/${match[1]}` : path;
 }

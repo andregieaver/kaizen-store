@@ -16,7 +16,7 @@ import { readAdminBehaviour } from "./admin-behaviour";
 import { sendDueWake, WAKE_DUE_SQL } from "./autopilot-wake";
 import { jobReport } from "./cache-events";
 import { sendEmail } from "./email";
-import { keepIncidents, pruneIncidents, pushMorning } from "./incidents";
+import { autoApproveDue, keepIncidents, pruneIncidents, pushMorning } from "./incidents";
 import { pruneAdminHeat } from "./admin-heat";
 import { pruneAdminRecordings } from "./admin-recordings";
 import { col, typedRow, typedRows } from "./typed-rows";
@@ -30,7 +30,7 @@ import { col, typedRow, typedRows } from "./typed-rows";
  */
 export async function runIncidentJobs(
   options: { now?: Date } = {},
-): Promise<{ released: number; done: number; woken: boolean; day: string | null; emailed: number; pruned: number; proposedByReading: number }> {
+): Promise<{ released: number; done: number; woken: boolean; day: string | null; emailed: number; pruned: number; proposedByReading: number; autoApproved: number }> {
   const report = jobReport();
   const now = options.now ?? new Date();
   let released = 0;
@@ -40,6 +40,7 @@ export async function runIncidentJobs(
   let emailed = 0;
   let woken = false;
   let proposedByReading = 0;
+  let autoApproved = 0;
   try {
     ({ released, done } = await keepIncidents());
   } catch (error) {
@@ -48,10 +49,18 @@ export async function runIncidentJobs(
   try {
     // One read for the tick: the day last summarised, and whether a wake waits (so an idle tick asks nothing more).
     const setting = await typedRow(
-      z.object({ last: col.textOrNull, wake: col.bool }),
-      sql`select incident_digest_last_day::text as last, ${WAKE_DUE_SQL} as wake from commerce.platform_settings limit 1`,
+      z.object({ last: col.textOrNull, wake: col.bool, auto: col.bool }),
+      sql`select incident_digest_last_day::text as last, ${WAKE_DUE_SQL} as wake, auto_approve_on as auto from commerce.platform_settings limit 1`,
     );
-    if (setting?.wake) woken = await sendDueWake();
+    // Small improvements approved automatically (IA-19): only while the owner's rule is on, so an idle tick asks nothing more.
+    if (setting?.auto) {
+      try {
+        autoApproved = await autoApproveDue(now);
+      } catch (error) {
+        report(error, "auto_approve");
+      }
+    }
+    if (setting?.wake || autoApproved > 0) woken = await sendDueWake();
     const oslo = localNow(now, PLATFORM_TIME_ZONE);
     const due = digestDue(setting?.last ?? null, oslo);
     if (due) {
@@ -84,7 +93,7 @@ export async function runIncidentJobs(
   } catch (error) {
     report(error, "daily");
   }
-  return { released, done, woken, day, emailed, pruned, proposedByReading };
+  return { released, done, woken, day, emailed, pruned, proposedByReading, autoApproved };
 }
 
 /** How many titles a section of the summary lists before "and n more". */

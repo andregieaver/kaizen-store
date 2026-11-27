@@ -971,6 +971,19 @@ export const platformEn = {
       save: "Add idea",
       saved: "Added. The autopilot will build it.",
     },
+    autoApprove: {
+      title: "Approve small improvements automatically",
+      off: "Off: every improvement waits for your Approve.",
+      on: "On: a small one you haven't answered is approved for you.",
+      turnOn: "Approve small improvements for me when I haven't answered",
+      explain:
+        "Only a nightly suggestion the autopilot marked small (one screen or module, no database change, nothing new to pay for or sign up to) and clear of payments, prices and VAT, legal texts, sign-in and security, and deleting data. You still get the push at once and can dismiss it while it waits.",
+      wait: "Wait for my answer",
+      waitHours: "{n} hours",
+      perWeek: "At most this many a week",
+      save: "Save",
+      saved: "Saved.",
+    },
     autopilot: {
       title: "Autopilot",
       on: "On: the autopilot works through this list.",

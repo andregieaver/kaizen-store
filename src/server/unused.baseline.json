@@ -313,6 +313,7 @@
     "src/db/schema.ts#platformAutopilotRuns",
     "src/db/schema.ts#platformDoNotContact",
     "src/db/schema.ts#platformIncidentEvents",
+    "src/db/schema.ts#platformIncidentStores",
     "src/db/schema.ts#platformIntegrationDeliveries",
     "src/db/schema.ts#platformIntegrations",
     "src/db/schema.ts#platformLegalViews",

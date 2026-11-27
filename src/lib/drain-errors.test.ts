@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { drainErrors, maskMessage, routeOf } from "./drain-errors";
+import { drainErrors, maskMessage, routeOf, storePath } from "./drain-errors";
 
 /** Runtime errors from the log drain into the incident log (D895 IA-17): grouped by route and name, never a person's data. */
 const line = (over: Record<string, unknown>) => ({
@@ -19,6 +19,8 @@ describe("runtime errors from the drain", () => {
     expect(routeOf("/s/kari-shop/no/products/3f2b8c1e-7a4d-4b9e-9c2a-1d5e6f7a8b9c?ref=mail")).toBe("/s/:store/no/products/:id");
     expect(routeOf("/admin/kari-shop/orders/10023")).toBe("/admin/:store/orders/:id");
     expect(routeOf("/admin/platform/incidents")).toBe("/admin/platform/incidents");
+    expect(storePath("/admin/kari-shop/orders/1")).toBe("/s/kari-shop");
+    expect(storePath("/s/kari-shop/no")).toBe("/s/kari-shop/no");
     expect(maskMessage("failed for kari@example.com order 1002345 id 3f2b8c1e-7a4d-4b9e-9c2a-1d5e6f7a8b9c")).toBe("failed for [email] order # id :id");
   });
 
@@ -41,6 +43,10 @@ describe("runtime errors from the drain", () => {
         message: "TypeError: Cannot read properties of undefined (reading 'price') for [email]",
         count: 2,
         deployment: "dpl_abc",
+        places: [
+          { host: "", path: "/s/kari-shop/no/products/3f2b8c1e-7a4d-4b9e-9c2a-1d5e6f7a8b9c" },
+          { host: "", path: "/s/other-shop/no/products/9f2b8c1e-7a4d-4b9e-9c2a-1d5e6f7a8b9c" },
+        ],
       },
       {
         fingerprint: "runtime:/api/cron/dispatch:cron.job_failed",
@@ -51,9 +57,11 @@ describe("runtime errors from the drain", () => {
         message: "Error boom #",
         count: 1,
         deployment: "dpl_abc",
+        places: [{ host: "", path: "/api/cron/dispatch" }],
       },
     ]);
-    const text = JSON.stringify(errors);
+    // The places only find the stores; nothing else of the line is kept.
+    const text = JSON.stringify(errors.map((e) => ({ ...e, places: [] })));
     for (const word of ["120.75", "Mozilla", "kari", "ref=mail"]) expect(text, word).not.toContain(word);
   });
 

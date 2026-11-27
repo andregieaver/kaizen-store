@@ -959,6 +959,19 @@ export const platformNb: PlatformMessages = {
       save: "Legg til idé",
       saved: "Lagt til. Autopiloten bygger den.",
     },
+    autoApprove: {
+      title: "Godkjenn små forbedringer automatisk",
+      off: "Av: hver forbedring venter på at du godkjenner den.",
+      on: "På: en liten forbedring du ikke har svart på, godkjennes for deg.",
+      turnOn: "Godkjenn små forbedringer for meg når jeg ikke har svart",
+      explain:
+        "Bare et nattlig forslag autopiloten har merket som lite (én skjerm eller modul, ingen endring i databasen, ingenting nytt å betale for eller melde seg på) og som ikke rører betaling, priser og mva, juridiske tekster, innlogging og sikkerhet eller sletting av data. Du får fortsatt varselet med en gang og kan avvise det mens det venter.",
+      wait: "Vent på svaret mitt",
+      waitHours: "{n} timer",
+      perWeek: "Høyst så mange i uken",
+      save: "Lagre",
+      saved: "Lagret.",
+    },
     autopilot: {
       title: "Autopilot",
       on: "På: autopiloten arbeider seg gjennom listen.",

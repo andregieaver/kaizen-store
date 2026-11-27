@@ -1,6 +1,6 @@
 {
-  "id": "82e6dea8-79e4-4a45-a9c5-28c2ed017c17",
-  "prevId": "4cdf8e57-82a7-4454-b80d-51c1f4e2fe32",
+  "id": "9416153d-8be1-42cc-b42c-d497385c31ca",
+  "prevId": "82e6dea8-79e4-4a45-a9c5-28c2ed017c17",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -66703,6 +66703,116 @@
       },
       "isRLSEnabled": true
     },
+    "commerce.platform_incident_stores": {
+      "name": "platform_incident_stores",
+      "schema": "commerce",
+      "columns": {
+        "incident_id": {
+          "name": "incident_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "occurrences": {
+          "name": "occurrences",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "first_seen_at": {
+          "name": "first_seen_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "last_seen_at": {
+          "name": "last_seen_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "platform_incident_stores_store_idx": {
+          "name": "platform_incident_stores_store_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "last_seen_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "platform_incident_stores_incident_id_platform_incidents_id_fk": {
+          "name": "platform_incident_stores_incident_id_platform_incidents_id_fk",
+          "tableFrom": "platform_incident_stores",
+          "tableTo": "platform_incidents",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "incident_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "platform_incident_stores_store_id_stores_id_fk": {
+          "name": "platform_incident_stores_store_id_stores_id_fk",
+          "tableFrom": "platform_incident_stores",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "platform_incident_stores_incident_id_store_id_pk": {
+          "name": "platform_incident_stores_incident_id_store_id_pk",
+          "columns": [
+            "incident_id",
+            "store_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "platform_incident_stores_occurrences": {
+          "name": "platform_incident_stores_occurrences",
+          "value": "\"commerce\".\"platform_incident_stores\".\"occurrences\" > 0"
+        }
+      },
+      "isRLSEnabled": true
+    },
     "commerce.platform_incidents": {
       "name": "platform_incidents",
       "schema": "commerce",
@@ -69152,6 +69262,33 @@
           "primaryKey": false,
           "notNull": false
         },
+        "auto_approve_on": {
+          "name": "auto_approve_on",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "auto_approve_wait_hours": {
+          "name": "auto_approve_wait_hours",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 24
+        },
+        "auto_approve_per_week": {
+          "name": "auto_approve_per_week",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 2
+        },
+        "auto_approve_by": {
+          "name": "auto_approve_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "ui_text_version": {
           "name": "ui_text_version",
           "type": "bigint",
@@ -69263,6 +69400,21 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "platform_settings_auto_approve_by_idx": {
+          "name": "platform_settings_auto_approve_by_idx",
+          "columns": [
+            {
+              "expression": "auto_approve_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -69322,6 +69474,20 @@
           "onDelete": "set null",
           "onUpdate": "no action"
         },
+        "platform_settings_auto_approve_by_accounts_id_fk": {
+          "name": "platform_settings_auto_approve_by_accounts_id_fk",
+          "tableFrom": "platform_settings",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "auto_approve_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
         "platform_settings_updated_by_accounts_id_fk": {
           "name": "platform_settings_updated_by_accounts_id_fk",
           "tableFrom": "platform_settings",
@@ -69348,6 +69514,14 @@
         "platform_settings_autopilot_gap": {
           "name": "platform_settings_autopilot_gap",
           "value": "\"commerce\".\"platform_settings\".\"autopilot_gap_hours\" in (1, 2, 4, 8, 12, 24)"
+        },
+        "platform_settings_auto_approve_wait": {
+          "name": "platform_settings_auto_approve_wait",
+          "value": "\"commerce\".\"platform_settings\".\"auto_approve_wait_hours\" in (6, 12, 24, 48)"
+        },
+        "platform_settings_auto_approve_week": {
+          "name": "platform_settings_auto_approve_week",
+          "value": "\"commerce\".\"platform_settings\".\"auto_approve_per_week\" between 1 and 5"
         },
         "platform_settings_founding_months": {
           "name": "platform_settings_founding_months",

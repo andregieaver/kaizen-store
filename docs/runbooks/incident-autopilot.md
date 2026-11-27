@@ -46,7 +46,7 @@ Your session's link names you in every write (`session`): get it from the `get_s
 | `POST $API/{id}/needs-owner` `{session, note}` | Hands it to the owner (a push goes at once) |
 | `POST $API/{id}/give-back` `{session, note}` | Returns it to waiting |
 | `POST $API/{id}/note` `{session, note}` | A note in its history |
-| `POST $API/propose` `{session, fingerprint, title, reason, evidence}` | An improvement for the owner to approve (nightly only) |
+| `POST $API/propose` `{session, fingerprint, title, reason, evidence, size, sensitive}` | An improvement for the owner to approve (nightly only) |
 
 ## The run
 
@@ -90,6 +90,10 @@ Your session's link names you in every write (`session`): get it from the `get_s
    back, fixes that reopened, areas where errors cluster, open items of the plans in `docs/audits/`, gaps in `docs/platform-parity.md`, slow
    admin screens. A `created: false` answer means it was proposed or dismissed before: choose another. Never build a proposal in the same
    run.
+   Say honestly how big it is, since the owner may let small ones be approved automatically (IA-19): `size: "small"` only for a change to
+   one screen or module, with no migration, no new dependency, host or secret, and about 200 lines or fewer; `sensitive: false` only
+   when it touches none of the areas that go to the owner (payments and payouts, prices and VAT, legal texts, sign-in and security,
+   deleting data). When unsure, leave both out: it is then large and sensitive, and waits for the owner.
 7. **Finish.** `POST $API/runs/{id}/finish` with a plain summary (what was fixed, what went to the owner, what was proposed) and the counts.
 
 ## The scheduled task (made once, by the owner)

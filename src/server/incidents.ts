@@ -7,12 +7,17 @@ import { db } from "@/db/client";
 import { fillWords } from "@/lib/admin-fill";
 import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 import {
+  AUTO_APPROVE_MAX_PER_WEEK,
+  AUTO_APPROVE_WAITS,
+  autoApprovable,
   AUTOPILOT_GAPS,
   canMove,
   CLAIM_HOURS,
   cleanTitle,
   CLOSED_STATUSES,
   firstStatus,
+  DEFAULT_AUTO_APPROVE_PER_WEEK,
+  DEFAULT_AUTO_APPROVE_WAIT,
   DEFAULT_AUTOPILOT_GAP,
   INCIDENT_KEEP_DAYS,
   INCIDENT_LIMITS,
@@ -283,6 +288,69 @@ export async function saveAutopilotSettings(accountId: string, settings: Autopil
   `);
   await audit(accountId, null, "platform.autopilot_settings", { on: settings.on, gapHours: settings.gapHours });
   return true;
+}
+
+export type AutoApproveSettings = { on: boolean; waitHours: number; perWeek: number };
+
+/** How an automatic approval's note starts in the entry's history; the week's number is counted from it. */
+const AUTO_NOTE = "Approved automatically under your rule:";
+
+/** The rule for approving small improvements automatically (D895 IA-19): off unless a platform owner turned it on. */
+export async function autoApproveSettings(): Promise<AutoApproveSettings> {
+  const row = await typedRow(
+    z.object({ on: col.bool, wait: col.int, week: col.int }),
+    sql`select auto_approve_on as on, auto_approve_wait_hours as wait, auto_approve_per_week as week from commerce.platform_settings limit 1`,
+  );
+  return { on: row?.on ?? false, waitHours: row?.wait ?? DEFAULT_AUTO_APPROVE_WAIT, perWeek: row?.week ?? DEFAULT_AUTO_APPROVE_PER_WEEK };
+}
+
+/** Saves the rule; the account that saves it is the one each automatic approval is recorded under. Written to the change log. */
+export async function saveAutoApprove(accountId: string, settings: AutoApproveSettings): Promise<boolean> {
+  if (!(AUTO_APPROVE_WAITS as readonly number[]).includes(settings.waitHours)) return false;
+  if (!Number.isInteger(settings.perWeek) || settings.perWeek < 1 || settings.perWeek > AUTO_APPROVE_MAX_PER_WEEK) return false;
+  await db().execute(sql`
+    update commerce.platform_settings set auto_approve_on = ${settings.on}, auto_approve_wait_hours = ${settings.waitHours},
+      auto_approve_per_week = ${settings.perWeek}, auto_approve_by = ${accountId}::uuid, updated_by = ${accountId}::uuid
+  `);
+  await audit(accountId, null, "platform.auto_approve_settings", { on: settings.on, waitHours: settings.waitHours, perWeek: settings.perWeek });
+  return true;
+}
+
+/**
+ * Approves the nightly proposals the rule allows (D895 IA-19): marked small and clear of every sensitive area by the session that made them
+ * (`autoApprovable()`), unanswered for the rule's hours, at most the rule's number in seven days, oldest first. Each is approved as the
+ * account that set the rule, with a note that says so, and wakes the autopilot as an Approve does. Nothing while the rule is off or has no
+ * account. Returns how many it approved.
+ */
+export async function autoApproveDue(now: Date = new Date()): Promise<number> {
+  const rule = await typedRow(
+    z.object({ on: col.bool, wait: col.int, week: col.int, by: col.uuid.nullable(), used: col.int }),
+    sql`select auto_approve_on as on, auto_approve_wait_hours as wait, auto_approve_per_week as week, auto_approve_by as by,
+          (select count(*)::int from commerce.platform_incident_events where to_status = 'approved' and note like ${`${AUTO_NOTE}%`}
+             and at > ${now.toISOString()}::timestamptz - interval '7 days') as used
+        from commerce.platform_settings limit 1`,
+  );
+  if (!rule?.on || !rule.by) return 0;
+  const room = rule.week - rule.used;
+  if (room <= 0) return 0;
+  const due = await typedRows(
+    z.object({ id: col.uuid, evidence: z.record(z.string(), z.unknown()).nullable() }),
+    sql`select id, evidence from commerce.platform_incidents
+        where status = 'proposed' and source = 'nightly' and evidence->>'size' = 'small' and evidence->>'sensitive' = 'false'
+          and created_at < ${now.toISOString()}::timestamptz - make_interval(hours => ${rule.wait})
+        order by created_at limit ${room}`,
+  );
+  let approved = 0;
+  for (const row of due) {
+    if (!autoApprovable(row.evidence)) continue;
+    const note = `${AUTO_NOTE} small, clear of sensitive areas, unanswered for ${rule.wait} hours.`;
+    const moved = await moveIncident(row.id, "approved", { accountId: rule.by }, { note });
+    if (!moved.ok) continue;
+    await audit(rule.by, null, "platform.incident_auto_approved", { incident: row.id, waitHours: rule.wait });
+    approved += 1;
+  }
+  if (approved > 0) await requestWake("approve", rule.by);
+  return approved;
 }
 
 /** An idea the owner wrote: an enhancement approved when saved (the owner's answer, 20 November 2026), its own fingerprint each time. */

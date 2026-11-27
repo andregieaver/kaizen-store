@@ -72,6 +72,10 @@ export const proposeBody = z.object({
   title: z.string().trim().min(1).max(INCIDENT_LIMITS.title),
   reason: z.string().trim().min(10).max(500),
   evidence: facts.optional(),
+  // For the owner's rule of automatic approval (D895 IA-19): only a proposal said to be small and clear of every sensitive area can
+  // qualify; left out, it is large and sensitive, so it waits for the owner.
+  size: z.enum(["small", "large"]).default("large"),
+  sensitive: z.boolean().default(true),
 });
 
 export const claimBody = z.object({ session, hours: z.number().int().min(1).max(12).optional() });

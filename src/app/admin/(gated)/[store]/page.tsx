@@ -29,6 +29,8 @@ import { memberCan, requireMemberAny } from "@/server/permissions";
 import { adminSignalsFor } from "@/server/admin-signals";
 import { AdminUseChoice } from "@/components/admin/admin-use-choice";
 import { ADMIN_USE_WORDS } from "@/lib/admin-words/admin-use";
+import { STORE_INCIDENTS_WORDS } from "@/lib/admin-words/store-incidents";
+import { storeIncidents } from "@/server/store-incidents";
 import { storeHomeReads } from "@/server/admin-screens";
 import { KEEP_PARAM } from "@/lib/store-switch";
 import { keptPageFor } from "@/server/store-switch";
@@ -495,11 +497,36 @@ export default async function AdminOverview({ params, searchParams }: Props) {
   );
 
   // Heatmaps and recordings of how owners use the admin (D895 phase 3b): an owner is asked once, about their own use, while it is open.
-  const adminUse = memberCan(current, "owner") ? await adminSignalsFor(account.id) : null;
+  // And the problems Kaizena Flow saw on this store in the last 14 days (D895 IA-18), for its owner only.
+  const [adminUse, incidents] = owner ? await Promise.all([adminSignalsFor(account.id), storeIncidents(store.id, now)]) : [null, []];
+  const iw = STORE_INCIDENTS_WORDS[lang];
+  const day = (iso: string) => new Date(iso).toLocaleDateString(locale, { day: "numeric", month: "long", timeZone: store.timeZone });
   return (
     <div className="flex flex-col gap-6">
       {adminUse?.eligible && adminUse.choice === null && (
         <AdminUseChoice words={ADMIN_USE_WORDS[lang]} lang={lang} from={base} choice={null} />
+      )}
+      {incidents.length > 0 && (
+        <section aria-label={iw.title} className={`${CARD_CLASS} flex flex-col gap-2 p-5`}>
+          <h2 className="text-body-strong text-ink">{iw.title}</h2>
+          <p className="text-sm text-ink-2">{iw.lead}</p>
+          <ul className="flex flex-col">
+            {incidents.map((i, n) => (
+              <li key={n} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-line py-2 first:border-t-0">
+                <span className="text-sm text-ink">
+                  {iw.areas[i.area]}
+                  <span className="block text-caption text-muted">
+                    {fillWords(iw.seen, { date: day(i.firstSeenAt) })}
+                    {i.occurrences > 1 ? ` · ${fillWords(iw.times, { n: i.occurrences })}` : ""}
+                  </span>
+                </span>
+                <Chip signal={i.state === "fixing" ? "warning" : "positive"}>
+                  {i.state === "fixing" ? iw.fixing : fillWords(i.state === "watching" ? iw.watching : iw.fixed, { date: i.fixedAt ? day(i.fixedAt) : "" })}
+                </Chip>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
       <HomeHeader
         eyebrow={fillWords(t.eyebrow, { date: dateText })}

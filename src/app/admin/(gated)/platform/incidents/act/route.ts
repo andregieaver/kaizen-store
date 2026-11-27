@@ -4,7 +4,7 @@ import { sameSite } from "@/lib/same-site";
 import { getAccount, platformCan } from "@/server/auth";
 import { closeAdminSignals, openAdminSignals } from "@/server/admin-signals";
 import { requestWake } from "@/server/autopilot-wake";
-import { addIdea, decideIncident, saveAutopilotSettings, type OwnerDecision } from "@/server/incidents";
+import { addIdea, decideIncident, saveAutoApprove, saveAutopilotSettings, type OwnerDecision } from "@/server/incidents";
 
 const DECISIONS: readonly OwnerDecision[] = ["approve", "dismiss", "send_back", "wont_fix", "reopen"];
 
@@ -38,6 +38,10 @@ export async function POST(request: NextRequest) {
     return back("done=signals_close");
   }
   if (intent === "run_now") return (await requestWake("run_now", account.id)) ? back("done=run_now") : back("problem=off");
+  if (intent === "auto_approve") {
+    const saved = await saveAutoApprove(account.id, { on: form.get("on") === "on", waitHours: Number(form.get("wait")), perWeek: Number(form.get("week")) });
+    return saved ? back("done=auto_approve") : back("problem=unknown");
+  }
   if (intent === "settings") {
     const saved = await saveAutopilotSettings(account.id, { on: form.get("on") === "on", gapHours: Number(form.get("gap")) });
     return saved ? back("done=settings") : back("problem=gap");

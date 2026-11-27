@@ -10,13 +10,13 @@ import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import type { PlatformMessages } from "@/lib/admin-messages/platform.en";
 import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
-import { AUTOPILOT_GAPS, incidentGroup } from "@/lib/incidents";
+import { AUTO_APPROVE_MAX_PER_WEEK, AUTO_APPROVE_WAITS, AUTOPILOT_GAPS, incidentGroup } from "@/lib/incidents";
 import { requirePlatformReader } from "@/server/auth";
 import { autopilotWakeEnv } from "@/lib/env";
 import { ADMIN_USE_WORDS } from "@/lib/admin-words/admin-use";
 import { ADMIN_USE_VIEWER_WORDS } from "@/lib/admin-words/admin-use-viewer";
 import { adminSignalsState } from "@/server/admin-signals";
-import { autopilotSettings, incidentBoard, lastAutopilotRun, type IncidentEntry } from "@/server/incidents";
+import { autoApproveSettings, autopilotSettings, incidentBoard, lastAutopilotRun, type IncidentEntry } from "@/server/incidents";
 
 import { IncidentNotice, INCIDENT_ACT } from "./notice";
 
@@ -33,7 +33,15 @@ export default async function PlatformIncidentsPage({ searchParams }: PageProps<
   const admin = await requirePlatformReader();
   const lang = adminLangOf(admin.adminLocale);
   const w = PLATFORM_WORDS[lang].incidents;
-  const [board, settings, lastRun, query, signals] = await Promise.all([incidentBoard(), autopilotSettings(), lastAutopilotRun(), searchParams, adminSignalsState()]);
+  const [board, settings, lastRun, query, signals, auto] = await Promise.all([
+    incidentBoard(),
+    autopilotSettings(),
+    lastAutopilotRun(),
+    searchParams,
+    adminSignalsState(),
+    autoApproveSettings(),
+  ]);
+  const aw = w.autoApprove;
   const uw = ADMIN_USE_WORDS[lang].platform;
   const connected = (() => {
     try {
@@ -178,6 +186,45 @@ export default async function PlatformIncidentsPage({ searchParams }: PageProps<
                 </div>
               </form>
             )}
+          </Card>
+        </PhoneRow>
+        {/* Small improvements approved automatically (IA-19): off by default; the rule's wait and weekly limit are Lisa's. */}
+        <PhoneRow flat title={aw.title} sub={auto.on ? aw.on : aw.off} change={w.phone.open} done={w.phone.close}>
+          <Card title={aw.title} description={auto.on ? aw.on : aw.off}>
+            <form method="post" action={INCIDENT_ACT} className="flex flex-col gap-3">
+              <label className="flex items-start gap-2 text-sm">
+                <input type="checkbox" name="on" defaultChecked={auto.on} className="mt-1" />
+                {aw.turnOn}
+              </label>
+              <p className="text-sm text-muted">{aw.explain}</p>
+              <Field label={aw.wait}>
+                {(control) => (
+                  <Select {...control} name="wait" defaultValue={String(auto.waitHours)}>
+                    {AUTO_APPROVE_WAITS.map((n) => (
+                      <option key={n} value={n}>
+                        {fillWords(aw.waitHours, { n })}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+              </Field>
+              <Field label={aw.perWeek}>
+                {(control) => (
+                  <Select {...control} name="week" defaultValue={String(auto.perWeek)}>
+                    {Array.from({ length: AUTO_APPROVE_MAX_PER_WEEK }, (_, i) => i + 1).map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+              </Field>
+              <div>
+                <SubmitButton name="intent" value="auto_approve" variant="secondary">
+                  {aw.save}
+                </SubmitButton>
+              </div>
+            </form>
           </Card>
         </PhoneRow>
         <PhoneRow flat last title={w.autopilot.title} sub={settings.on ? w.autopilot.on : w.autopilot.off} change={w.phone.open} done={w.phone.close}>

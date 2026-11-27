@@ -6,6 +6,8 @@ vi.mock("server-only", () => ({}));
 const { closeDb, db } = await import("@/db/client");
 const { drainErrors } = await import("@/lib/drain-errors");
 const { logDrainErrors } = await import("./drain-incidents");
+const { storeIncidents } = await import("./store-incidents");
+const { makeStore } = await import("./trust-fixtures");
 
 type Row = Record<string, unknown>;
 
@@ -34,5 +36,27 @@ describe("runtime errors into the incident log", () => {
     await logDrainErrors(batch());
     const [again] = await db().execute<Row>(sql`select occurrences from commerce.platform_incidents where fingerprint = ${`runtime:${route}:typeerror`}`);
     expect(Number(again.occurrences)).toBe(Number(row.occurrences) + 1);
+  });
+});
+
+describe("the stores an error touched (IA-18)", () => {
+  it("links an entry to the store its address names, counts a second sighting, and shows the store's owner where it stands", async () => {
+    const shop = await makeStore("drain-link");
+    const storeRoute = `/api/zz-store-${Date.now().toString(36)}`;
+    const errors = drainErrors([
+      { source: "lambda", environment: "production", level: "error", path: `${storeRoute}?x=1`, proxy: { host: "kaizenaflow.com" }, message: "TypeError: boom" },
+    ]);
+    const storeOf = (_host: string, path: string) => (path.startsWith(storeRoute) ? shop.id : undefined);
+    expect(await logDrainErrors(errors, storeOf)).toBe(1);
+    await logDrainErrors(errors, storeOf);
+    const [link] = await db().execute<Row>(
+      sql`select l.occurrences from commerce.platform_incident_stores l join commerce.platform_incidents i on i.id = l.incident_id
+          where l.store_id = ${shop.id}::uuid and i.fingerprint like ${`runtime:${storeRoute}%`}`,
+    );
+    expect(link.occurrences).toBe(2);
+    expect(await storeIncidents(shop.id)).toEqual([expect.objectContaining({ area: "connection", state: "fixing", occurrences: 2 })]);
+    await db().execute(sql`update commerce.platform_incidents set status = 'wont_fix' where fingerprint like ${`runtime:${storeRoute}%`}`);
+    expect(await storeIncidents(shop.id)).toEqual([]);
+    await db().execute(sql`delete from commerce.platform_incidents where fingerprint like ${`runtime:${storeRoute}%`}`);
   });
 });

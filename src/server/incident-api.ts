@@ -92,7 +92,7 @@ export async function runIncidentApiRoute(route: IncidentApiRoute, body: unknown
         source: "nightly",
         fingerprint: `nightly:${p.fingerprint}`,
         title: p.title,
-        evidence: { ...p.evidence, reason: p.reason, session: p.session },
+        evidence: { ...p.evidence, reason: p.reason, session: p.session, size: p.size, sensitive: p.sensitive },
       });
       if (!logged) return { status: 500, body: { error: { code: "failed", message: "Not logged." } } };
       // A proposal made again (or once dismissed) only counts: say so, so the session proposes something else.
