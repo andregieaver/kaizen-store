@@ -11,8 +11,14 @@ const { makeStore } = await import("./trust-fixtures");
 
 type Row = Record<string, unknown>;
 
+/**
+ * A run's own name for its routes, in letters only: `routeOf()` reads a part with three digits in a row as an id, so a clock in base 36 such
+ * as `mwz3c912` made the route `/api/:id` now and then, and the entry was not where the test looked.
+ */
+const runName = () => Date.now().toString(36).replace(/\d/g, (d) => "abcdefghij"[Number(d)]);
+
 /** Runtime errors from the log drain (D895 IA-17): one open entry per route and name, a repeat only counted. */
-const route = `/api/zz-drain-${Date.now().toString(36)}`;
+const route = `/api/zz-drain-${runName()}`;
 const batch = () =>
   drainErrors([
     { source: "lambda", environment: "production", level: "error", path: route, deploymentId: "dpl_x", message: "TypeError: boom for kari@example.com" },
@@ -42,7 +48,7 @@ describe("runtime errors into the incident log", () => {
 describe("the stores an error touched (IA-18)", () => {
   it("links an entry to the store its address names, counts a second sighting, and shows the store's owner where it stands", async () => {
     const shop = await makeStore("drain-link");
-    const storeRoute = `/api/zz-store-${Date.now().toString(36)}`;
+    const storeRoute = `/api/zz-store-${runName()}`;
     const errors = drainErrors([
       { source: "lambda", environment: "production", level: "error", path: `${storeRoute}?x=1`, proxy: { host: "kaizenaflow.com" }, message: "TypeError: boom" },
     ]);
