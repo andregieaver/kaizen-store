@@ -49,6 +49,7 @@ describe("what a plan's button agrees to on a pricing table", () => {
     name: "Pro",
     line: "",
     included: [],
+    categoryIds: [],
     skipsCart,
     prices: [
       { currency: "NOK", interval: "month", amountMinor: renewalMinor, renewalMinor, variantId: "v", sellingPlanId: `sp-${renewalMinor}`, trialDays: 14, minCycles: 0 },

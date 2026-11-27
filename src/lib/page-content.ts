@@ -948,6 +948,11 @@ export type PlansBlock = PartBase & {
   decimals?: "hide_whole";
   /** The plan marked as the one to choose ("Most popular"); an id of Kaizena Flow's plans, or of the store's plan products. */
   highlightId?: string;
+  /**
+   * On a store's page (D914), only the plans in this product category or one under it, so each of the store's products has a pricing table of
+   * its own plans; none shows every plan the store sells. Kaizena Flow's own plans are one set and take none.
+   */
+  categoryId?: string;
   /** Show the comparison table of features under the cards. */
   comparison?: boolean;
   /** The words on each card's button, and where it leads (sign-up unless chosen). */
@@ -3027,6 +3032,7 @@ const plansBlock = z.object({
   switcher: z.boolean().optional(),
   decimals: z.literal("hide_whole").optional(),
   highlightId: z.uuid().optional(),
+  categoryId: z.uuid().optional(),
   comparison: z.boolean().optional(),
   buttonLabel: z.string().trim().max(BUTTON_LABEL_MAX, `Keep the button's text under ${BUTTON_LABEL_MAX} characters.`).default(""),
   buttonHref: z

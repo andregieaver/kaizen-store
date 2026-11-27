@@ -233,6 +233,7 @@ describe("a store's own plans (D912)", () => {
       name: "Basic",
       line: "For one person",
       included: ["Unlimited notes", "Sync"],
+      categoryIds: [],
       prices: [
         { currency: "NOK", interval: "month", amountMinor: 9900, variantId: "00000000-0000-4000-8000-00000000b001", sellingPlanId: "00000000-0000-4000-8000-00000000c001", trialDays: 14, renewalMinor: 0, minCycles: 0 },
         { currency: "NOK", interval: "year", amountMinor: 99000, variantId: "00000000-0000-4000-8000-00000000b002", sellingPlanId: "00000000-0000-4000-8000-00000000c002", trialDays: 0, renewalMinor: 0, minCycles: 0 },
@@ -242,6 +243,7 @@ describe("a store's own plans (D912)", () => {
       id: "plus",
       handle: "plus",
       name: "Plus",
+      categoryIds: [],
       line: "",
       included: ["Unlimited notes", "Sync", "AI summaries"],
       prices: [{ currency: "NOK", interval: "month", amountMinor: 19900, variantId: "00000000-0000-4000-8000-00000000b003", sellingPlanId: "00000000-0000-4000-8000-00000000c003", trialDays: 0, renewalMinor: 0, minCycles: 0 }],
@@ -300,6 +302,7 @@ describe("a free plan (D913)", () => {
     name: "Free",
     line: "",
     included: ["Notes"],
+    categoryIds: [],
     prices: [{ currency: "NOK", interval: "month", amountMinor: 0, variantId: "00000000-0000-4000-8000-00000000b009", sellingPlanId: "00000000-0000-4000-8000-00000000c009", trialDays: 0, renewalMinor: 0, minCycles: 0 }],
   };
   const paid: StorePlan = { ...free, id: "plus", handle: "plus", name: "Plus", prices: [{ ...free.prices[0], amountMinor: 19900 }] };

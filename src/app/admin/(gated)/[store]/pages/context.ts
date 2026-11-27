@@ -55,8 +55,9 @@ import {
 } from "./actions";
 import { CREATE_KINDS, DUAL_KINDS } from "@/lib/dual-page";
 import { featureOn, requirementMet } from "@/lib/store-features";
-import { storePlansData } from "@/lib/store-plans";
+import { planGroups, storePlansData } from "@/lib/store-plans";
 import { getStorePlans } from "@/server/store-plans";
+import { listTerms } from "@/server/taxonomy";
 import { duplicateStorePageAction } from "./duplicate-action";
 import { deleteStoreTextStyleAction, saveStoreTextStyleAction } from "./text-style-actions";
 import { listTextStyles } from "@/server/text-styles";
@@ -197,6 +198,10 @@ export async function storePageContext(
         ? planChoices(storePlansData((await getStorePlans(store.id, store.markets[0])).plans))
         : null,
     ownPlans: !store.house,
+    // The product categories holding the store's plans (D914), for a Plans component that shows one product's plans.
+    planGroups: !store.house && featureOn(store, "subscriptions") && store.markets[0]
+      ? planGroups((await getStorePlans(store.id, store.markets[0])).plans, await listTerms({ storeId: store.id, contentType: "product" }))
+      : [],
     extensionChoices: store.house ? extensionChoices(await getPublicExtensions()) : null,
     house: store.house,
     ...(store.house && type === "page" ? { themeStore: { parts: ["list"] as const } } : {}),

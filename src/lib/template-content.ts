@@ -252,8 +252,8 @@ function sanitizeBlock(block: PageBlock, from: ForeignStore, trusted: boolean): 
     case "domainSearch":
       return { ...block, ctaHref: href(block.ctaHref) } as PageBlock;
     case "plans":
-      // Kaizen's own plans (D142): the highlighted one is an id of Kaizen's.
-      return { ...without(block, ["highlightId"]), buttonHref: href(block.buttonHref) } as PageBlock;
+      // Kaizen's own plans (D142): the highlighted one is an id of Kaizen's; a store's category of plans (D914) is that store's.
+      return { ...without(block, ["highlightId", "categoryId"]), buttonHref: href(block.buttonHref) } as PageBlock;
     case "extensions":
       return { ...block, buttonHref: href(block.buttonHref) } as PageBlock;
     case "customField":

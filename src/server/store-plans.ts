@@ -32,6 +32,7 @@ const PLAN_ROW = z.object({
   skips_cart: col.bool,
   store_audience: col.text,
   vat_rate: col.decimal,
+  category_ids: z.array(col.uuid),
 });
 
 /** A store's plans in a market, and whether their prices are shown with VAT (consumers, and a store selling to both) or without (businesses only). */
@@ -59,7 +60,19 @@ export async function getStorePlans(storeId: string, market: Market): Promise<St
       v.id as variant_id, cp.amount_minor, cp.currency,
       sp.id as selling_plan_id, sp.interval::text as interval, sp.discount_percent, sp.trial_days, sp.min_cycles,
       commerce.zero_shows_free(p.store_id, p.id) as zero_free, commerce.skips_cart(p.store_id, p.id) as skips_cart,
-      ${STORE_AUDIENCE} as store_audience, commerce.vat_rate(${market.code}, p.vat_category) as vat_rate
+      ${STORE_AUDIENCE} as store_audience, commerce.vat_rate(${market.code}, p.vat_category) as vat_rate,
+      -- Its product categories and every one above them (D914), for a pricing table that shows one category's plans.
+      coalesce((
+        with recursive up(id, parent_id) as (
+          select t.id, t.parent_id from commerce.product_terms pt
+          join commerce.terms t on t.store_id = pt.store_id and t.id = pt.term_id and t.kind = 'category'
+          where pt.store_id = p.store_id and pt.product_id = p.id
+          union
+          select t.id, t.parent_id from commerce.terms t join up on t.id = up.parent_id
+          where t.store_id = p.store_id
+        )
+        select array_agg(id::text) from up
+      ), '{}'::text[]) as category_ids
     from commerce.products p
     join commerce.stores s on s.id = p.store_id
     left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${market.locale}
@@ -93,6 +106,7 @@ export async function getStorePlans(storeId: string, market: Market): Promise<St
           zeroFree: row.zero_free,
           skipsCart: row.skips_cart,
           prices: [],
+          categoryIds: row.category_ids,
           all: [],
         })
         .get(row.id)!;

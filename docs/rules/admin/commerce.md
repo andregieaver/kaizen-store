@@ -1184,6 +1184,13 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   plan through `offeredTo()`; a cart holds one plan, one of it (`choosePlan()`, `ONE_RULE`). A plan renews every month or every year, as its
   pricing table shows it. Its `/p/` address leads to the page with the Plans component (`planPricingPath()`). Linking a plan to the app it
   gives access in is step 2 of D912 (not built): build it there, never as a store setting of its own.
+- **A pricing table of one product's plans (D914)**: plans are grouped by product category, never by a grouping of their own: the Plans
+  component's `categoryId` shows the plans in that category or one under it (`plansOfCategory()` over `StorePlan.categoryIds`, which
+  `getStorePlans()` fills with each plan's categories and every one above them); none shows every plan. The builder offers the choice only
+  where a category holds a plan (`planGroups()`).
+- **A variant sent without its id (D914)**: `saveVariants()` keeps, by its SKU, a variant of the same product that the save does not name by id,
+  so an editor's stale copy or variants made again never insert a second of a SKU the product already has. A new place that writes variants
+  goes through `saveProduct()` and keeps this.
 
 ## Free prices, orders and subscriptions (D913, `commerce.zero_shows_free()`, `confirmFree()`, `activate_free_subscription()`)
 

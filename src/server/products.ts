@@ -1405,14 +1405,25 @@ async function saveVariants(
   actorId: string | null = null,
 ) {
   const existing = await tx.execute<Row>(sql`
-    select v.id,
+    select v.id, v.sku,
            coalesce(jsonb_object_agg(p.market_code, p.amount_minor) filter (where p.market_code is not null), '{}'::jsonb) as prices
     from commerce.product_variants v
     left join commerce.prices p on p.variant_id = v.id and p.valid_to is null
     where v.store_id = ${storeId}::uuid and v.product_id = ${productId}::uuid
-    group by v.id
+    group by v.id, v.sku
   `);
   const current = new Map(existing.map((row) => [String(row.id), (row.prices ?? {}) as Record<string, number | string>]));
+  // A variant sent without its id (an editor holding a copy made before it was saved, or one that made its variants again) whose SKU one of this
+  // product's own variants has is that variant, unless the save names that one by its id: it is kept, never inserted beside itself (D914).
+  const named = new Set(input.variants.flatMap((v) => (v.id && current.has(v.id) ? [v.id] : [])));
+  const bySku = new Map(existing.filter((row) => !named.has(String(row.id))).map((row) => [String(row.sku), String(row.id)]));
+  const keptIdOf = (variant: ProductInput["variants"][number]): string | null => {
+    if (variant.id && current.has(variant.id)) return variant.id;
+    const same = bySku.get(variant.sku);
+    if (same === undefined) return null;
+    bySku.delete(variant.sku);
+    return same;
+  };
 
   const ruled = input.kind === "goods" || input.kind === "bundle";
   const columns = input.variants.map((variant, n): VariantColumns => {
@@ -1426,7 +1437,7 @@ async function saveVariants(
     const keeps = physical && variant.stockPolicy === "continue";
     return {
       n,
-      id: variant.id && current.has(variant.id) ? variant.id : null,
+      id: keptIdOf(variant),
       sku: variant.sku,
       gtin: variant.gtin,
       options: variant.options,

@@ -33,7 +33,25 @@ export type StorePlan = {
   zeroFree?: boolean;
   /** Choosing it goes straight to payment, past the cart page (D915); its terms are said beside its button. */
   skipsCart?: boolean;
+  /** The product categories it is in, and every category above them (D914): a pricing table of a category shows the plans in it or under it. */
+  categoryIds: string[];
 };
+
+/** The plans a pricing table shows (D914): those in its category or one under it, or every plan when it names none. */
+export function plansOfCategory<T extends Pick<StorePlan, "categoryIds">>(plans: readonly T[], categoryId: string | undefined): T[] {
+  return categoryId ? plans.filter((plan) => plan.categoryIds.includes(categoryId)) : [...plans];
+}
+
+/** A product category that holds plans, for the pricing table's choice of which to show (D914), with the plans it shows. */
+export type PlanGroup = { id: string; name: string; planIds: string[] };
+
+/** The categories holding at least one plan, by name, each with its plans (in or under it). */
+export function planGroups(plans: readonly Pick<StorePlan, "id" | "categoryIds">[], categories: readonly { id: string; name: string }[]): PlanGroup[] {
+  return categories
+    .map((category) => ({ id: category.id, name: category.name, planIds: plans.filter((plan) => plan.categoryIds.includes(category.id)).map((plan) => plan.id) }))
+    .filter((group) => group.planIds.length > 0)
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
 
 /**
  * What a plan includes, from its description (D912: a plan has no page, so its description is the list): one thing per line, a bullet or

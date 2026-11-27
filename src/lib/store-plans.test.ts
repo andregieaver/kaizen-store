@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { comparisonTable, planCards } from "./plan-offer";
-import { choiceFor, includedLines, INCLUDED_MAX, lowestPerInterval, storePlansData, type StorePlan, type StorePlanPrice } from "./store-plans";
+import { choiceFor, includedLines, INCLUDED_MAX, lowestPerInterval, planGroups, plansOfCategory, storePlansData, type StorePlan, type StorePlanPrice } from "./store-plans";
 
 /** A store's plans as its pricing table shows them (D912). */
 
@@ -23,6 +23,7 @@ const plan = (id: string, name: string, included: string[], prices: StorePlanPri
   line: "",
   included,
   prices,
+  categoryIds: [],
 });
 
 describe("what a plan includes", () => {
@@ -81,5 +82,36 @@ describe("the store's plans as the pricing table's data", () => {
 
   it("shows one price a billing period: the lowest of two variants renewing alike", () => {
     expect(lowestPerInterval([price("year", 500, "a"), price("month", 90, "b"), price("month", 80, "c")]).map((p) => p.variantId)).toEqual(["c", "a"]);
+  });
+});
+
+describe("a pricing table of one product's plans (D914)", () => {
+  const life = "00000000-0000-4000-8000-0000000000a1";
+  const notes = "00000000-0000-4000-8000-0000000000a2";
+  const plans = [
+    { ...plan("free", "Free", [], [price("month", 0)]), categoryIds: [] },
+    { ...plan("plus", "Plus", [], [price("month", 9900)]), categoryIds: [life] },
+    // In a category under Life: its categories carry the one above, as the store's reader gives them.
+    { ...plan("pro", "Pro", [], [price("month", 29900)]), categoryIds: ["00000000-0000-4000-8000-0000000000b1", life] },
+    { ...plan("team", "Team", [], [price("month", 49900)]), categoryIds: [notes] },
+  ];
+
+  it("shows every plan when it names no category, and only the plans in or under its category when it does", () => {
+    expect(plansOfCategory(plans, undefined).map((p) => p.id)).toEqual(["free", "plus", "pro", "team"]);
+    expect(plansOfCategory(plans, life).map((p) => p.id)).toEqual(["plus", "pro"]);
+    expect(plansOfCategory(plans, notes).map((p) => p.id)).toEqual(["team"]);
+    expect(plansOfCategory(plans, "00000000-0000-4000-8000-0000000000ff")).toEqual([]);
+  });
+
+  it("offers the categories holding plans, by name, each with its plans", () => {
+    const categories = [
+      { id: notes, name: "Notes" },
+      { id: life, name: "Life" },
+      { id: "00000000-0000-4000-8000-0000000000c1", name: "Mugs" },
+    ];
+    expect(planGroups(plans, categories)).toEqual([
+      { id: life, name: "Life", planIds: ["plus", "pro"] },
+      { id: notes, name: "Notes", planIds: ["team"] },
+    ]);
   });
 });
