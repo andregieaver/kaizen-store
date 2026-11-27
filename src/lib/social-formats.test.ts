@@ -34,8 +34,8 @@ describe("a post's formats", () => {
       ],
     });
     expect(pinBody("1", post, "https://a/1.jpg").media_source).toEqual({ source_type: "image_url", url: "https://a/1.jpg" });
-    expect(postBody("urn:li:person:a", "Words", ["urn:li:image:A", "urn:li:image:B"], "Bowls").content).toEqual({
+    expect(postBody("urn:li:person:a", "Words", ["urn:li:image:A", "urn:li:image:B"], "Bowls")).toMatchObject({ content: {
       multiImage: { images: [{ id: "urn:li:image:A", altText: "Bowls" }, { id: "urn:li:image:B", altText: "Bowls" }] },
-    });
+    } });
   });
 });

@@ -182,28 +182,30 @@ export function SocialCalendar({
                   .map((it, i) => (
                     <li key={`${it.day}-${it.channel}-${it.draft?.id ?? i}`} className="flex flex-col gap-2 rounded-card border border-line p-3 sm:flex-row sm:gap-4">
                       {it.draft && (
-                        // eslint-disable-next-line @next/next/no-img-element -- the post's own picture, drawn by the page's route on request
-                        <img
-                          src={`${base}/picture/${it.draft.id}?v=${it.draft.editedAt ? Date.parse(it.draft.editedAt) : 0}-${it.draft.scene?.on ? it.draft.scene.tries : 0}`}
-                          alt={fillWords(w.picture, { channel: CHANNEL_SPECS[it.channel].label })}
-                          className="h-28 w-auto self-start rounded-md border border-line"
-                          loading="lazy"
-                        />
-                      )}
-                      {it.draft && (it.draft.formats?.carousel || it.draft.formats?.story) && (
-                        <div role="group" className="flex gap-1 self-start" aria-label={w.morePictures}>
-                          {it.draft.formats.carousel &&
-                            Array.from({ length: it.draft.formats.slides - 1 }, (_, n) => (
-                              <a key={n} href={`${base}/picture/${it.draft!.id}?slide=${n + 1}&download=1`}>
-                                {/* eslint-disable-next-line @next/next/no-img-element -- a carousel slide, drawn by the page's route on request */}
-                                <img src={`${base}/picture/${it.draft!.id}?slide=${n + 1}`} alt={fillWords(w.slide, { n: String(n + 2) })} className="h-28 w-auto rounded-md border border-line" loading="lazy" />
-                              </a>
-                            ))}
-                          {it.draft.formats.story && (
-                            <a href={`${base}/picture/${it.draft.id}?story=1&download=1`}>
-                              {/* eslint-disable-next-line @next/next/no-img-element -- the Story frame, drawn by the page's route on request */}
-                              <img src={`${base}/picture/${it.draft.id}?story=1`} alt={w.storyFrame} className="h-28 w-auto rounded-md border border-line" loading="lazy" />
-                            </a>
+                        <div className="flex shrink-0 flex-col gap-1 self-start">
+                          {/* eslint-disable-next-line @next/next/no-img-element -- the post's own picture, drawn by the page's route on request */}
+                          <img
+                            src={`${base}/picture/${it.draft.id}?v=${it.draft.editedAt ? Date.parse(it.draft.editedAt) : 0}-${it.draft.scene?.on ? it.draft.scene.tries : 0}`}
+                            alt={fillWords(w.picture, { channel: CHANNEL_SPECS[it.channel].label })}
+                            className="h-28 w-auto rounded-md border border-line"
+                            loading="lazy"
+                          />
+                          {(it.draft.formats?.carousel || it.draft.formats?.story) && (
+                            <div role="group" className="flex max-w-48 flex-wrap gap-1" aria-label={w.morePictures}>
+                              {it.draft.formats.carousel &&
+                                Array.from({ length: it.draft.formats.slides - 1 }, (_, n) => (
+                                  <a key={n} href={`${base}/picture/${it.draft!.id}?slide=${n + 1}&download=1`} className="shrink-0">
+                                    {/* eslint-disable-next-line @next/next/no-img-element -- a carousel slide, drawn by the page's route on request */}
+                                    <img src={`${base}/picture/${it.draft!.id}?slide=${n + 1}`} alt={fillWords(w.slide, { n: String(n + 2) })} className="h-12 w-auto rounded-sm border border-line" loading="lazy" />
+                                  </a>
+                                ))}
+                              {it.draft.formats.story && (
+                                <a href={`${base}/picture/${it.draft.id}?story=1&download=1`} className="shrink-0">
+                                  {/* eslint-disable-next-line @next/next/no-img-element -- the Story frame, drawn by the page's route on request */}
+                                  <img src={`${base}/picture/${it.draft.id}?story=1`} alt={w.storyFrame} className="h-12 w-auto rounded-sm border border-line" loading="lazy" />
+                                </a>
+                              )}
+                            </div>
                           )}
                         </div>
                       )}

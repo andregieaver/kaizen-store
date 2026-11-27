@@ -421,6 +421,17 @@ test("a connected LinkedIn says which Page posts go to and until when, and an ap
 });
 
 test("an Instagram post made a carousel and a Story shows its other pictures, drawn from the same template (D870 S2.1b)", async ({ page }) => {
+  // The plan's Instagram post is about a topic; a carousel is a product's, so the post is pointed at one of the demo products with photos.
+  const sql = testDb();
+  try {
+    await sql`
+      update commerce.social_posts set product_id = (
+        select pm.product_id from commerce.product_media pm join commerce.stores s on s.id = pm.store_id where s.slug = ${SLUG}
+        group by pm.product_id order by count(*) desc limit 1)
+      where store_id = (select id from commerce.stores where slug = ${SLUG}) and channel = 'instagram' and published_at is null`;
+  } finally {
+    await sql.end();
+  }
   await page.goto(`/admin/${SLUG}/social`);
   const calendar = page.getByRole("region", { name: "Your posting plan" });
   const instagram = calendar.getByRole("listitem").filter({ hasText: "Instagram" }).first();
