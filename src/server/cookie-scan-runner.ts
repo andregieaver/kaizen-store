@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 import type { Browser } from "playwright-core";
 
 import { db } from "@/db/client";
-import { scanWithin } from "@/lib/cookie-scan";
+import { scanWithin } from "@/lib/cookie-scan-browser";
 
 import { launchBrowser } from "./browser";
 import { scanTarget } from "./cookie-scans";

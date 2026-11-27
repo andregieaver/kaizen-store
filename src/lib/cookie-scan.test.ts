@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { cookieNoteInput, parseScannedItems, reviewFindings, sameSite, scanSite, SCAN_BUDGET_MS, scanWithin, type ScannedItem, type ScanTarget } from "./cookie-scan";
+import { cookieNoteInput, parseScannedItems, reviewFindings, sameSite, type ScannedItem, type ScanTarget } from "./cookie-scan";
+import { scanSite, SCAN_BUDGET_MS, scanWithin } from "./cookie-scan-browser";
 
 const item = (over: Partial<ScannedItem>): ScannedItem => ({
   kind: "cookie",

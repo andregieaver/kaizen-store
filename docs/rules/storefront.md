@@ -750,7 +750,7 @@ the path, component or table you change, or list the rules with a search for lin
   `siteCookies()` reads one site-facts statement (`siteFacts()`, `src/server/site-facts.ts`, bloat review step 2.18) that carries the tags
   of the readers it folds (cookies, chat, pages, affiliate, recommendations, experiments; referrals and Kaizena Flow's navigation for the
   platform); a new optional feature the banner must know about adds a field there and its tag, not a new read. The scan
-  (`src/lib/cookie-scan.ts`, no database, tested in e2e against a small
+  (`src/lib/cookie-scan-browser.ts`, no database, tested in e2e against a small
   site) runs from `/api/cron/cookie-scan` via `cookie-scan-runner.ts`, the
   only module that loads Chromium; keep it out of other routes' imports.
   A site is scanned weekly; a failed scan is tried again after an hour, and after a day from the third failure in a row.

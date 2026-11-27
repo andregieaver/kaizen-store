@@ -3,7 +3,7 @@ import type { AddressInfo } from "node:net";
 
 import { expect, test } from "@playwright/test";
 
-import { scanSite } from "../src/lib/cookie-scan";
+import { scanSite } from "../src/lib/cookie-scan-browser";
 
 import { testDb } from "./db";
 
