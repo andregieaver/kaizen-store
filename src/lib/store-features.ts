@@ -242,10 +242,11 @@ export function requirementMet(source: FeatureSource, requirement: FeatureRequir
 
 /**
  * The feature a kind of product needs to be offered (D178): an appointment Appointments, a stay or a rental Stays and rentals, a gift card Gift
- * cards (D300); goods none.
- * SQL repeats it in `commerce.kind_offered()`.
+ * cards (D300), a plan Subscriptions (D912); goods none.
+ * SQL repeats it in `commerce.kind_offered()` (a plan through its `subscription_only`, which the database holds it to).
  */
 export function kindFeature(kind: string): FeatureId | null {
+  if (kind === "plan") return "subscriptions";
   return kind === "appointment" ? "appointments" : kind === "stay" || kind === "rental" ? "bookings" : kind === "gift_card" ? "gift_cards" : null;
 }
 

@@ -76,7 +76,7 @@ async function entityAddress(storeId: string, hop: Hop, marketCode: string | nul
   if (hop.kind === "product" && hop.productId) {
     const [row] = await readDb().execute<Row>(sql`
       select p.handle from commerce.products p
-       where p.store_id = ${storeId}::uuid and p.id = ${hop.productId}::uuid and p.status = 'active'
+       where p.store_id = ${storeId}::uuid and p.id = ${hop.productId}::uuid and p.status = 'active' and p.kind <> 'plan'
          and ${marketCode === null ? sql`true` : sql`exists (
            select 1 from commerce.product_variants v join commerce.current_prices cp on cp.variant_id = v.id and cp.market_code = ${marketCode}
             where v.product_id = p.id and v.active)`}

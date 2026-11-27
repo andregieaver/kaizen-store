@@ -85,7 +85,7 @@ async function dueOrders(storeId: string, days: number, since: string, now: Date
       join commerce.order_lines l on l.store_id = o.store_id and l.order_id = o.id
       join commerce.product_variants v on v.store_id = l.store_id and v.id = l.variant_id
       join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
-      where o.store_id = ${storeId}::uuid and ${SOLD} and p.kind <> 'gift_card'
+      where o.store_id = ${storeId}::uuid and ${SOLD} and p.kind not in ('gift_card', 'plan')
         and o.placed_at > ${at}::timestamptz - make_interval(days => ${REVIEW_WINDOW_DAYS})
         and not exists (select 1 from commerce.review_requests r where r.store_id = o.store_id and r.order_id = o.id)
     ), received as (

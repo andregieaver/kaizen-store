@@ -431,13 +431,13 @@ export function ProductEditor(props: Props) {
       {/* The kinds a store's features offer (D178), and the product's own kind as it was loaded, which it keeps while its feature is off. */}
       <div className="flex flex-col gap-6 max-md:-order-1">
       {/* A bundle (D322) is chosen when a product is made and stays one: a saved product is offered no move into or out of it. */}
-      {(productId === null || context.appointmentsOn || context.staysOn || context.giftCardsOn || product.kind !== "goods" || props.initial.kind !== "goods") && (
+      {(productId === null || context.appointmentsOn || context.staysOn || context.giftCardsOn || context.subscriptionsOn || product.kind !== "goods" || props.initial.kind !== "goods") && (
         <KindSection
           product={product}
           update={update}
           offered={
             productId !== null && props.initial.kind === "bundle"
-              ? { goods: false, appointment: false, stay: false, rental: false, gift_card: false, bundle: true }
+              ? { goods: false, appointment: false, stay: false, rental: false, gift_card: false, bundle: true, plan: false }
               : {
                   goods: true,
                   appointment: context.appointmentsOn || props.initial.kind === "appointment",
@@ -445,6 +445,8 @@ export function ProductEditor(props: Props) {
                   rental: context.staysOn || props.initial.kind === "rental",
                   gift_card: context.giftCardsOn || props.initial.kind === "gift_card",
                   bundle: productId === null,
+                  // A plan (D912) is sold by subscription: offered while Subscriptions is on.
+                  plan: context.subscriptionsOn || props.initial.kind === "plan",
                 }
           }
         />
@@ -461,7 +463,9 @@ export function ProductEditor(props: Props) {
       {product.kind === "bundle" ? (
         <BundleSection storeSlug={storeSlug} product={product} update={update} context={context} />
       ) : (
+        // Drawn again when the kind changes: a plan (D912) comes with its options made, which the section's own fields start from.
         <VariantsSection
+          key={product.kind}
           storeSlug={storeSlug}
           product={product}
           update={update}
@@ -589,6 +593,13 @@ export function ProductEditor(props: Props) {
       {product.kind !== "bundle" && product.variants.some((v) => v.delivery === "digital") && (
         <DigitalSection storeSlug={storeSlug} product={product} update={update} uploads={uploads} />
       )}
+      {/* A plan's billing periods (D912) are what it is: Homer's, beside its prices, never in the fold. */}
+      {product.kind === "plan" &&
+        (context.subscriptionsOn ? (
+          <SubscriptionSection product={product} update={update} markets={context.markets} netPrices={context.audience === "businesses"} />
+        ) : (
+          <p className="text-sm text-muted">{countWords(product.plans.length, w.subscriptionsOff)}</p>
+        ))}
       {/* Homer's product is above: words, pictures, kind, price and stock. Lisa's depth is in this fold, one step away (docs/admin-style.md
           2.1). It only hides: every field in it is the product's state and is saved with it, open or not. */}
       <details
@@ -608,8 +619,8 @@ export function ProductEditor(props: Props) {
             {[
               context.audience === "both" && (["audience-heading", w.advanced.parts.audience] as const),
               product.kind !== "gift_card" && (["price-words-heading", w.advanced.parts.priceWords] as const),
-              !isBooked(product.kind) && product.kind !== "bundle" && context.subscriptionsOn && (["subscription-heading", w.advanced.parts.subscriptions] as const),
-              !isBooked(product.kind) && (["safety-heading", w.advanced.parts.safety] as const),
+              !isBooked(product.kind) && product.kind !== "bundle" && product.kind !== "plan" && context.subscriptionsOn && (["subscription-heading", w.advanced.parts.subscriptions] as const),
+              !isBooked(product.kind) && product.kind !== "plan" && (["safety-heading", w.advanced.parts.safety] as const),
               ["legal-heading", w.advanced.parts.legal] as const,
             ]
               .flatMap((part) => (part ? [part as readonly [string, string]] : []))
@@ -633,7 +644,7 @@ export function ProductEditor(props: Props) {
           {context.audience === "both" && <AudienceSection product={product} update={update} />}
           {product.kind !== "gift_card" && <PriceWordsSection product={product} update={update} context={context} languageNames={languageNames} />}
           {(product.kind === "goods" || product.kind === "bundle") && <PriceBreaksSection product={product} update={update} context={context} />}
-          {!isBooked(product.kind) && (
+          {!isBooked(product.kind) && product.kind !== "plan" && (
             <>
               {/* Purchase options while Subscriptions is on (D178); off, they are kept as they are and not offered to shoppers. */}
               {product.kind === "bundle" ? null : context.subscriptionsOn ? (
@@ -811,7 +822,8 @@ function TextSection({
           />
         </label>
         <label className={label}>
-          {w.text.description}
+          {/* A plan has no page (D912): its description is the list its pricing table shows. */}
+          {product.kind === "plan" ? w.text.included : w.text.description}
           <textarea
             value={current.description}
             onChange={(e) => setField("description", e.target.value)}
@@ -1213,6 +1225,32 @@ const emptyVariant = (options: Record<string, string>, delivery: Delivery): Vari
   image: null,
 });
 
+/**
+ * A new plan's billing periods (D912): the option Billing with Monthly and Yearly, a variant each (a service, the prices typed so far,
+ * SKUs from the plan's name so each billing period can be named by its own), and an option renewing at each one's own price.
+ */
+function planBilling(p: ProductInput, [option, monthly, yearly]: readonly string[]) {
+  const options = [{ name: option, values: [monthly, yearly] }];
+  // Without a name yet, a few letters of its own, so a second plan made the same way does not take the first one's SKUs.
+  const base = (slugify(p.translations[0]?.title ?? "") || p.handle || `plan-${Math.random().toString(36).slice(2, 6)}`).slice(0, 48);
+  const kept = p.variants.length === 1 ? p.variants[0].sku : "";
+  const variants = variantsFor(options, p.variants, "service").map((v, i) => ({
+    ...v,
+    sku: v.sku || (i === 0 && kept ? kept : `${base}-${i === 0 ? "monthly" : "yearly"}`),
+  }));
+  const renews = (variantSku: string, interval: PlanInterval) => ({
+    id: null,
+    variantSku,
+    interval,
+    intervalCount: 1,
+    discountPercent: 0,
+    trialDays: 0,
+    signupFee: {},
+    minCycles: 0,
+  });
+  return { options, variants, plans: [renews(variants[0].sku, "month"), renews(variants[1].sku, "year")] };
+}
+
 /** Variants for a new set of options, keeping what was typed for combinations that remain. */
 function variantsFor(
   options: ProductInput["options"],
@@ -1277,7 +1315,7 @@ function VariantsSection({
   const { container: listRef, measure: measureRow, start, end, before, after } = useVirtualRows({ keys: rowKeys, estimate: 96, enabled: large });
   // Downloads and appointments (D65) have no stock.
   const allDigital = product.variants.every((v) => v.delivery !== "physical");
-  const service = isBooked(product.kind);
+  const service = isBooked(product.kind) || product.kind === "plan";
 
   const setOptions = (options: ProductInput["options"]) =>
     update((p) => ({ ...p, options, variants: variantsFor(options, p.variants, p.delivery) }));
@@ -2855,7 +2893,7 @@ function SubscriptionSection({
                   onClick={() =>
                     update((p) => {
                       const plans = p.plans.filter((_, i) => i !== index);
-                      return { ...p, plans, subscriptionOnly: plans.length > 0 && p.subscriptionOnly };
+                      return { ...p, plans, subscriptionOnly: p.kind === "plan" || (plans.length > 0 && p.subscriptionOnly) };
                     })
                   }
                   className="min-h-9 text-sm underline"
@@ -2938,7 +2976,7 @@ function SubscriptionSection({
             {product.plans.length === 0 ? w.offer : w.addAnother}
           </button>
         )}
-        {product.plans.length > 0 && (
+        {product.plans.length > 0 && product.kind !== "plan" && (
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -3108,8 +3146,12 @@ function KindSection({ product, update, offered }: SectionProps & { offered: Rec
       const giftCard = kind === "gift_card";
       // A bundle (D322) is one physical variant with no options, stock or content of its own, never subscribed to.
       const bundle = kind === "bundle";
+      // A plan (D912) is access sold by subscription: its variants are services, and without options of its own it comes as Monthly and
+      // Yearly, each renewing at its own price.
+      const plan = kind === "plan";
+      const billing = plan && p.options.length === 0 ? planBilling(p, w.planPeriods) : null;
       const delivery = (d: Delivery): Delivery =>
-        booked ? "service" : giftCard ? "digital" : d === "service" || p.kind === "gift_card" ? "physical" : d;
+        booked || plan ? "service" : giftCard ? "digital" : d === "service" || p.kind === "gift_card" ? "physical" : d;
       // Rooms and homes take the reduced rate for accommodation where there is one (D65); a gift card no VAT when sold, and only it (D300).
       const vatCategory = giftCard
         ? VOUCHER_CATEGORY
@@ -3127,13 +3169,15 @@ function KindSection({ product, update, offered }: SectionProps & { offered: Rec
         appointment: isBooked(kind) ? (p.kind === kind && p.appointment ? p.appointment : defaultBooking(kind)) : null,
         vatCategory,
         delivery: bundle ? "physical" : delivery(p.delivery),
-        options: bundle ? [] : p.options,
+        options: bundle ? [] : billing ? billing.options : p.options,
         variants: bundle
           ? variants.slice(0, 1).map((v) => ({ ...v, options: {}, delivery: "physical" as const, stockPolicy: "deny" as const, backorderDays: null }))
-          : variants,
-        files: bundle ? [] : p.files,
-        plans: booked || giftCard || bundle ? [] : p.plans,
-        subscriptionOnly: booked || giftCard || bundle ? false : p.subscriptionOnly,
+          : billing
+            ? billing.variants
+            : variants,
+        files: bundle || plan ? [] : p.files,
+        plans: booked || giftCard || bundle ? [] : billing ? billing.plans : p.plans,
+        subscriptionOnly: booked || giftCard || bundle ? false : plan ? true : p.subscriptionOnly,
         soldByMeasure: kind === "goods" ? p.soldByMeasure : false,
         priceOnRequest: kind === "goods" ? p.priceOnRequest : false,
         bundle: bundle ? (p.bundle ?? NEW_BUNDLE) : null,
@@ -3147,6 +3191,7 @@ function KindSection({ product, update, offered }: SectionProps & { offered: Rec
     ["rental", w.rental, w.rentalNote],
     ["gift_card", w.giftCard, w.giftCardNote],
     ["bundle", w.bundle, w.bundleNote],
+    ["plan", w.plan, w.planNote],
   ] as const;
   const current = kinds.find(([value]) => value === product.kind);
   // Round 36 (D724): on a phone what the product is, is one row saying the kind.

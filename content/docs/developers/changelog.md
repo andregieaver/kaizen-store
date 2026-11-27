@@ -9,12 +9,19 @@ features: []
 plans: []
 order: 1000
 checked: 2026-11-17
-sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695, D705, D712, D713, D715, D718, D730, D732, D757, D785, D810, D852, D855, D865, D868, D870, D882, D898, D900, D901, D902, D903, D904, D905]
+sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695, D705, D712, D713, D715, D718, D730, D732, D757, D785, D810, D852, D855, D865, D868, D870, D882, D898, D900, D901, D902, D903, D904, D905, D912]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
+
+## 1.73 — 2026-11-27
+
+A product's `kind` can be `plan` (D912): access to an app or a service, sold only by subscription, its variants its billing periods. A plan
+is in no product list, search or catalogue a shopper or an agent reads, has no product page, and is shown in a store's pricing table. The
+Admin API reads and writes it as any product; webhook payloads carry the kind as before. The `kind` choices of the tools that take one
+(categories' rules among them) include it.
 
 ## 1.72 — 2026-11-27
 

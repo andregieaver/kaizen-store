@@ -3,72 +3,72 @@
     "shop|none": {
       "promptChars": 15661,
       "toolCount": 128,
-      "toolChars": 156791,
+      "toolChars": 156798,
       "alwaysSentChars": 36551,
-      "totalChars": 172452
+      "totalChars": 172459
     },
     "shop|orders": {
       "promptChars": 15661,
       "toolCount": 128,
-      "toolChars": 156791,
+      "toolChars": 156798,
       "alwaysSentChars": 36551,
-      "totalChars": 172452
+      "totalChars": 172459
     },
     "shop|products": {
       "promptChars": 15661,
       "toolCount": 128,
-      "toolChars": 156791,
+      "toolChars": 156798,
       "alwaysSentChars": 36551,
-      "totalChars": 172452
+      "totalChars": 172459
     },
     "shop|customers": {
       "promptChars": 15661,
       "toolCount": 128,
-      "toolChars": 156791,
+      "toolChars": 156798,
       "alwaysSentChars": 36551,
-      "totalChars": 172452
+      "totalChars": 172459
     },
     "shop|marketing": {
       "promptChars": 15661,
       "toolCount": 128,
-      "toolChars": 160224,
+      "toolChars": 160231,
       "alwaysSentChars": 36583,
-      "totalChars": 175885
+      "totalChars": 175892
     },
     "shop|analytics": {
       "promptChars": 15661,
       "toolCount": 128,
-      "toolChars": 153327,
+      "toolChars": 153334,
       "alwaysSentChars": 36551,
-      "totalChars": 168988
+      "totalChars": 168995
     },
     "shop|website": {
       "promptChars": 15661,
       "toolCount": 128,
-      "toolChars": 163006,
+      "toolChars": 163013,
       "alwaysSentChars": 36587,
-      "totalChars": 178667
+      "totalChars": 178674
     },
     "shop|bookings": {
       "promptChars": 15661,
       "toolCount": 128,
-      "toolChars": 156791,
+      "toolChars": 156798,
       "alwaysSentChars": 36551,
-      "totalChars": 172452
+      "totalChars": 172459
     },
     "shop|support": {
       "promptChars": 15661,
       "toolCount": 128,
-      "toolChars": 155745,
+      "toolChars": 155752,
       "alwaysSentChars": 36523,
-      "totalChars": 171406
+      "totalChars": 171413
     },
     "shop|projects": {
       "promptChars": 15661,
       "toolCount": 128,
-      "toolChars": 156791,
+      "toolChars": 156798,
       "alwaysSentChars": 36551,
-      "totalChars": 172452
+      "totalChars": 172459
     },
     "shop|settings": {
       "promptChars": 15661,
@@ -80,51 +80,51 @@
     "shop|billing": {
       "promptChars": 15661,
       "toolCount": 128,
-      "toolChars": 155221,
+      "toolChars": 155228,
       "alwaysSentChars": 36523,
-      "totalChars": 170882
+      "totalChars": 170889
     },
     "shop|staff": {
       "promptChars": 15661,
       "toolCount": 128,
-      "toolChars": 155983,
+      "toolChars": 155990,
       "alwaysSentChars": 36527,
-      "totalChars": 171644
+      "totalChars": 171651
     },
     "shop|books": {
       "promptChars": 15661,
       "toolCount": 128,
-      "toolChars": 156791,
+      "toolChars": 156798,
       "alwaysSentChars": 36551,
-      "totalChars": 172452
+      "totalChars": 172459
     },
     "all|none": {
       "promptChars": 16541,
       "toolCount": 128,
-      "toolChars": 152703,
+      "toolChars": 152710,
       "alwaysSentChars": 36644,
-      "totalChars": 169244
+      "totalChars": 169251
     },
     "all|orders": {
       "promptChars": 16541,
       "toolCount": 128,
-      "toolChars": 152703,
+      "toolChars": 152710,
       "alwaysSentChars": 36644,
-      "totalChars": 169244
+      "totalChars": 169251
     },
     "all|products": {
       "promptChars": 16541,
       "toolCount": 128,
-      "toolChars": 152703,
+      "toolChars": 152710,
       "alwaysSentChars": 36644,
-      "totalChars": 169244
+      "totalChars": 169251
     },
     "all|customers": {
       "promptChars": 16541,
       "toolCount": 128,
-      "toolChars": 157845,
+      "toolChars": 157852,
       "alwaysSentChars": 36642,
-      "totalChars": 174386
+      "totalChars": 174393
     },
     "all|marketing": {
       "promptChars": 16541,
@@ -136,37 +136,37 @@
     "all|analytics": {
       "promptChars": 16541,
       "toolCount": 128,
-      "toolChars": 152540,
+      "toolChars": 152547,
       "alwaysSentChars": 36611,
-      "totalChars": 169081
+      "totalChars": 169088
     },
     "all|website": {
       "promptChars": 16541,
       "toolCount": 128,
-      "toolChars": 161679,
+      "toolChars": 161686,
       "alwaysSentChars": 36647,
-      "totalChars": 178220
+      "totalChars": 178227
     },
     "all|bookings": {
       "promptChars": 16541,
       "toolCount": 128,
-      "toolChars": 152322,
+      "toolChars": 152329,
       "alwaysSentChars": 36614,
-      "totalChars": 168863
+      "totalChars": 168870
     },
     "all|support": {
       "promptChars": 16541,
       "toolCount": 128,
-      "toolChars": 151043,
+      "toolChars": 151050,
       "alwaysSentChars": 36616,
-      "totalChars": 167584
+      "totalChars": 167591
     },
     "all|projects": {
       "promptChars": 16541,
       "toolCount": 128,
-      "toolChars": 151898,
+      "toolChars": 151905,
       "alwaysSentChars": 36614,
-      "totalChars": 168439
+      "totalChars": 168446
     },
     "all|settings": {
       "promptChars": 16541,
@@ -178,23 +178,23 @@
     "all|billing": {
       "promptChars": 16541,
       "toolCount": 128,
-      "toolChars": 151550,
+      "toolChars": 151557,
       "alwaysSentChars": 36616,
-      "totalChars": 168091
+      "totalChars": 168098
     },
     "all|staff": {
       "promptChars": 16541,
       "toolCount": 128,
-      "toolChars": 152312,
+      "toolChars": 152319,
       "alwaysSentChars": 36620,
-      "totalChars": 168853
+      "totalChars": 168860
     },
     "all|books": {
       "promptChars": 16541,
       "toolCount": 128,
-      "toolChars": 152703,
+      "toolChars": 152710,
       "alwaysSentChars": 36644,
-      "totalChars": 169244
+      "totalChars": 169251
     }
   },
   "fixed": {
@@ -273,7 +273,7 @@
     "save_menu": 3762,
     "save_segment": 6256,
     "save_shipping_method": 3706,
-    "update_category": 4425,
+    "update_category": 4432,
     "update_product": 11939
   },
   "tools": {
@@ -687,7 +687,7 @@
     "unit_price_gaps": 1148,
     "unpublish_entry": 626,
     "unpublish_page": 682,
-    "update_category": 4425,
+    "update_category": 4432,
     "update_product": 11939,
     "usage_and_limits": 652,
     "use_header_footer": 731,

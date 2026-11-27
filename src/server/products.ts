@@ -651,16 +651,17 @@ async function savePriceBreaks(tx: Tx, storeId: string, productId: string, input
 
 /**
  * The product as its kind needs it (D65): an appointment's variants are
- * services, booked for a time; goods are shipped or downloaded.
+ * services, booked for a time; goods are shipped or downloaded; a plan's are services sold only by subscription (D912).
  */
 function asKind(input: ProductInput): ProductInput {
   const booked = isBooked(input.kind);
-  const delivery = (d: ProductInput["delivery"]) => (booked ? "service" : d === "service" ? "physical" : d);
+  const plan = input.kind === "plan";
+  const delivery = (d: ProductInput["delivery"]) => (booked || plan ? "service" : d === "service" ? "physical" : d);
   return {
     ...input,
     delivery: delivery(input.delivery),
     variants: input.variants.map((v) => ({ ...v, delivery: delivery(v.delivery) })),
-    subscriptionOnly: booked ? false : input.subscriptionOnly,
+    subscriptionOnly: booked ? false : plan ? true : input.subscriptionOnly,
     appointment: isBooked(input.kind) ? (input.appointment ?? defaultBooking(input.kind)) : null,
   };
 }

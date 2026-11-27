@@ -98,6 +98,7 @@ export const productEn = {
     leaveEmpty: "Leave empty to show shoppers the {language} text.",
     fieldTitle: "Title",
     description: "Description",
+    included: "What's included, one per line",
     countryTexts: "A different description in one country",
     countryTextsCount: { one: "{n} country has its own", many: "{n} countries have their own" },
     countryTextsHint: "For a country that needs other words in this language (a German text for Austria beside Germany's). Empty: the description above. The title stays the same everywhere.",
@@ -454,6 +455,9 @@ export const productEn = {
     giftCardNote: "Amounts emailed as a code, spent in your store",
     bundle: "A bundle",
     bundleNote: "Several of your products sold together",
+    plan: "A plan",
+    planNote: "Access to your app, by subscription",
+    planPeriods: ["Billing", "Monthly", "Yearly"],
     lostContent: "The content of its variants was taken away: only shipped goods have a price per kg or litre.",
   },
   bundle: {

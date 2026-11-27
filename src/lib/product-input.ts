@@ -67,10 +67,11 @@ export const MAX_VARIANTS = 2048;
 export { MAX_MEDIA };
 
 /**
- * What a product is (D65): goods (shipped or downloaded), an appointment, a stay, a rental, a gift card (D300, its variants its amounts), or a
- * bundle (D322: one variant made of other goods, its stock and, when computed, its price coming from them).
+ * What a product is (D65): goods (shipped or downloaded), an appointment, a stay, a rental, a gift card (D300, its variants its amounts), a
+ * bundle (D322: one variant made of other goods, its stock and, when computed, its price coming from them), or a plan (D912: access sold only
+ * by subscription, its variants its billing periods, shown in a pricing table and never on a page or in a list of its own).
  */
-export const PRODUCT_KINDS = ["goods", "appointment", "stay", "rental", "gift_card", "bundle"] as const;
+export const PRODUCT_KINDS = ["goods", "appointment", "stay", "rental", "gift_card", "bundle", "plan"] as const;
 export type ProductKind = (typeof PRODUCT_KINDS)[number];
 /** Kinds booked for a time (D65, D67): sold as services, with the settings below. */
 export const BOOKED_KINDS = ["appointment", "stay", "rental"] as const;
@@ -290,7 +291,11 @@ export function productProblems(input: ProductInput, context: PublishContext): s
   if (input.subscriptionOnly && input.plans.length > 0) {
     for (const variant of input.variants.filter((v) => v.active)) {
       if (!input.plans.some((plan) => plan.variantSku === null || plan.variantSku === variant.sku)) {
-        problems.push(`${variantLabel(variant.options)} has no purchase option: give it one, or let shoppers also buy the product once.`);
+        problems.push(
+          input.kind === "plan"
+            ? `${variantLabel(variant.options)} has no billing period: say how often it renews.`
+            : `${variantLabel(variant.options)} has no purchase option: give it one, or let shoppers also buy the product once.`,
+        );
       }
     }
   }
@@ -314,7 +319,7 @@ export function productProblems(input: ProductInput, context: PublishContext): s
     rhythms.push({ rhythm, variantSku: plan.variantSku });
   }
   if (input.subscriptionOnly && input.plans.length === 0) {
-    problems.push("Add a purchase option, or let shoppers also buy the product once.");
+    problems.push(input.kind === "plan" ? "Say how often the plan renews: every month, every year, or both." : "Add a purchase option, or let shoppers also buy the product once.");
   }
 
   // Appointments, stays and rentals (D65, D67): booked for a time, never subscribed to.
@@ -346,6 +351,16 @@ export function productProblems(input: ProductInput, context: PublishContext): s
     problems.push("The VAT category Gift card is for gift cards only.");
   }
 
+  // A plan (D912): renews monthly or yearly, as its pricing table shows it, and has no file.
+  if (input.kind === "plan") {
+    if (input.files.length > 0) problems.push("A plan gives access, not a file: take the files away.");
+    for (const plan of input.plans) {
+      if (plan.intervalCount !== 1 || (plan.interval !== "month" && plan.interval !== "year")) {
+        problems.push(`${planSummary(plan)}: a plan renews every month or every year, as its pricing table shows it.`);
+      }
+    }
+  }
+
   // The gallery's kinds and counts (D325); whether its files are the store's own is the server's check.
   problems.push(...mediaProblems(input.media));
 
@@ -354,7 +369,8 @@ export function productProblems(input: ProductInput, context: PublishContext): s
 
   if (input.status !== "active") return problems;
 
-  if (input.media.length === 0) problems.push("Add at least one picture before publishing the product.");
+  // A plan (D912) has no page to show a picture on.
+  if (input.media.length === 0 && input.kind !== "plan") problems.push("Add at least one picture before publishing the product.");
   const active = input.variants.filter((v) => v.active);
   for (const variant of active.filter((v) => v.delivery === "digital" && input.kind !== "gift_card")) {
     if (!input.files.some((f) => f.variantSku === null || f.variantSku === variant.sku)) {

@@ -87,8 +87,15 @@ export function ruleWords(
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
-/** A variant's rule as its row keeps it, for goods and bundles; anything else (a gift card, a booking) is bought by the plain rule. */
+/** A plan (D912) is access for one: its line holds one, never more. */
+export const ONE_RULE: QuantityRule = { min: 1, step: 1, max: 1 };
+
+/** A rule that allows one and only one: there is nothing to choose, so no chooser and no words. */
+export const onlyOne = (rule: QuantityRule): boolean => rule.min === 1 && rule.max === 1;
+
+/** A variant's rule as its row keeps it, for goods and bundles; a plan (D912) one at a time; anything else by the plain rule. */
 export function ruleForKind(kind: unknown, row: { min_quantity?: unknown; max_quantity?: unknown; quantity_step?: unknown }): QuantityRule {
+  if (kind === "plan") return ONE_RULE;
   return kind === "goods" || kind === "bundle" ? ruleOf(row) : PLAIN_RULE;
 }
 

@@ -54,7 +54,9 @@ import {
   storeDualChoicesAction,
 } from "./actions";
 import { CREATE_KINDS, DUAL_KINDS } from "@/lib/dual-page";
-import { requirementMet } from "@/lib/store-features";
+import { featureOn, requirementMet } from "@/lib/store-features";
+import { storePlansData } from "@/lib/store-plans";
+import { getStorePlans } from "@/server/store-plans";
 import { duplicateStorePageAction } from "./duplicate-action";
 import { deleteStoreTextStyleAction, saveStoreTextStyleAction } from "./text-style-actions";
 import { listTextStyles } from "@/server/text-styles";
@@ -188,7 +190,13 @@ export async function storePageContext(
     // A page's own header (21 November 2026): the store's headers, on pages only.
     headers: type === "page" ? { choices: await headerChoices(store.id) } : null,
     // Kaizena Flow's own store (D469, step 4 of the plan) has Kaizena Flow's own parts: its plans, a domain search and the list of themes.
-    plans: store.house ? planChoices(await getPublicPlans()) : null,
+    // Any other store selling subscriptions has its own plans (D912), priced in its first country for the builder's choices.
+    plans: store.house
+      ? planChoices(await getPublicPlans())
+      : featureOn(store, "subscriptions") && store.markets[0]
+        ? planChoices(storePlansData((await getStorePlans(store.id, store.markets[0])).plans))
+        : null,
+    ownPlans: !store.house,
     extensionChoices: store.house ? extensionChoices(await getPublicExtensions()) : null,
     house: store.house,
     ...(store.house && type === "page" ? { themeStore: { parts: ["list"] as const } } : {}),

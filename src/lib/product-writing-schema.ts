@@ -10,7 +10,7 @@ import { WRITE_KINDS } from "./product-writing";
 
 /** What the model is told about the product: its words, as staff have them in the editor. */
 export const productFacts = z.object({
-  kind: z.enum(["goods", "appointment", "stay", "rental", "gift_card", "bundle"]),
+  kind: z.enum(["goods", "appointment", "stay", "rental", "gift_card", "bundle", "plan"]),
   title: z.string().trim().max(200),
   description: z.string().trim().max(10_000),
   seoTitle: z.string().trim().max(TITLE_MAX).default(""),

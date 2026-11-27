@@ -62,7 +62,7 @@ describe("where a theme store component may be (D285)", () => {
   });
 });
 
-describe("where a plans component may be (D142)", () => {
+describe("where a plans component may be (D142, D912)", () => {
   const plans: PageBlock = { id: "pl", type: "plans", buttonLabel: "", buttonHref: "" };
 
   it("belongs on Kaizena Flow's own pages, which sell its plans", () => {
@@ -70,11 +70,11 @@ describe("where a plans component may be (D142)", () => {
     expect(pageRulesProblem(null, "article", withBlock(plans))).toBeNull();
   });
 
-  it("is refused on a store's pages: a store does not sell Kaizena Flow's plans", () => {
-    for (const type of ["page", "article", "header", "footer"] as PageType[]) {
-      expect(pageRulesProblem(store, type, withBlock(plans))).not.toBeNull();
+  it("shows a store's own plans on its pages and articles, never in its header or footer", () => {
+    for (const type of ["page", "article"] as PageType[]) expect(pageRulesProblem(store, type, withBlock(plans)), type).toBeNull();
+    for (const type of ["header", "footer"] as PageType[]) {
+      expect(pageRulesProblem(store, type, withBlock(plans)), type).toMatch(/store's pages and articles/);
     }
-    expect(pageRulesProblem(store, "page", withBlock(plans))).toMatch(/Kaizena Flow's own pages/);
   });
 });
 
@@ -88,8 +88,9 @@ describe("Kaizena Flow's own store, which serves its site (D484)", () => {
     for (const block of [plans, themes, domains]) expect(pageRulesProblem(store, "page", withBlock(block), null, true), block.type).toBeNull();
     // Its articles, header and footer take no list of themes, as Kaizena Flow's own did not.
     expect(pageRulesProblem(store, "article", withBlock(themes), null, true)).toMatch(/Kaizena Flow's pages/);
-    // Any other store still may not.
-    for (const block of [plans, themes, domains]) expect(pageRulesProblem(store, "page", withBlock(block)), block.type).not.toBeNull();
+    // Any other store still may not, but for the Plans component, which shows its own plans there (D912).
+    for (const block of [themes, domains]) expect(pageRulesProblem(store, "page", withBlock(block)), block.type).not.toBeNull();
+    expect(pageRulesProblem(store, "page", withBlock(plans))).toBeNull();
   });
 
   it("may keep Start your store in its header, beside a store's own parts", () => {

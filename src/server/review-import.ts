@@ -53,7 +53,7 @@ export async function importReviews(
     if (handles.length > 0) {
       const found = await tx.execute<Row>(sql`
         select id, handle from commerce.products
-        where store_id = ${storeId}::uuid and kind <> 'gift_card' and handle in (select jsonb_array_elements_text(${JSON.stringify(handles)}::jsonb))
+        where store_id = ${storeId}::uuid and kind not in ('gift_card', 'plan') and handle in (select jsonb_array_elements_text(${JSON.stringify(handles)}::jsonb))
       `);
       for (const p of found) products.set(String(p.handle), String(p.id));
       // The imports already in the store for these products, so the same review is never added twice.

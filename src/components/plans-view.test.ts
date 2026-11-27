@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { pageBlockSchema, blockHasContent, type PlansBlock } from "@/lib/page-content";
 import { mapBlockTexts } from "@/lib/page-translation";
 import type { PublicPlans } from "@/lib/plan-offer";
+import { storePlansData, type StorePlan } from "@/lib/store-plans";
 import { sanitizeTemplate } from "@/lib/template-content";
 
 import { PlansView } from "./plans-view";
@@ -221,5 +222,73 @@ describe("whole amounts and the switch between monthly and yearly (D481)", () =>
   it("is saved and cleaned as the component's other choices", () => {
     expect(pageBlockSchema.safeParse(block({ switcher: true, interval: "year", decimals: "hide_whole" })).success).toBe(true);
     expect(pageBlockSchema.safeParse({ ...block(), decimals: "always" }).success).toBe(false);
+  });
+});
+
+describe("a store's own plans (D912)", () => {
+  const plans: StorePlan[] = [
+    {
+      id: "basic",
+      handle: "basic",
+      name: "Basic",
+      line: "For one person",
+      included: ["Unlimited notes", "Sync"],
+      prices: [
+        { currency: "NOK", interval: "month", amountMinor: 9900, variantId: "00000000-0000-4000-8000-00000000b001", sellingPlanId: "00000000-0000-4000-8000-00000000c001", trialDays: 14 },
+        { currency: "NOK", interval: "year", amountMinor: 99000, variantId: "00000000-0000-4000-8000-00000000b002", sellingPlanId: "00000000-0000-4000-8000-00000000c002", trialDays: 0 },
+      ],
+    },
+    {
+      id: "plus",
+      handle: "plus",
+      name: "Plus",
+      line: "",
+      included: ["Unlimited notes", "Sync", "AI summaries"],
+      prices: [{ currency: "NOK", interval: "month", amountMinor: 19900, variantId: "00000000-0000-4000-8000-00000000b003", sellingPlanId: "00000000-0000-4000-8000-00000000c003", trialDays: 0 }],
+    },
+  ];
+  const choose = async () => {};
+  const sold = (b: PlansBlock, withVat = true, lang = "en") =>
+    renderToStaticMarkup(createElement(PlansView, { block: b, data: storePlansData(plans), lang, sale: { action: choose, store: "notes", market: "no", plans, withVat } }));
+
+  it("draws each plan with its price as the store shows it, what it includes and no fee", () => {
+    const out = sold(block());
+    expect(out).toContain("Basic");
+    expect(out).toContain("For one person");
+    expect(out).toContain("incl. VAT");
+    expect(out).not.toContain("excl. VAT");
+    expect(out).not.toContain("fee per sale");
+    expect(out).toContain("AI summaries");
+    expect(sold(block(), false)).toContain("excl. VAT");
+  });
+
+  it("buys with a form, not a link: the plan's variant and purchase option at the card's billing period", () => {
+    const out = sold(block());
+    expect(out).not.toContain("/sign-up");
+    expect(out).toContain('name="store" value="notes"');
+    expect(out).toContain('name="market" value="no"');
+    expect(out).toContain('name="variantId" value="00000000-0000-4000-8000-00000000b001"');
+    expect(out).toContain('name="sellingPlanId" value="00000000-0000-4000-8000-00000000c001"');
+    // The yearly price under the monthly one is its own button.
+    expect(out).toContain('name="sellingPlanId" value="00000000-0000-4000-8000-00000000c002"');
+    expect(out).toMatch(/<button type="submit"[^>]*>or [^<]*990[^<]* per year<span class="sr-only"> – Basic<\/span><\/button>/);
+  });
+
+  it("offers each set of the switch its own billing period, and says a free trial", () => {
+    const out = sold(block({ switcher: true }));
+    const [monthly, yearly] = out.split('data-plan-panel="year"');
+    expect(monthly).toContain("00000000-0000-4000-8000-00000000c001");
+    expect(monthly).toContain("14 days free");
+    expect(yearly).toContain("00000000-0000-4000-8000-00000000c002");
+    expect(yearly).not.toContain("00000000-0000-4000-8000-00000000c001");
+    // Plus has no yearly price: on the yearly side too it leads with, and buys, its monthly one, as Kaizena Flow's cards do.
+    expect(yearly).toContain("00000000-0000-4000-8000-00000000c003");
+  });
+
+  it("compares by the plans' own lines, with no empty category heading", () => {
+    const out = sold(block({ comparison: true }));
+    expect(out).toContain("Compare plans");
+    expect(out).not.toContain('scope="rowgroup"');
+    expect(out).toContain("AI summaries");
   });
 });

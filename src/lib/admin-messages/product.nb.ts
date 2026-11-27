@@ -94,6 +94,7 @@ export const productNb: ProductMessages = {
     leaveEmpty: "La feltet stå tomt for å vise kundene teksten på {language}.",
     fieldTitle: "Tittel",
     description: "Beskrivelse",
+    included: "Hva som er inkludert, én per linje",
     countryTexts: "En annen beskrivelse i ett land",
     countryTextsCount: { one: "{n} land har sin egen", many: "{n} land har sin egen" },
     countryTextsHint: "For et land som trenger andre ord på dette språket (en tysk tekst for Østerrike ved siden av Tysklands). Tom: beskrivelsen over. Tittelen er den samme overalt.",
@@ -450,6 +451,9 @@ export const productNb: ProductMessages = {
     giftCardNote: "Beløp sendt som en kode på e-post og brukt i butikken",
     bundle: "En pakke",
     bundleNote: "Flere av produktene dine solgt sammen",
+    plan: "En plan",
+    planNote: "Tilgang til appen din, som abonnement",
+    planPeriods: ["Betaling", "Månedlig", "Årlig"],
     lostContent: "Innholdet i variantene ble fjernet: bare varer som sendes, har enhetspris per kg eller liter.",
   },
   bundle: {

@@ -1,3 +1,5 @@
+import type { CSSProperties, ReactNode } from "react";
+
 import { dateIn, PLATFORM_TIME_ZONE } from "@/lib/dates";
 import { limitUnit, type LimitKey } from "@/lib/limits";
 import { EURO_MONEY, formatLimit, type AiMoney } from "@/lib/usage-format";
@@ -7,6 +9,7 @@ import { langOfLocale, platformPath } from "@/lib/platform-lang";
 import type { PlansBlock } from "@/lib/page-content";
 import { bestYearlySaving, comparisonTable, planCards, type PlanCard, type PlanCardPrice, type PublicPlans } from "@/lib/plan-offer";
 import { formatBps, type PlanInterval } from "@/lib/plans";
+import type { StorePlan, StorePlanPrice } from "@/lib/store-plans";
 
 import { buttonLook } from "./page-block";
 
@@ -29,15 +32,32 @@ function aiMoneyIn(currency: string, data: PublicPlans, decimals: PlansBlock["de
   return perEuro ? { currency, perEuro, decimals } : { ...EURO_MONEY, decimals };
 }
 
+/** What a card's button buys at a billing period (as `choiceFor()` in `store-plans.ts`, here so a page of Kaizena Flow's plans loads none of it). */
+const choiceOf = (plan: StorePlan | undefined, interval: PlanInterval): StorePlanPrice | null =>
+  plan?.prices.find((price) => price.interval === interval) ?? null;
+
 /**
- * Kaizen's plans (D142): a card for each plan with its price, fee per sale and what it includes, and under them,
+ * A store's own plans (D912): what each card's button buys (its plan's variant at the card's billing period, with its purchase option, through
+ * `action`, the cart's *Choose plan*), and whether the prices include VAT. Absent, the cards are Kaizena Flow's plans.
+ */
+export type PlanSale = {
+  action: (formData: FormData) => Promise<void>;
+  store: string;
+  market: string;
+  plans: StorePlan[];
+  withVat: boolean;
+};
+
+/**
+ * Kaizen's plans (D142), or a store's own (D912, `sale`): a card for each plan with its price, fee per sale and what it includes, and under them,
  * if the component says so, the comparison table (D132). Pure of data fetching: `PlansSection` reads the plans.
  * The prices are what stores pay Kaizen, without VAT (Norwegian VAT is added at checkout, D18). With the switch (D481) visitors
  * choose monthly or yearly prices: both sets of cards are drawn, and the radio chosen shows one (`data-plan-switch` in
  * `globals.css`), before any script runs and without one.
  */
-export function PlansView({ block, data, lang = "en" }: { block: PlansBlock; data: PublicPlans; lang?: string }) {
-  const m = t(lang).plans;
+export function PlansView({ block, data, lang = "en", sale }: { block: PlansBlock; data: PublicPlans; lang?: string; sale?: PlanSale }) {
+  const all = t(lang);
+  const m = all.plans;
   const options = { currency: block.currency, highlightId: block.highlightId };
   const { currency, cards } = planCards(data, { ...options, interval: block.switcher ? "month" : block.interval });
   if (!currency || cards.length === 0) return null;
@@ -48,13 +68,65 @@ export function PlansView({ block, data, lang = "en" }: { block: PlansBlock; dat
   const money = (price: PlanCardPrice) => formatMoney(price.amountMinor, price.currency, lang, style);
   const every = (price: PlanCardPrice) => (price.interval === "month" ? m.perMonth : m.perYear);
   const ai = aiMoneyIn(currency, data, block.decimals);
+  // A store's prices are its own, with VAT unless it sells only to businesses (D912); Kaizena Flow's are what stores pay, without VAT.
+  const vatNote = sale ? (sale.withVat ? all.vatIncluded : all.vatExcluded) : m.exVat;
+  const button = (card: PlanCard, look: ReturnType<typeof buttonLook>) => {
+    if (!sale) {
+      return (
+        <a href={href} className={look.className} style={look.style} data-kz-text="button">
+          {label}
+          <span className="sr-only"> – {card.name}</span>
+        </a>
+      );
+    }
+    // A plain form for each billing period the card offers: it works before any script, and the cart takes it from there.
+    const plan = sale.plans.find((p) => p.id === card.id);
+    const form = (interval: PlanInterval, content: ReactNode, className: string, style?: CSSProperties) => {
+      const choice = choiceOf(plan, interval);
+      return choice ? (
+        <form action={sale.action}>
+          <input type="hidden" name="store" value={sale.store} />
+          <input type="hidden" name="market" value={sale.market} />
+          <input type="hidden" name="variantId" value={choice.variantId} />
+          <input type="hidden" name="sellingPlanId" value={choice.sellingPlanId} />
+          <button type="submit" className={className} style={style} data-kz-text="button">
+            {content}
+            <span className="sr-only"> – {card.name}</span>
+          </button>
+        </form>
+      ) : null;
+    };
+    return (
+      <>
+        {form(card.main.interval, label, look.className, look.style)}
+        {card.other && form(card.other.interval, m.yearlyPrice(money(card.other)), "text-sm underline underline-offset-2 hover:no-underline")}
+      </>
+    );
+  };
+  const trialOf = (card: PlanCard) => {
+    const days = choiceOf(sale?.plans.find((p) => p.id === card.id), card.main.interval)?.trialDays ?? 0;
+    return days > 0 ? all.planTrial(days) : null;
+  };
   const columns = COLUMNS[Math.min(cards.length, 4)];
   const table = block.comparison ? comparisonTable(data, cards) : [];
   // Each set of cards names its headings apart: with the switch both are on the page.
   const grid = (shown: PlanCard[], set = "") => (
     <div className={`grid gap-4 kzb-md-cols-2 ${columns}`}>
       {shown.map((card) => (
-        <PlanCardView key={card.id} headingId={`plan-${set}${card.id}`} card={card} look={buttonLook({ variant: card.highlighted ? "filled" : "outline" }, true)} href={href} label={label} money={money} every={every} ai={ai} m={m} lang={lang} />
+        <PlanCardView
+          key={card.id}
+          headingId={`plan-${set}${card.id}`}
+          card={card}
+          button={button(card, buttonLook({ variant: card.highlighted ? "filled" : "outline" }, true))}
+          vatNote={vatNote}
+          trial={trialOf(card)}
+          seller={sale ? "store" : "platform"}
+          money={money}
+          every={every}
+          ai={ai}
+          m={m}
+          lang={lang}
+        />
       ))}
     </div>
   );
@@ -92,11 +164,14 @@ export function PlansView({ block, data, lang = "en" }: { block: PlansBlock; dat
             </thead>
             {table.map((group) => (
               <tbody key={group.category}>
-                <tr>
-                  <th scope="rowgroup" colSpan={cards.length + 1} className="pt-5 pb-1 text-xs font-medium tracking-wide text-muted uppercase">
-                    {group.category}
-                  </th>
-                </tr>
+                {/* A store's plans' lines have no categories (D912): one group, with no heading of its own. */}
+                {group.category && (
+                  <tr>
+                    <th scope="rowgroup" colSpan={cards.length + 1} className="pt-5 pb-1 text-xs font-medium tracking-wide text-muted uppercase">
+                      {group.category}
+                    </th>
+                  </tr>
+                )}
                 {group.rows.map((row) => (
                   <tr key={row.id} className="border-b border-border last:border-0">
                     <th scope="row" className="py-2 pr-4 font-normal">
@@ -156,9 +231,10 @@ function limitName(m: ReturnType<typeof t>["plans"], key: LimitKey, value: numbe
 function PlanCardView({
   headingId,
   card,
-  look,
-  href,
-  label,
+  button,
+  vatNote,
+  trial,
+  seller,
   money,
   every,
   ai,
@@ -167,9 +243,13 @@ function PlanCardView({
 }: {
   headingId: string;
   card: PlanCard;
-  look: ReturnType<typeof buttonLook>;
-  href: string;
-  label: string;
+  /** The card's button: Kaizena Flow's sign-up link, or a store's *Choose plan* form (D912). */
+  button: ReactNode;
+  vatNote: string;
+  /** A store's plan's free trial (D912), said under its price. */
+  trial: string | null;
+  /** Kaizena Flow's plans say their fee per sale and the other price in a line; a store's other price is its own button. */
+  seller: "platform" | "store";
   money: (price: PlanCardPrice) => string;
   every: (price: PlanCardPrice) => string;
   ai: AiMoney;
@@ -208,15 +288,13 @@ function PlanCardView({
               {card.campaign.lasts === "once" ? m.campaignOnce(`${money(card.main)} ${every(card.main)}`) : m.campaignMonths(card.campaign.lasts, `${money(card.main)} ${every(card.main)}`)}
             </p>
           ))}
-        <p className="text-xs text-muted">{m.exVat}</p>
-        {card.other && <p className="mt-1 text-sm">{m.yearlyPrice(money(card.other))}</p>}
+        <p className="text-xs text-muted">{vatNote}</p>
+        {trial && <p className="mt-1 text-sm font-medium">{trial}</p>}
+        {card.other && seller === "platform" && <p className="mt-1 text-sm">{m.yearlyPrice(money(card.other))}</p>}
         {card.yearlySavingPercent !== null && <p className="text-sm font-medium text-accent">{m.saveYearly(String(card.yearlySavingPercent))}</p>}
       </div>
-      <p className="text-sm">{m.fee(formatBps(card.saleFeeBps, lang))}</p>
-      <a href={href} className={look.className} style={look.style} data-kz-text="button">
-        {label}
-        <span className="sr-only"> – {card.name}</span>
-      </a>
+      {seller === "platform" && <p className="text-sm">{m.fee(formatBps(card.saleFeeBps, lang))}</p>}
+      <div className="flex flex-col items-center gap-2">{button}</div>
       {card.limits.length > 0 && (
         <ul className="flex flex-col gap-1.5 text-sm" data-kz-text="meta">
           {card.limits.map((limit) => (

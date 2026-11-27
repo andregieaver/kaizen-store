@@ -21,12 +21,20 @@ export const STORE_AUDIENCE = sql`commerce.store_audience(s.audience, s.features
  * `commerce.kind_offered()`): an appointment needs Appointments, a stay or a rental Stays and rentals, a product sold only as a subscription
  * Subscriptions. And nothing is offered while the online shop is off (D178 step 5: the store is a website). Every shopper-facing read of
  * products asks it. A product an exclusive price list reaches (D321 C.3, `commerce.product_exclusive()`) is offered to no one here: the reads
- * made per request for a known buyer ask `offeredTo()` instead, which offers it to that list's buyers.
+ * made per request for a known buyer ask `offeredTo()` instead, which offers it to that list's buyers. A plan (D912) has no page or list.
  */
 export const OFFERED = sql`(commerce.feature_on(p.store_id, 'shop')
   and (p.audience = 'all' or commerce.product_offered(p.store_id, p.audience))
   and ((p.kind = 'goods' and not p.subscription_only) or commerce.kind_offered(p.store_id, p.kind, p.subscription_only))
-  and not commerce.product_exclusive(p.store_id, p.id))`;
+  and not commerce.product_exclusive(p.store_id, p.id)
+  and p.kind <> 'plan')`;
+
+/** `OFFERED` for plans (D912), which it leaves out: asked only by the pricing table (`getStorePlans()`); the cart sells them through `offeredTo()`. */
+export const PLAN_OFFERED = sql`(commerce.feature_on(p.store_id, 'shop')
+  and (p.audience = 'all' or commerce.product_offered(p.store_id, p.audience))
+  and commerce.kind_offered(p.store_id, p.kind, p.subscription_only)
+  and not commerce.product_exclusive(p.store_id, p.id)
+  and p.kind = 'plan')`;
 
 /**
  * `OFFERED` for a known buyer (D321 C.3): the same conditions, with a product an exclusive list reaches offered when one of the buyer's own lists

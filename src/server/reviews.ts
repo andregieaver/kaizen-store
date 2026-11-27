@@ -137,7 +137,7 @@ export async function reviewableLinesFor(
       join commerce.order_lines l on l.store_id = o.store_id and l.order_id = o.id
       join commerce.product_variants v on v.store_id = l.store_id and v.id = l.variant_id
       join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
-      where o.store_id = ${storeId}::uuid and ${whose} and ${SOLD} and p.kind <> 'gift_card' ${one}
+      where o.store_id = ${storeId}::uuid and ${whose} and ${SOLD} and p.kind not in ('gift_card', 'plan') ${one}
       ${lock}
     ), received as (
       select distinct on (b.product_id) b.* from bought b

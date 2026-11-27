@@ -130,7 +130,7 @@ export async function siteFacts(owner: StudioOwner, connection: AiConnection | n
   const products = await db().execute<Row>(sql`
     select p.handle, t.title, t.description from commerce.products p
     join commerce.product_translations t on t.product_id = p.id and t.locale = ${main.locale}
-    where p.store_id = ${store.id}::uuid and p.status = 'active'
+    where p.store_id = ${store.id}::uuid and p.status = 'active' and p.kind <> 'plan'
     order by p.created_at desc
     limit ${PRODUCTS_TOLD}
   `);

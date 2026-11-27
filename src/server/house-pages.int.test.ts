@@ -13,7 +13,8 @@ const { houseStoreId } = await import("./house-customers");
 
 /**
  * Kaizena Flow's own store serves its site (D484), so the pages copied from the platform's own (D469) keep saving: its header with
- * *Start your store* and its pricing page with the plans. Any other store is still refused both.
+ * *Start your store* and its pricing page with the plans. Any other store is still refused the button; its pricing page shows its own plans
+ * (D912).
  */
 
 const run = Date.now().toString(36);
@@ -43,11 +44,11 @@ describe("Kaizena Flow's own store's pages", () => {
     expect(pricing).toMatchObject({ ok: true });
   });
 
-  it("still refuses both on any other store", async () => {
+  it("still refuses the button on any other store, whose pricing page shows its own plans (D912)", async () => {
     const store = await makeStore("not-house");
     const header = await pages.savePage(store.account, store.id, null, withBlock(`header-${run}`, signUp), { publish: true, type: "header", fonts });
     expect(header).toEqual({ ok: false, problems: ["A store's site has no Start your store button."] });
     const pricing = await pages.savePage(store.account, store.id, null, withBlock(`pricing-${run}`, plans), { publish: true, type: "page", fonts });
-    expect(pricing).toMatchObject({ ok: false, problems: [expect.stringContaining("Kaizena Flow's own pages")] });
+    expect(pricing).toMatchObject({ ok: true });
   });
 });

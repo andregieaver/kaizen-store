@@ -1174,6 +1174,17 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   is gone: the editor names it by SKU and the save throws on an unknown one. A new copy of a store's rows that copies `selling_plans`
   maps `variant_id` the way it maps the variant (`clone_store()`/`duplicate_store()` wrap their `_rows` originals for this).
 
+## Plans (D912, `products.kind = 'plan'`, `check_plan_product()`, `PLAN_OFFERED`, `src/lib/store-plans.ts`, `src/server/store-plans.ts`, `choosePlan()`)
+
+- **Plans (D912)**: a plan is access sold only by subscription, its variants its billing periods (D911), each a service, held so by
+  `check_plan_product()` and made so on save by `asKind()`; it may go on sale without a picture. What it includes is its description, one
+  thing per line (`includedLines()`). It has no page and no place in any list: `OFFERED` leaves it out, so a new reader made for everyone
+  that asks `OFFERED` needs nothing more, and one that does not (an owner's tool listing addresses, a redirect, an email) leaves out
+  `kind = 'plan'` itself. Only the pricing table's reader asks `PLAN_OFFERED` (`selling-readers.scan.test.ts`). The cart and checkout sell a
+  plan through `offeredTo()`; a cart holds one plan, one of it (`choosePlan()`, `ONE_RULE`). A plan renews every month or every year, as its
+  pricing table shows it. Its `/p/` address leads to the page with the Plans component (`planPricingPath()`). Linking a plan to the app it
+  gives access in is step 2 of D912 (not built): build it there, never as a store setting of its own.
+
 ## Subscription boxes (D102, named so in every text shoppers and staff read; `src/lib/standing-orders.ts`, `src/server/standing-orders.ts`,…
 
 - Subscription boxes (D102, named so in every text shoppers and staff read; `src/lib/standing-orders.ts`, `src/server/standing-orders.ts`,

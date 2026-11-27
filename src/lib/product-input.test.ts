@@ -264,6 +264,42 @@ describe("productProblems", () => {
       ]);
     });
 
+    describe("a plan (D912)", () => {
+      // Access sold only by subscription, its variants its billing periods, as `asKind()` saves it: services, sold only by subscription.
+      const plus: ProductInput = {
+        ...base,
+        kind: "plan",
+        subscriptionOnly: true,
+        media: [],
+        options: [{ name: "Billing", values: ["Monthly", "Yearly"] }],
+        variants: [
+          { ...base.variants[0], delivery: "service", options: { Billing: "Monthly" }, sku: "PLUS-M", prices: { NO: "199", SE: "" } },
+          { ...base.variants[0], delivery: "service", options: { Billing: "Yearly" }, sku: "PLUS-Y", prices: { NO: "1990", SE: "" } },
+        ],
+      };
+      const monthly = { ...plan("month", 1, "PLUS-M"), discountPercent: 0 };
+      const yearly = { ...plan("year", 1, "PLUS-Y"), discountPercent: 0 };
+
+      it("goes on sale with monthly and yearly and no picture, having no page to show one on", () => {
+        expect(productProblems({ ...plus, plans: [monthly, yearly] }, context)).toEqual([]);
+      });
+
+      it("renews every month or every year, as its pricing table shows it, and says so in its own words", () => {
+        expect(productProblems({ ...plus, plans: [monthly, { ...yearly, interval: "month", intervalCount: 3 }] }, context)).toContain(
+          "Every 3 months: a plan renews every month or every year, as its pricing table shows it.",
+        );
+        expect(productProblems({ ...plus, plans: [] }, context)).toContain("Say how often the plan renews: every month, every year, or both.");
+        expect(productProblems({ ...plus, plans: [monthly] }, context)).toContain("Yearly has no billing period: say how often it renews.");
+      });
+
+      it("gives access, not a file", () => {
+        const file = { id: null, name: "welcome.pdf", path: "x/welcome.pdf", sizeBytes: 1, contentType: "application/pdf", variantSku: null };
+        expect(productProblems({ ...plus, plans: [monthly, yearly], files: [file] }, context)).toContain(
+          "A plan gives access, not a file: take the files away.",
+        );
+      });
+    });
+
     describe("for one variant (D911)", () => {
       // Monthly and yearly as variants with their own prices, as Kaizena Life's Plus.
       const billing: ProductInput = {

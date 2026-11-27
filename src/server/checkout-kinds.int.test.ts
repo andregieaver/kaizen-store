@@ -111,7 +111,7 @@ vi.mock("./stripe", () => ({
 }));
 vi.mock("./stripe-keys", () => ({ platformModes: () => ["test"], platformPublishableKey: () => "pk_test_kinds", platformSecretKey: () => "sk_test_x" }));
 
-const { changeLine, getCart, getCartGift, setCartGift } = await import("./cart");
+const { changeLine, choosePlan, getCart, getCartGift, setCartGift } = await import("./cart");
 const { cartSummary } = await import("./cart-summary");
 const { getOpenCheckout, startCheckout } = await import("./checkout");
 const { getOrder, getShopperOrder } = await import("./orders");
@@ -201,6 +201,29 @@ beforeAll(async () => {
     update commerce.products p set delivery = 'digital', download_limit = 2, download_days = 7
     from commerce.product_variants v where v.product_id = p.id and v.store_id = ${storeId}::uuid and v.sku = 'DEMO-LAMP'
   `);
+  // A plan (D912): access sold only by subscription, monthly and yearly as its two variants, each with its own purchase option, a
+  // service with no picture, chosen from a pricing table.
+  const [planProduct] = await db().execute<Row>(sql`
+    insert into commerce.products (store_id, handle, tax_code, kind, delivery, subscription_only)
+    values (${storeId}::uuid, 'kinds-plan', 'txcd_10000000', 'plan', 'service', true) returning id
+  `);
+  for (const [sku, interval, price] of [["KINDS-PLAN-M", "month", 19900], ["KINDS-PLAN-Y", "year", 199000]] as const) {
+    const [v] = await db().execute<Row>(sql`
+      insert into commerce.product_variants (store_id, product_id, sku, delivery, options)
+      values (${storeId}::uuid, ${String(planProduct.id)}::uuid, ${sku}, 'service', ${JSON.stringify({ Billing: interval })}::jsonb) returning id
+    `);
+    await db().execute(sql`select commerce.set_price(${String(v.id)}::uuid, 'NO', ${price})`);
+    const [option] = await db().execute<Row>(sql`
+      insert into commerce.selling_plans (store_id, product_id, variant_id, interval, interval_count, discount_percent)
+      values (${storeId}::uuid, ${String(planProduct.id)}::uuid, ${String(v.id)}::uuid, ${interval}, 1, 0) returning id
+    `);
+    planOption[sku] = String(option.id);
+  }
+  await db().execute(sql`
+    insert into commerce.product_translations (store_id, product_id, locale, title, description)
+    values (${storeId}::uuid, ${String(planProduct.id)}::uuid, 'nb-NO', 'Pluss', 'Ubegrensede notater')
+  `);
+  await db().execute(sql`update commerce.products set status = 'active' where id = ${String(planProduct.id)}::uuid`);
   const rows = await db().execute<Row>(sql`
     select p.id as product_id, p.handle, v.id as variant_id, v.sku, s.time_zone,
       a.check_in_time::text as check_in, a.check_out_time::text as check_out
@@ -941,6 +964,22 @@ const giftScenarios: Scenario[] = [
  * Gift cards (D300 F2): a card's amount is its price, with no VAT; nothing comes off it (a code, a group discount and credits reach only the
  * goods beside it) and it counts towards no threshold; who it is sent to rides on its line to the order. In kroner and in euro.
  */
+/** A plan's purchase option by its variant's SKU (D912). */
+const planOption: Record<string, string> = {};
+
+const planScenarios: Scenario[] = [
+  {
+    // Chosen yearly, then monthly, from the pricing table: the cart keeps one plan, a service with nothing to ship.
+    name: "a plan chosen in a pricing table",
+    fill: async () => {
+      expect(await choosePlan(shop(), variant["KINDS-PLAN-Y"], planOption["KINDS-PLAN-Y"])).toMatchObject({ outcome: "added" });
+      expect(await choosePlan(shop(), variant["KINDS-PLAN-M"], planOption["KINDS-PLAN-M"])).toMatchObject({ outcome: "added", quantity: 1 });
+    },
+    consent: { subscription: true },
+    bookings: 0,
+  },
+];
+
 const giftCardScenarios: Scenario[] = [
   { name: "a gift card for the buyer", fill: () => add("DEMO-GAVEKORT-500", 2), bookings: 0 },
   {
@@ -1045,7 +1084,7 @@ describe("checkout for every kind of product", () => {
     companyId = String(company.id);
   });
 
-  it.each([...scenarios, ...euroScenarios, ...campaignScenarios, ...combinationScenarios, ...deliveryScenarios, ...backorderScenarios, ...giftScenarios, ...giftCardScenarios, ...giftCardSpendScenarios])("$name: from the cart to the payment form to a paid order", async (scenario) => {
+  it.each([...scenarios, ...euroScenarios, ...campaignScenarios, ...combinationScenarios, ...deliveryScenarios, ...backorderScenarios, ...giftScenarios, ...giftCardScenarios, ...giftCardSpendScenarios, ...planScenarios])("$name: from the cart to the payment form to a paid order", async (scenario) => {
     jar.clear();
     view = scenario.euro ? noInEuro : no;
     // Campaigns run only in the scenarios that make them (D114).

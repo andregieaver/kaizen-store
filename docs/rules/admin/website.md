@@ -665,9 +665,13 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 
 - Kaizen's plans on its own pages (D142, `src/lib/plan-offer.ts` pure, `src/server/public-plans.ts`, `PlansView`/`PlansSection`,
   block `plans`): cards and the comparison table read from `plans`, `plan_prices` and `plan_features` where the page is shown,
-  cached under `PLANS_TAG`, which any new way of changing a plan, its prices or its features must `updateTag()`. Only Kaizen's
-  pages hold the block (`plansProblem()`), never a store's; the visitor sees only what `getPublicPlans()` returns (no Stripe ids,
-  no store counts); prices are what stores pay Kaizen, shown without VAT. The block speaks the page's language (`place.lang`,
+  cached under `PLANS_TAG`, which any new way of changing a plan, its prices or its features must `updateTag()`. On Kaizena Flow's
+  pages and its own store's (D484) the block shows Kaizena Flow's plans; on any other store's page and article (never its header or
+  footer, `plansProblem()`) it shows that store's own plans (D912: its plan products through `getStorePlans()`, cached with the
+  catalogue, mapped to the same shape by `storePlansData()`, each card's button a form to the cart's `choosePlanAction()`, prices with
+  VAT as the store shows them, no fee); the builder offers it there while Subscriptions is on, without a currency or button address.
+  The visitor sees only what `getPublicPlans()` returns (no Stripe ids,
+  no store counts); Kaizena Flow's prices are what stores pay it, shown without VAT. The block speaks the page's language (`place.lang`,
   D312): its words from `t(lang).plans`, amounts, fees and limits in the language's format (one of a kind in the singular,
   `limitNamesOne`), and each plan's line and each feature's category, name and description through `plansIn()` from
   `PLAN_WORDS_NB` (`src/lib/plan-words.nb.ts`), by the English they are written in; plan names are names. A text changed in the

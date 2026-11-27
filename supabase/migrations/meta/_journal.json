@@ -1681,6 +1681,20 @@
       "when": 1795779740136,
       "tag": "20261127114220_purchase_option_variant_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 240,
+      "version": "7",
+      "when": 1795785608402,
+      "tag": "20261127132008_demonic_adam_warlock",
+      "breakpoints": true
+    },
+    {
+      "idx": 241,
+      "version": "7",
+      "when": 1795785628503,
+      "tag": "20261127132028_plan_product_rules",
+      "breakpoints": true
     }
   ]
 }

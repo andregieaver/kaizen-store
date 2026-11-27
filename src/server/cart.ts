@@ -233,12 +233,12 @@ export async function readCartId(shop: Shop): Promise<string | null> {
 
 /**
  * An appointment, a stay or a rental is in the cart with its time, and goods,
- * gift cards and bundles without one (D65, D67, D300, D322); a time is kept while it is at least the notice
+ * gift cards, bundles and plans without one (D65, D67, D300, D322, D912); a time is kept while it is at least the notice
  * away. Whether it is still free is checked when adding and again at
  * checkout.
  */
 export const bookable = sql`
-  ((p.kind in ('goods', 'gift_card', 'bundle')) = (cl.starts_at is null))
+  ((p.kind in ('goods', 'gift_card', 'bundle', 'plan')) = (cl.starts_at is null))
   and (cl.starts_at is null or cl.starts_at > now() + make_interval(mins => coalesce(aps.min_notice_minutes, 0)))
 `;
 
@@ -628,8 +628,8 @@ export async function sellableQuantity(
       and commerce.market_offered(v.store_id, ${market.code}, ${market.currency})
       -- Not under a producer responsibility scheme with no valid registration in this country today (D342): nothing is put in the cart.
       and not commerce.line_unregistered(v.store_id, ${market.code}, v.id)
-      -- Appointments, stays and rentals are booked for a time (D65, D67), and goods and gift cards have none.
-      and (p.kind in ('goods', 'gift_card', 'bundle')) = ${booking === null}
+      -- Appointments, stays and rentals are booked for a time (D65, D67), and goods, gift cards, bundles and plans (D912) have none.
+      and (p.kind in ('goods', 'gift_card', 'bundle', 'plan')) = ${booking === null}
       -- A product is offered only where the store sells to its kind (D178: never a business-only one where it sells to consumers, Sell to
       -- businesses switched off included), and business-only products are sold to businesses where the store sells to both (B2B).
       -- A product an exclusive price list reaches is sold to that list's buyers only (D321 C.3).
@@ -830,6 +830,21 @@ export async function changeLine(
     if (afterAdd && added > 0) await afterAdd(tx, cartId, added);
     return settled;
   });
+}
+
+/** A plan chosen in a pricing table (D912): the cart's one plan, one of it; any other plan's line goes, the rest stays. */
+export async function choosePlan(shop: Shop, variantId: string, sellingPlanId: string): ReturnType<typeof changeLine> {
+  const cartId = await readCartId(shop);
+  if (cartId) {
+    await db().execute(sql`
+      delete from commerce.cart_lines cl
+      using commerce.product_variants v, commerce.products p
+      where cl.store_id = ${shop.storeId}::uuid and cl.cart_id = ${cartId}::uuid
+        and v.store_id = cl.store_id and v.id = cl.variant_id and p.store_id = v.store_id and p.id = v.product_id and p.kind = 'plan'
+        and not (cl.variant_id = ${variantId}::uuid and cl.selling_plan_id is not distinct from ${sellingPlanId}::uuid)
+    `);
+  }
+  return changeLine(shop, variantId, 1, "set", sellingPlanId);
 }
 
 /** Whether the cart holds a subscription that renews on another schedule than this option. */

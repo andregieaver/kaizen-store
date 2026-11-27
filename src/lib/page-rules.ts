@@ -25,7 +25,7 @@ export function pageRulesProblem(owner: PageOwner, kind: PageType, content: Page
     entryLayoutProblem(type, content) ??
     siteLayoutProblem(owner, type, content, house) ??
     searchProblem(owner, type, content) ??
-    plansProblem(kaizen, content) ??
+    plansProblem(kaizen, type, content) ??
     domainSearchProblem(kaizen, content) ??
     themeStoreProblem(kaizen, type, content) ??
     customFieldProblem(owner, type, content) ??
@@ -43,10 +43,12 @@ function searchProblem(owner: PageOwner, type: PageType, content: PageContent): 
   return null;
 }
 
-/** Kaizen's plans (D142) are the platform's to sell: only Kaizen's own pages hold the component. */
-function plansProblem(owner: PageOwner, content: PageContent): string | null {
-  if (owner !== null && pageBlocks(content).some((block) => block.type === "plans")) return "Kaizena Flow's plans belong on Kaizena Flow's own pages.";
+/** Kaizena Flow's extensions are its own to sell; the Plans component shows a store's own plans on its pages and articles (D912). */
+function plansProblem(owner: PageOwner, type: PageType, content: PageContent): string | null {
   if (owner !== null && pageBlocks(content).some((block) => block.type === "extensions")) return "Kaizena Flow's extensions belong on Kaizena Flow's own pages.";
+  if (owner !== null && type !== "page" && type !== "article" && pageBlocks(content).some((block) => block.type === "plans")) {
+    return "The Plans component belongs in a store's pages and articles.";
+  }
   return null;
 }
 

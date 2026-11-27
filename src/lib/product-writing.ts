@@ -35,6 +35,7 @@ const KIND_NAMES: Record<ProductFacts["kind"], string> = {
   rental: "an item for rent",
   gift_card: "a gift card, spent on anything in the store",
   bundle: "a bundle of several products sold together",
+  plan: "a subscription plan giving access to an app or service, whose description lists what it includes, one short line per thing",
 };
 
 /** Which fields a kind of suggestion fills. */

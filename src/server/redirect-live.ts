@@ -72,7 +72,7 @@ export async function liveOf(storeId: string, paths: readonly string[], run: Exe
   // `slug` of a page or an article may hold capitals in the database; the normal form is lower case, so the comparison is too.
   const rows = await run.execute<Row>(sql`
     select 'p' as k, p.handle as v from commerce.products p
-     where p.store_id = ${storeId}::uuid and p.status = 'active' and p.handle = any(${pgTextArray(handles)}::text[])
+     where p.store_id = ${storeId}::uuid and p.status = 'active' and p.kind <> 'plan' and p.handle = any(${pgTextArray(handles)}::text[])
     union all
     select t.kind, t.slug from commerce.terms t
      where t.store_id = ${storeId}::uuid and t.content_type = 'product'
@@ -124,7 +124,7 @@ export async function indexFor(storeId: string, seeds: readonly string[], run: E
     )
     select distinct w.source, w.kind, w.target,
       case w.kind
-        when 'product' then (select '/p/' || p.handle from commerce.products p where p.store_id = ${storeId}::uuid and p.id = w.product_id and p.status = 'active')
+        when 'product' then (select '/p/' || p.handle from commerce.products p where p.store_id = ${storeId}::uuid and p.id = w.product_id and p.status = 'active' and p.kind <> 'plan')
         when 'category' then (select '/category/' || t.slug from commerce.terms t where t.store_id = ${storeId}::uuid and t.id = w.term_id)
         when 'tag' then (select '/tag/' || t.slug from commerce.terms t where t.store_id = ${storeId}::uuid and t.id = w.term_id)
         when 'entry' then commerce.entry_address(w.entry_id)

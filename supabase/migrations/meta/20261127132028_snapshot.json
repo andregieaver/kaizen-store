@@ -1,6 +1,6 @@
 {
-  "id": "1b76bc97-31b2-454a-b302-03715d7fbf06",
-  "prevId": "b4d137e5-d668-47c0-a068-06ae602204f6",
+  "id": "973d7fd6-12a5-4d29-a5da-67ddc67a3b0b",
+  "prevId": "ea585121-e4c6-4e30-9751-8f844e9e2736",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -76003,7 +76003,7 @@
         },
         "products_kind": {
           "name": "products_kind",
-          "value": "\"commerce\".\"products\".\"kind\" in ('goods', 'appointment', 'stay', 'rental', 'gift_card', 'bundle')"
+          "value": "\"commerce\".\"products\".\"kind\" in ('goods', 'appointment', 'stay', 'rental', 'gift_card', 'bundle', 'plan')"
         },
         "products_bundle_pricing": {
           "name": "products_bundle_pricing",

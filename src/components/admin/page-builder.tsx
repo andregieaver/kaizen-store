@@ -309,8 +309,10 @@ export type GridContext = {
   /** The owner's menus (D85), for menu components, and where they are edited. */
   menus: MenuPreview[];
   menusHref: string;
-  /** Kaizen's plans for the Plans component (D142); null on a store's pages. */
+  /** The plans for the Plans component: Kaizena Flow's (D142), or on a store's pages its own plan products (D912); null where not offered. */
   plans: PlanChoice[] | null;
+  /** The plans are the store's own (D912): the palette offers the Plans component alone, and its button is the cart's. */
+  ownPlans?: boolean;
   /** The extensions and bundles the Extensions component can switch off (D748 E8); absent where it is not offered. */
   extensionChoices?: ExtensionChoice[] | null;
   /** The theme store's components the page may hold (D285); absent or null on a store's pages and Kaizena Flow's other kinds of page. */
@@ -1401,8 +1403,9 @@ export function PageBuilder({
             features={grid.features ?? null}
             // A store's own pages can hold its search (D112); a header, footer or product layout has its own components.
             search={grid.owner !== null && !productParts && !siteParts}
-            // Kaizen's plans (D142) are for Kaizen's own pages.
+            // Plans: Kaizena Flow's on its own pages (D142), a store's own on its pages (D912).
             plans={grid.plans !== null && !productParts && !siteParts}
+            ownPlans={grid.ownPlans === true}
             // The theme store's components (D285) are for Kaizena Flow's own pages, a theme's page holding the theme's parts too.
             themeStoreParts={productParts || siteParts ? [] : (grid.themeStore?.parts ?? [])}
             // Custom fields (D118) are the page's or article's own: a store's pages and articles, when it has any groups.
@@ -1824,6 +1827,7 @@ function Sidebar({
   siteParts,
   search,
   plans,
+  ownPlans,
   themeStoreParts,
   customFields,
   shop,
@@ -1861,8 +1865,10 @@ function Sidebar({
   siteParts: SitePart[] | null;
   /** The store's search can be added (D112). */
   search: boolean;
-  /** Kaizen's plans can be added (D142). */
+  /** The Plans component can be added (D142, D912). */
   plans: boolean;
+  /** It shows the store's own plans (D912): Kaizena Flow's own parts (extensions, the domain search) are not offered. */
+  ownPlans: boolean;
   /** The theme store's components that can be added (D285); none on a store's pages and Kaizena Flow's articles, header and footer. */
   themeStoreParts: readonly ThemeStorePart[];
   /** The page's own custom fields can be added (D118). */
@@ -2096,7 +2102,7 @@ function Sidebar({
                 <h3 className="text-xs font-medium tracking-wide text-muted uppercase">{sw.more}</h3>
               )}
               <div className="grid grid-cols-2 gap-3">
-                {[...BLOCK_TYPES, ...(search && partFeatureOn({ type: "search" }, features) ? (["search"] as const) : []), ...(plans ? (["plans", "extensions", "domainSearch"] as const) : []), ...(customFields ? (["customField", "fieldLoop"] as const) : [])].map((type) => (
+                {[...BLOCK_TYPES, ...(search && partFeatureOn({ type: "search" }, features) ? (["search"] as const) : []), ...(plans ? (ownPlans ? (["plans"] as const) : (["plans", "extensions", "domainSearch"] as const)) : []), ...(customFields ? (["customField", "fieldLoop"] as const) : [])].map((type) => (
                   <PaletteTile
                     key={type}
                     id={`palette:block:${type}`}
@@ -4195,6 +4201,7 @@ function Dialogs({
             content: (<PlansFields
                 block={block}
                 plans={grid.plans ?? []}
+                own={grid.ownPlans === true}
                 onChange={(patch) => onRows((current) => patchBlock<PlansBlock>(current, block.id, patch))}
               />),
             font: dw.fonts.site,
@@ -5364,8 +5371,11 @@ function SavedPartDialog({
 // ---------------------------------------------------------------------------
 
 /** A menu component's settings: which of the owner's menus, and how its links are laid out. */
-/** Kaizen's plans component's settings (D142): the currency and price shown, the highlighted plan, the comparison table and the buttons. */
-function PlansFields({ block, plans, onChange }: { block: PlansBlock; plans: PlanChoice[]; onChange: (patch: BlockPatch<PlansBlock>) => void }) {
+/**
+ * The Plans component's settings (D142): the currency and price shown, the highlighted plan, the comparison table and the buttons. A store's
+ * own plans (D912, `own`) are priced in the shopper's country and bought through the cart, so they take no currency or button address.
+ */
+function PlansFields({ block, plans, own = false, onChange }: { block: PlansBlock; plans: PlanChoice[]; own?: boolean; onChange: (patch: BlockPatch<PlansBlock>) => void }) {
   const id = useId();
   const currencies = planCurrencies(plans);
   const input = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
@@ -5373,7 +5383,8 @@ function PlansFields({ block, plans, onChange }: { block: PlansBlock; plans: Pla
   return (
     <div className="flex flex-col gap-5">
       <p className="text-sm text-muted">{pw.hint}</p>
-      {plans.length === 0 && <p className="text-sm">{pw.none}</p>}
+      {plans.length === 0 && <p className="text-sm">{own ? pw.ownNone : pw.none}</p>}
+      {!own && (
       <label htmlFor={`${id}-currency`} className="flex flex-col gap-1 text-sm font-medium">
         {pw.currency}
         <select
@@ -5390,6 +5401,7 @@ function PlansFields({ block, plans, onChange }: { block: PlansBlock; plans: Pla
           ))}
         </select>
       </label>
+      )}
       <label htmlFor={`${id}-interval`} className="flex flex-col gap-1 text-sm font-medium">
         {pw.prices}
         <select
@@ -5459,6 +5471,7 @@ function PlansFields({ block, plans, onChange }: { block: PlansBlock; plans: Pla
           className={input}
         />
       </label>
+      {!own && (
       <label htmlFor={`${id}-href`} className="flex flex-col gap-1 text-sm font-medium">
         {pw.buttonAddress}
         <input
@@ -5470,6 +5483,7 @@ function PlansFields({ block, plans, onChange }: { block: PlansBlock; plans: Pla
         />
         <span className="text-xs font-normal text-muted">{pw.buttonAddressHint}</span>
       </label>
+      )}
     </div>
   );
 }

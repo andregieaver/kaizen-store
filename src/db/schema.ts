@@ -3203,7 +3203,10 @@ export const products = commerce.table(
     audience: text("audience").notNull().default("all"),
     /** Which VAT rate it takes (D65, D157): a row of `vat_categories` (standard, accommodation, exempt, food, books, ...). */
     vatCategory: text("vat_category").notNull().default("standard"),
-    /** What it is (D65, D67): goods (physical or digital), an appointment, a stay (nights) or a rental (days). */
+    /**
+     * What it is (D65, D67): goods (physical or digital), an appointment, a stay (nights) or a rental (days); a gift card (D300), a bundle
+     * (D322), or a plan (D912: access sold only by subscription, shown in a pricing table and never on a page or in a list of its own).
+     */
     kind: text("kind").notNull().default("goods"),
     /** The outside host who lists it, when the store is a marketplace (D71); null for the store's own. */
     hostId: uuid("host_id"),
@@ -3286,7 +3289,7 @@ export const products = commerce.table(
     check("products_audience", sql`${t.audience} in ('all', 'consumers', 'businesses')`),
     foreignKey({ name: "products_vat_category_fk", columns: [t.vatCategory], foreignColumns: [vatCategories.code] }),
     index("products_vat_category_idx").on(t.vatCategory),
-    check("products_kind", sql`${t.kind} in ('goods', 'appointment', 'stay', 'rental', 'gift_card', 'bundle')`),
+    check("products_kind", sql`${t.kind} in ('goods', 'appointment', 'stay', 'rental', 'gift_card', 'bundle', 'plan')`),
     check(
       "products_bundle_pricing",
       sql`(${t.kind} = 'bundle') = (${t.bundlePricing} is not null) and (${t.bundlePricing} is null or ${t.bundlePricing} in ('fixed', 'computed'))

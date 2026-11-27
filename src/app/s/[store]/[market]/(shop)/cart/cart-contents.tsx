@@ -22,7 +22,7 @@ import { bookingWhen, isRange, rangeLength } from "@/lib/booking-text";
 import { creditsNet } from "@/lib/bonus-shopper";
 import { nextStepText } from "@/lib/campaign-notices";
 import { campaignLabel } from "@/lib/campaigns";
-import { ruleWords } from "@/lib/quantity-rules";
+import { onlyOne, ruleWords } from "@/lib/quantity-rules";
 import { checkoutLabels } from "@/lib/checkout-labels";
 import { cartCustomsSentences, customsText } from "@/lib/customs-text";
 import { optionLabel, type Messages } from "@/lib/i18n";
@@ -298,6 +298,7 @@ function linesList({ store, market, m, view }: Draw, drawer: boolean) {
               </p>
             ) : (
               line.status !== "unavailable" &&
+              !onlyOne(line.rule) &&
               ruleWords(line.rule, m.quantityRule) && <p className="text-sm text-muted">{ruleWords(line.rule, m.quantityRule)}</p>
             )}
             {/* Units beyond the stock of a variant that keeps selling (D172): how many, and the days the store states. Not a problem, so not an alert. */}
@@ -306,7 +307,8 @@ function linesList({ store, market, m, view }: Draw, drawer: boolean) {
             <div className="flex flex-wrap items-end gap-2">
               {/* An appointment is one place at one time (D65), a stay its nights (D67): nothing to count. */}
               {/* − and + (D430), saved a moment after the last change; the number and Update without a script. */}
-              {line.status !== "unavailable" && !line.booking && (
+              {/* A line that can only hold one (a plan, D912) has nothing to count either. */}
+              {line.status !== "unavailable" && !line.booking && !onlyOne(line.rule) && (
                 <CartQuantity
                   action={updateCartLine}
                   fields={{

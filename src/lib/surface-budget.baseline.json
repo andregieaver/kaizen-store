@@ -39,11 +39,11 @@
     },
     "products": {
       "indexes": 13,
-      "triggers": 14
+      "triggers": 15
     },
     "product_variants": {
       "indexes": 6,
-      "triggers": 7
+      "triggers": 8
     },
     "customers": {
       "indexes": 8,
@@ -934,6 +934,18 @@
       "from": 31,
       "to": 32,
       "decision": "D895"
+    },
+    {
+      "count": "hot.products.triggers",
+      "from": 14,
+      "to": 15,
+      "decision": "D912"
+    },
+    {
+      "count": "hot.product_variants.triggers",
+      "from": 7,
+      "to": 8,
+      "decision": "D912"
     }
   ]
 }

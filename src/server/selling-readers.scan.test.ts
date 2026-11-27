@@ -40,6 +40,13 @@ describe("readers of the Selling group's features (D178)", () => {
     expect(textOf("src/server/product-conditions.ts")).toMatch(/export const OFFERED = sql`[^`]*commerce\.kind_offered\(p\.store_id, p\.kind, p\.subscription_only\)/);
   });
 
+  it("leaves plans out of every read OFFERED answers, and only the pricing table and the cart reach them (D912)", () => {
+    // A plan has no page and no place in a list: OFFERED leaves it out, so every listing, search, sitemap, feed and recommendation does.
+    expect(textOf("src/server/product-conditions.ts")).toMatch(/export const OFFERED = sql`[^`]*and p\.kind <> 'plan'\)`/);
+    const planReaders = files.filter(({ text }) => /\$\{PLAN_OFFERED\}/.test(text)).map(({ file }) => file);
+    expect(planReaders).toEqual(["src/server/store-plans.ts"]);
+  });
+
   it("offers purchase options to shoppers only while Subscriptions is on", () => {
     // Each reads selling plans for a shopper: the product page's options, the cart's lines and what a checkout sells.
     for (const file of ["src/server/catalog.ts", "src/server/cart.ts", "src/server/checkout.ts"]) {

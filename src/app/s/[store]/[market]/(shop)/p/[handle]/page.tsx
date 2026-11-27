@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { AbMarker } from "@/components/lazy/blocks";
@@ -117,6 +118,10 @@ export default async function ProductPage({ params }: Props) {
     const shop = await resolveShop(storeSlug, marketSlug);
     // A country, language or currency the store no longer offers moves to one it does (D178).
     if (!shop) return marketMoved(storeSlug, marketSlug, `/p/${handle}`);
+    // A plan (D912) has no page of its own: its address leads to the page with the store's pricing table, for now (307), while it has one.
+    const { planPricingPath } = await import("@/server/store-plans");
+    const pricing = await planPricingPath(shop.store.id, handle);
+    if (pricing) redirect(marketPath(shop.store.slug, shop.market.slug, pricing));
     return missOrRedirect(shop, `/p/${handle}`);
   }
   const { store, market, product, ab } = loaded;

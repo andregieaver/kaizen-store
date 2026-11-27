@@ -263,7 +263,8 @@ async function targetsOf(look: Claimed, store: Store, origin: string): Promise<T
   if (!market) throw new OwnerToolError("The store sells in no country yet, so there is nothing to look at.");
   const product = await typedRow(
     z.object({ handle: col.text }),
-    sql`select handle from commerce.products where store_id = ${store.id}::uuid and status = 'active' order by created_at limit 1`,
+    // A plan (D912) has no page of its own to look at.
+    sql`select handle from commerce.products where store_id = ${store.id}::uuid and status = 'active' and kind <> 'plan' order by created_at limit 1`,
   );
   // How the site looks (D528): the front page, a product page and the pages a visitor is most likely to open, never the cart.
   if (look.kind === "appearance") {

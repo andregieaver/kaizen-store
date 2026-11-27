@@ -171,8 +171,13 @@ export type PageOwnerContext = {
    * on the canvas. Absent for Kaizen's pages and a design profile's workspace (whose look serves any store), which offer every part.
    */
   features?: readonly string[];
-  /** Kaizen's plans for the Plans component (D142), on Kaizen's own pages; null for a store, which does not sell Kaizen's plans. */
+  /**
+   * The plans for the Plans component: Kaizena Flow's (D142) on its own pages and its own store's; a store's own plan products (D912) on
+   * its pages while it sells subscriptions; null where the component is not offered.
+   */
   plans: PlanChoice[] | null;
+  /** The plans are the store's own (D912): only the Plans component is offered of the plan parts, and its button is the cart's. */
+  ownPlans?: boolean;
   /** The extensions and bundles the Extensions component can switch off (D748 E8), where it is offered; absent elsewhere. */
   extensionChoices?: ExtensionChoice[] | null;
   /** Kaizena Flow's own store (D466), which serves Kaizena Flow's site (D484): its headers offer *Start your store* too. */

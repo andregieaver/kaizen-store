@@ -929,10 +929,8 @@ export type SearchBlock = PartBase & {
 };
 
 /**
- * Kaizen's plans (D142): what each plan costs and includes, drawn as cards and, if wanted, the
- * comparison table (D132) under them. The plans, their prices, fees and features are the platform's
- * (`commerce.plans`, `plan_prices`, `plan_features`), read where the page is shown, so a change to a
- * plan shows on the page with no edit to it. Kaizen's own pages only; stores sell their own things.
+ * Plans: what each plan costs and includes, as cards and, if wanted, the comparison table (D132), read where the page is shown. Kaizena
+ * Flow's plans on its pages (D142, `commerce.plans`, `plan_prices`, `plan_features`); a store's plan products on its pages (D912).
  */
 export type PlansBlock = PartBase & {
   id: string;
@@ -948,7 +946,7 @@ export type PlansBlock = PartBase & {
   switcher?: boolean;
   /** `hide_whole` leaves the decimals off whole amounts (€20, not €20.00); an amount with cents keeps them, so nothing is rounded (D481). */
   decimals?: "hide_whole";
-  /** The plan marked as the one to choose ("Most popular"); an id of Kaizen's plans. */
+  /** The plan marked as the one to choose ("Most popular"); an id of Kaizena Flow's plans, or of the store's plan products. */
   highlightId?: string;
   /** Show the comparison table of features under the cards. */
   comparison?: boolean;
