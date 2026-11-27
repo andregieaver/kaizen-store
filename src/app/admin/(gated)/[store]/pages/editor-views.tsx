@@ -235,10 +235,11 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
         : null;
   const fieldRoles = Object.entries(store.pageRoles).filter(([, id]) => id === page.id).map(([role]) => role);
   // How it performs (ecosystem plan E2.3, D713): a page or article that has been public, for those who may read the analytics; streamed
-  // after the editor, never in its way. Not for the staging set's copy, which no visitor sees.
+  // after the editor, never in its way. Not for the staging set's copy, which no visitor sees. Keyed, as the product editor's is: a
+  // streamed reference two deep after a save is otherwise taken for an unkeyed list item.
   const insight =
     (type === "page" || type === "article") && page.published && !staged && memberCan(gated, "analytics:read") ? (
-      <Suspense fallback={null}>
+      <Suspense key="insight" fallback={null}>
         <PageSignalsStrip
           store={store}
           target={{

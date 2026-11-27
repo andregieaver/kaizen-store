@@ -46,8 +46,10 @@ export default async function EditProductPage({ params }: PageProps<"/admin/[sto
   const lang = adminLangOf(gated.account.adminLocale);
   const w = PRODUCT_WORDS[lang].page;
   // How it performs (ecosystem plan E2.3, D713), for those who may read the analytics: streamed after the editor, never in its way.
+  // Keyed: it reaches the editor's children as a streamed reference, and after a save that reference can be two deep, which the
+  // browser's JSX check does not see through, so React took it for an unkeyed list item and warned.
   const insight = memberCan(gated, "analytics:read") ? (
-    <Suspense fallback={null}>
+    <Suspense key="insight" fallback={null}>
       <PageSignalsStrip
         store={store}
         target={{ ...signalPlan({ type: "product", handle: stored.handle }, store.allMarkets.map((m) => m.code)), productId }}
