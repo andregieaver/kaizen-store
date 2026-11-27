@@ -19,6 +19,7 @@ export const projectSourcesNb: ProjectSourcesMessages = {
     review: "Svar på anmeldelsen",
     conversation: "Følg opp samtalen",
     customer: "Følg opp kunden",
+    deal: "Neste steg for avtalen",
   },
   added: "Oppgaven er lagt i {list}.",
   deal: {

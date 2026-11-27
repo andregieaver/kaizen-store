@@ -545,6 +545,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
               team={team}
               me={member.account.id}
               blank={newActivityValues({ customerId: customer.customerId }, member.account.id, new Date(), store.timeZone)}
+              tasksBelow={tasksAbout !== null && memberCan(member, "projects:write")}
             />
           )}
           {tasksAbout && customer.customerId && (

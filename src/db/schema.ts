@@ -14105,6 +14105,11 @@ export const checklistItems = commerce
        */
       customerId: uuid("customer_id"),
       /**
+       * The deal it is a next step of (D910, `docs/projects.md` P6.2): the store's own, by the composite key the rules migration holds, cleared
+       * when the deal is deleted while the task stays. Beside a source, as the customer is; a task made on a deal's page names its customer.
+       */
+      dealId: uuid("deal_id"),
+      /**
        * Who gave the task its person, and when (D904 P8.3d), written by the item writers when the person changes; the five-minute job
        * tells the person by email once (`assignee_told_at`), unless they took it themselves.
        */
@@ -14132,6 +14137,8 @@ export const checklistItems = commerce
       index("checklist_items_conversation_link_idx").on(t.conversationId).where(sql`${t.conversationId} is not null`),
       // A customer's tasks, read on their page (P4.7).
       index("checklist_items_customer_idx").on(t.storeId, t.customerId).where(sql`${t.customerId} is not null`),
+      // A deal's tasks, read on its page and for the board's next step (D910).
+      index("checklist_items_deal_idx").on(t.storeId, t.dealId).where(sql`${t.dealId} is not null`),
       index("checklist_items_created_by_idx").on(t.createdBy),
       index("checklist_items_assigned_by_idx").on(t.assignedBy),
       // The tasks whose person is still to be told: a handful at a time, so the job's read stays small.

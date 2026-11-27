@@ -255,7 +255,7 @@ Life's tools for P5.1: `list_projects`, `create_project`, `update_project`, `set
 | Id | Step | Status |
 |---|---|---|
 | P6.1 | Work's tasks become checklist items: an assignment has its list; time entries and timers point at items | Replaced 26 November 2026 by P8.3d: Work stands alone (D904), so its tasks stay its own; a list sends its time to an assignment and its tasks log time there |
-| P6.2 | CRM tasks (`activities` of kind `task`): weighed against items linked to a customer | Planned |
+| P6.2 | CRM tasks (`activities` of kind `task`): weighed against items linked to a customer | Built 27 November 2026 (D910; below): Deals keeps its activities; where both arms meet, a deal's next steps are tasks |
 | P6.3 | A won deal starts a project from a template | Done 26 November 2026 as P8.3b (3d7ee2c) |
 | P6.4 | Kaizen Life shows the projects of a linked account (the door of D511) | Planned |
 
@@ -560,4 +560,22 @@ policy on a table with RLS, as every `commerce` table; new indexes not used yet)
   file leaves the column out, as every column naming a person.
 - **The platform** has it at once: Kaizena Flow's Projects live in its own store, whose customers its owners and applicants are (D467).
 - **Left of P4.7:** the customer in the events' payloads (`task.*`) and a filter by customer, until asked for.
+
+## As built: step P6.2, a deal's next steps are tasks (27 November 2026, D910)
+
+- **The weighing.** The CRM's tasks stay Deals' own (activities, D468): Deals stands alone (D904) and keeps its calls, meetings and tasks for
+  an account without Projects, as Work kept its tasks (P6.1). Where a store has both, a deal's next steps are tasks, one kind and one way to
+  make them (the owner's answer 3). Nothing is moved: in production the 6 activity tasks are one store's open next steps on deals.
+- **The link.** `checklist_items.deal_id` (migrations `20261127082927_checklist_item_deal` and `20261127082935_checklist_item_deal_rules`),
+  the store's own deal by the composite key, cleared when the deal is deleted while the task stays. A task made on a deal's page names the
+  deal's customer as well (`customerOfLink()`), so the customer's *Tasks* card lists it too.
+- **Who may.** As a customer's task: the right to read customers as well as to change projects, and only while the store has Deals
+  (`dealsOn()`); another store's deal is not found.
+- **Where.** A deal's page has the card *Tasks* (`SourceTasks`, the kind `deal`), written in advance as *Next step for the deal*; a task's
+  row on its list links the deal (`dealLinks()`, `src/server/projects-deals.ts`). Where a page's *Tasks* card makes tasks (a deal's or a
+  customer's, for a person who may change projects), its *Activities* card offers a call or a meeting, the *Tasks* card beside it making the
+  task (`offeredKinds()`, `src/lib/activities.ts`); an activity that is a task already keeps its kind. The board counts a deal's open task as its
+  next step beside its activities (`nextDealTasks()`, `nextStep()`).
+- **Left of P6.2:** a task about a company (no activity names one in production), the AI manager's CRM tools still making activity tasks
+  where Projects is on (a prompt change, with the eval), and a deal's tasks in the events' payloads, until asked for.
 

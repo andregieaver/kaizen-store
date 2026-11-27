@@ -4,7 +4,7 @@ import { useId } from "react";
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { buttonClass, Card, Chip } from "@/components/admin/ui";
 import { QuietActionForm } from "@/components/admin/quiet-action-form";
-import { ACTIVITY_DURATION_MAX, ACTIVITY_KINDS, ACTIVITY_NOTE_MAX, ACTIVITY_TITLE_MAX } from "@/lib/activities";
+import { ACTIVITY_DURATION_MAX, ACTIVITY_NOTE_MAX, ACTIVITY_TITLE_MAX, offeredKinds } from "@/lib/activities";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import type { DealsMessages } from "@/lib/admin-messages/deals.en";
 
@@ -27,7 +27,7 @@ const summaryButton = `${buttonClass("secondary", "dense")} cursor-pointer list-
 /**
  * A deal's, a person's or a company's activities (S3, D468), on their page: what is still to do by when it is due, each done with one
  * press; what is done folded below; and Add activity, a call today for the viewer unless they choose otherwise. Each one opens to be
- * changed or deleted.
+ * changed or deleted. Where the page makes its tasks in Projects (`tasksBelow`, D910), a new one is a call or a meeting.
  */
 export function ActivitiesCard({
   items,
@@ -36,6 +36,7 @@ export function ActivitiesCard({
   team,
   me,
   blank,
+  tasksBelow = false,
 }: {
   items: ActivityView[];
   words: Words;
@@ -44,6 +45,8 @@ export function ActivitiesCard({
   me: string;
   /** The new activity's form: about this page's deal, person or company. */
   blank: ActivityFormValues;
+  /** The page's *Tasks* card makes its tasks in Projects (D910): a new activity is a call or a meeting. */
+  tasksBelow?: boolean;
 }) {
   const open = items.filter((a) => !a.done);
   const done = items.filter((a) => a.done);
@@ -56,7 +59,7 @@ export function ActivitiesCard({
           {open.length > 0 && (
             <ul className="flex flex-col divide-y divide-line">
               {open.map((a) => (
-                <ActivityRow key={a.id} activity={a} words={words} actions={actions} team={team} me={me} />
+                <ActivityRow key={a.id} activity={a} words={words} actions={actions} team={team} me={me} tasksBelow={tasksBelow} />
               ))}
             </ul>
           )}
@@ -65,7 +68,7 @@ export function ActivitiesCard({
               <summary className="cursor-pointer text-muted">{countWords(done.length, words.doneCount)}</summary>
               <ul className="flex flex-col divide-y divide-line">
                 {done.map((a) => (
-                  <ActivityRow key={a.id} activity={a} words={words} actions={actions} team={team} me={me} />
+                  <ActivityRow key={a.id} activity={a} words={words} actions={actions} team={team} me={me} tasksBelow={tasksBelow} />
                 ))}
               </ul>
             </details>
@@ -77,7 +80,7 @@ export function ActivitiesCard({
           <summary className={summaryButton}>{words.add}</summary>
           {/* Keyed by how many there are, so the form is blank again once the new one is listed. */}
           <ActionForm key={items.length} action={actions.add} className="group mt-4 flex flex-col gap-4">
-            <ActivityFields words={words} values={blank} team={team} me={me} />
+            <ActivityFields words={words} values={blank} team={team} me={me} tasksBelow={tasksBelow} />
             <div>
               <SubmitButton>{words.save}</SubmitButton>
             </div>
@@ -96,6 +99,7 @@ export function ActivityRow({
   team,
   me,
   lateChip = true,
+  tasksBelow = false,
 }: {
   activity: ActivityView;
   words: Words;
@@ -104,6 +108,8 @@ export function ActivityRow({
   me: string;
   /** Off under *Today*'s own Late heading, which says it already. */
   lateChip?: boolean;
+  /** As the card's: a call or a meeting may not become a task here (D910). */
+  tasksBelow?: boolean;
 }) {
   return (
     <li className="flex items-start gap-3 py-2 text-sm">
@@ -129,7 +135,7 @@ export function ActivityRow({
           <details className="mt-1">
             <summary className="w-fit cursor-pointer text-ink-2 underline">{words.change}</summary>
             <ActionForm action={actions.change(a.id)} className="group mt-3 flex flex-col gap-4">
-              <ActivityFields words={words} values={a.values} team={team} me={me} />
+              <ActivityFields words={words} values={a.values} team={team} me={me} tasksBelow={tasksBelow} />
               <div>
                 <SubmitButton>{words.saveChange}</SubmitButton>
               </div>
@@ -167,15 +173,31 @@ function DoneMark({ activity: a, words, actions }: { activity: ActivityView; wor
   );
 }
 
-/** An activity's fields: what it is, what to do, when (a length for a meeting), who does it and a note; what it is about stays hidden. */
-export function ActivityFields({ words, values, team, me }: { words: Words; values: ActivityFormValues; team: { id: string; name: string }[]; me: string }) {
+/**
+ * An activity's fields: what it is, what to do, when (a length for a meeting), who does it and a note; what it is about stays hidden. Where
+ * the page makes tasks in Projects (D910), the kinds are a call and a meeting, and a task that is one already keeps its kind.
+ */
+export function ActivityFields({
+  words,
+  values,
+  team,
+  me,
+  tasksBelow = false,
+}: {
+  words: Words;
+  values: ActivityFormValues;
+  team: { id: string; name: string }[];
+  me: string;
+  tasksBelow?: boolean;
+}) {
   const hint = useId();
+  const kinds = offeredKinds(tasksBelow, values.kind);
   return (
     <>
       <fieldset className="flex flex-col gap-1">
         <legend className="text-sm font-medium">{words.kind}</legend>
         <div className="mt-1 flex flex-wrap gap-2">
-          {ACTIVITY_KINDS.map((kind) => (
+          {kinds.map((kind) => (
             <label
               key={kind}
               className="cursor-pointer rounded-pill border border-edge px-3 py-1.5 text-sm has-[:checked]:border-ink has-[:checked]:bg-sunken has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2"

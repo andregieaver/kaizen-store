@@ -22,6 +22,7 @@ import { labelsOf } from "@/server/projects-labels";
 import { checklistDetail, listChecklists, listFingerprint, type ChecklistItem } from "@/server/projects-lists";
 import { ensureDefaultStatuses } from "@/server/projects-statuses";
 import { customerLinks, sourceLinks } from "@/server/projects-sources";
+import { dealLinks } from "@/server/projects-deals";
 import { listWork, taskMinutes, workPairOn } from "@/server/projects-work";
 import { remindersOf } from "@/server/projects-reminders";
 import { todayIn } from "@/lib/work-dates";
@@ -69,8 +70,9 @@ export default async function ChecklistPage({ params }: PageProps<"/admin/[store
   const toView = (item: ChecklistItem): ViewItem => ({ ...item, subtasks: item.subtasks.map((s) => ({ id: s.id, title: s.title, done: s.done, isGoal: s.isGoal })) });
   // Where tasks came from (D904 P8.3a): links back to orders, returns, reviews and conversations, while their arms are there.
   const tasks = [...list.entries.flatMap((e) => (e.kind === "item" ? [e.item] : [])), ...list.done];
-  // Who tasks are about (P4.7): a link to each customer's page, and the editor's field, for a person who may read customers.
-  const [sources, about] = await Promise.all([sourceLinks(member, tasks, w.sources), customerLinks(member, tasks)]);
+  // Who tasks are about (P4.7): a link to each customer's page, and the editor's field, for a person who may read customers; and the deal
+  // each is a next step of (D910), while the store has Deals.
+  const [sources, about, deals] = await Promise.all([sourceLinks(member, tasks, w.sources), customerLinks(member, tasks), dealLinks(member, tasks)]);
   const customers = memberCan(member, "customers:read") ? { links: about, find: findTaskCustomersAction.bind(null, store.slug) } : undefined;
   const entries: ViewEntry[] = list.entries.map((e) => (e.kind === "section" ? { kind: "section", section: { id: e.section.id, title: e.section.title } } : { kind: "item", item: toView(e.item) }));
   const assignee = team.find((p) => p.id === list.assignedTo)?.name;
@@ -146,6 +148,7 @@ export default async function ChecklistPage({ params }: PageProps<"/admin/[store
         time={work ? { minutes, canLog: workPairOn(member, true), today: todayIn(store.timeZone) } : undefined}
         reminders={reminders.items}
         customers={customers}
+        deals={deals}
       />
       {canChange && (
         <details className="flex flex-col gap-3">

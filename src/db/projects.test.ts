@@ -417,6 +417,18 @@ describe("a project from a deal (D904 P8.3b)", () => {
     await db.query("delete from commerce.deals where id = $1", [deal]);
     expect(await one("select deal_id from commerce.projects where id = $1", [work])).toEqual({ deal_id: null });
   });
+
+  it("a task names a deal of its own store only as a next step, beside its customer, and stays when the deal goes (D910)", async () => {
+    const pipeline = await id("insert into commerce.deal_pipelines (store_id, name) values ($1, 'Pipeline') returning id", [shop]);
+    const stage = await id("insert into commerce.deal_stages (store_id, pipeline_id, name, position) values ($1, $2, 'New', 0) returning id", [shop, pipeline]);
+    const deal = await id("insert into commerce.deals (store_id, title, pipeline_id, stage_id, currency) values ($1, 'Showroom', $2, $3, 'NOK') returning id", [shop, pipeline, stage]);
+    const buyer = await id("insert into commerce.customers (store_id, email) values ($1, 'deal-buyer@example.com') returning id", [shop]);
+    const task = await item(shop, await checklist(shop));
+    await rejects("update commerce.checklist_items set deal_id = $2 where id = $1", [await item(other, await checklist(other)), deal], /checklist_items_deal_fk/);
+    await db.query("update commerce.checklist_items set deal_id = $2, customer_id = $3 where id = $1", [task, deal, buyer]);
+    await db.query("delete from commerce.deals where id = $1", [deal]);
+    expect(await one("select deal_id, customer_id = $2 as about from commerce.checklist_items where id = $1", [task, buyer])).toEqual({ deal_id: null, about: true });
+  });
 });
 
 describe("a list's time on a Work assignment (D904 P8.3d)", () => {

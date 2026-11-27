@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { PROJECT_LIMITS } from "@/lib/projects-model";
 import { fillWords } from "@/lib/admin-fill";
-import { storeExtensionOn } from "@/lib/extensions";
+import { dealsOn, storeExtensionOn } from "@/lib/extensions";
 import type { PermissionKey } from "@/lib/permission-keys";
 import { LINK_COLUMNS, LINK_KINDS, SOURCE_KINDS, sourcePath, type SourceKind, type TaskLink, type TaskSource } from "@/lib/projects-sources";
 import { featureOn } from "@/lib/store-features";
@@ -116,8 +116,10 @@ export async function addSourceTask(member: Membership, raw: unknown, followUps:
   const input = sourceTaskInput.safeParse(raw);
   if (!input.success) return { ok: false, problem: "invalid", fields: ["title"] };
   const { kind, sourceId, title } = input.data;
-  // A customer's task (P4.7) shows who they are: the right to read customers too, before a list is made for it.
-  if (kind === "customer" && !memberCan(member, "customers:read")) return { ok: false, problem: "forbidden" };
+  // A customer's task (P4.7) shows who they are: the right to read customers too, before a list is made for it. A deal's (D910) as well,
+  // and only while the store has Deals, whose page is the only one that makes it.
+  if ((kind === "customer" || kind === "deal") && !memberCan(member, "customers:read")) return { ok: false, problem: "forbidden" };
+  if (kind === "deal" && !dealsOn(member.store)) return { ok: false, problem: "forbidden" };
   let checklistId = input.data.checklistId;
   if (!checklistId) {
     const kept = await typedRow(

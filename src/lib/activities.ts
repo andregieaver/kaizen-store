@@ -97,3 +97,25 @@ export function todayWindow(now: Date, timeZone: string): { endOfToday: string; 
 export function nextActivity<A extends TodayActivity>(activities: readonly A[]): A | null {
   return [...activities].filter((a) => !a.doneAt).sort((a, b) => a.dueAt.localeCompare(b.dueAt) || a.id.localeCompare(b.id))[0] ?? null;
 }
+
+/** A deal's next step where it has tasks too (D910): what kind, and when, if it has a date. */
+type NextStep = { kind: ActivityKind; dueAt: string | null; timed: boolean };
+
+/**
+ * A deal's next step while the store has Projects as well (D910): its next activity, or its next task when that is due sooner; a task with no
+ * date is the next step only of a deal with no activity left to do.
+ */
+export function nextStep(activity: { kind: ActivityKind; dueAt: string; timed: boolean } | undefined, task: { dueAt: string | null; timed: boolean } | undefined): NextStep | undefined {
+  if (!task) return activity;
+  if (!activity || (task.dueAt !== null && Date.parse(task.dueAt) < Date.parse(activity.dueAt))) return { kind: "task", ...task };
+  return activity;
+}
+
+/**
+ * The kinds a new activity offers (D910): all three, or only calls and meetings where the page makes tasks in Projects instead, so a person
+ * has one way to make a task there. An activity that is already a task keeps its kind when it is changed.
+ */
+export function offeredKinds(tasksInProjects: boolean, current?: ActivityKind): readonly ActivityKind[] {
+  if (!tasksInProjects) return ACTIVITY_KINDS;
+  return ACTIVITY_KINDS.filter((kind) => kind !== "task" || current === "task");
+}

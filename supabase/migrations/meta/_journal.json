@@ -1632,6 +1632,20 @@
       "when": 1795766559525,
       "tag": "20261127080239_linkedin_accounts",
       "breakpoints": true
+    },
+    {
+      "idx": 233,
+      "version": "7",
+      "when": 1795768167381,
+      "tag": "20261127082927_checklist_item_deal",
+      "breakpoints": true
+    },
+    {
+      "idx": 234,
+      "version": "7",
+      "when": 1795768175500,
+      "tag": "20261127082935_checklist_item_deal_rules",
+      "breakpoints": true
     }
   ]
 }

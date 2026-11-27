@@ -77,7 +77,7 @@ Each pair below lights up only when both arms are there; with one arm gone, the 
 | Deals + Work | A won deal becomes a client and an assignment; a signed contract opens the first invoice |
 | Work + the shop (core) | Shop orders, payouts and fees post to the ledger by themselves |
 | A/B testing + Email automation | A winning headline or offer can be carried into the next campaign |
-| Projects + Deals | A won deal starts a project from a template; a deal's next steps are tasks |
+| Projects + Deals | A won deal starts a project from a template; a deal's next steps are tasks (D910) |
 | Projects + Work | Time and assignments live on tasks; a project's tasks are billed through Work |
 | Projects + Support desk | A conversation becomes a task, its customer named on it |
 | Projects + the shop (core) | An order, a return or a review can make a task |

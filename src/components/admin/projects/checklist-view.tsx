@@ -3,7 +3,7 @@
 import { closestCenter, DndContext, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Bell, ChevronDown, ChevronRight, Clock, Pencil, Repeat, Trash2, UserRound } from "lucide-react";
+import { Bell, ChevronDown, ChevronRight, Clock, Handshake, Pencil, Repeat, Trash2, UserRound, type LucideIcon } from "lucide-react";
 import { useEffect, useOptimistic, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/admin/ui/button";
@@ -71,6 +71,8 @@ type Props = {
    * customer is a link to their page.
    */
   customers?: { links: Record<string, { id: string; text: string; href: string }>; find: (query: string) => Promise<TaskCustomerChoice[]> };
+  /** The deals tasks are next steps of (D910), by task: a link to the deal's page, given only while the store has Deals. */
+  deals?: Record<string, { text: string; href: string }>;
 };
 
 /** How long a repeating task's Undo is offered after its tick or its skip. */
@@ -517,14 +519,20 @@ function ItemFacts({ item, features, status, person, props, now }: { item: ViewI
       </AdminLink>,
     );
   const about = props.customers?.links[item.id];
-  if (about)
-    facts.push(
-      <AdminLink key="customer" href={about.href} className="inline-flex items-center gap-1 text-chip text-ink-2 underline underline-offset-2" data-task-customer>
-        <UserRound className="size-3.5" aria-hidden />
-        {about.text}
-      </AdminLink>,
-    );
+  if (about) facts.push(<LinkFact key="customer" link={about} Icon={UserRound} kind="customer" />);
+  const deal = props.deals?.[item.id];
+  if (deal) facts.push(<LinkFact key="deal" link={deal} Icon={Handshake} kind="deal" />);
   return facts.length > 0 ? <span className="flex flex-wrap items-center gap-x-3 gap-y-1">{facts}</span> : null;
+}
+
+/** Who or what a task is about, on its row: the customer (P4.7) or the deal (D910), a link to their page. */
+function LinkFact({ link, Icon, kind }: { link: { text: string; href: string }; Icon: LucideIcon; kind: "customer" | "deal" }) {
+  return (
+    <AdminLink href={link.href} className="inline-flex items-center gap-1 text-chip text-ink-2 underline underline-offset-2" {...{ [`data-task-${kind}`]: "" }}>
+      <Icon className="size-3.5" aria-hidden />
+      {link.text}
+    </AdminLink>
+  );
 }
 
 function ItemRow({

@@ -32,10 +32,12 @@ import { newContractAction } from "../contract-actions";
 import { deleteDealAction, linkThingAction, placeDealAction, saveDealFieldsAction, searchWhoAction, unlinkThingAction, updateDealAction } from "../actions";
 import { requireExtension } from "@/components/admin/extension-off";
 import { DealProjects } from "@/components/admin/projects/deal-projects";
+import { SourceTasks } from "@/components/admin/projects/source-tasks";
 import { projectsAction } from "@/app/admin/(gated)/[store]/projects/actions";
 import { PROJECT_SOURCES_WORDS } from "@/lib/admin-words/project-sources";
 import { projectsOn } from "@/lib/extensions";
 import { listTemplates as listProjectTemplates, projectsOfDeal } from "@/server/projects-deals";
+import { sourceTasks } from "@/server/projects-sources";
 
 export const metadata: Metadata = { title: "Deal" };
 
@@ -74,9 +76,15 @@ export default async function DealPage({ params }: PageProps<"/admin/[store]/dea
   // The deal's projects (D904 P8.3b): only while the store has Projects too, for people who may read projects; started once it is won.
   const projectsHere = projectsOn(store) && memberCan(member, "projects:read");
   const canStartProject = projectsHere && memberCan(member, "projects:write");
-  const [dealProjects, projectTemplates] = projectsHere
-    ? await Promise.all([projectsOfDeal(store.id, deal.id), canStartProject && deal.status === "won" ? listProjectTemplates(store.id) : Promise.resolve([])])
-    : [[], []];
+  // A deal's next steps are tasks (D910): its Tasks card, and the activities' form then makes calls and meetings only.
+  const [dealProjects, projectTemplates, dealTasks] = projectsHere
+    ? await Promise.all([
+        projectsOfDeal(store.id, deal.id),
+        canStartProject && deal.status === "won" ? listProjectTemplates(store.id) : Promise.resolve([]),
+        sourceTasks(store.id, { kind: "deal", id: deal.id }),
+      ])
+    : [[], [], null];
+  const tasksBelow = dealTasks !== null && canStartProject;
   const pipeline = pipelines.find((p) => p.id === deal.pipelineId);
   const stage = pipeline?.stages.find((s) => s.id === deal.stageId);
   const team = staff.filter((s) => !s.disabled && (!s.expiresAt || s.expiresAt > new Date().toISOString())).map((s) => ({ id: s.accountId, name: s.name || s.email }));
@@ -188,7 +196,20 @@ export default async function DealPage({ params }: PageProps<"/admin/[store]/dea
         team={team}
         me={member.account.id}
         blank={newActivityValues({ dealId: deal.id, customerId: deal.customer?.id, companyId: deal.company?.id }, member.account.id, new Date(), store.timeZone)}
+        tasksBelow={tasksBelow}
       />
+      {dealTasks && (
+        <SourceTasks
+          base={base}
+          source={{ kind: "deal", id: deal.id }}
+          label={null}
+          tasks={dealTasks.tasks}
+          lists={dealTasks.lists}
+          canChange={canStartProject}
+          words={PROJECT_SOURCES_WORDS[lang]}
+          act={projectsAction.bind(null, store.slug)}
+        />
+      )}
 
       <FiledEmailsCard emails={emails} words={w.emails} address={filing} when={when} />
 

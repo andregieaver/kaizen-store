@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."checklist_items" ADD COLUMN "deal_id" uuid;--> statement-breakpoint
+CREATE INDEX "checklist_items_deal_idx" ON "commerce"."checklist_items" USING btree ("store_id","deal_id") WHERE "commerce"."checklist_items"."deal_id" is not null;

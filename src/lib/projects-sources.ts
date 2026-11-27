@@ -19,15 +19,16 @@ export const SOURCE_COLUMNS: Record<SourceKind, "order_id" | "return_id" | "revi
 export type TaskSource = { kind: SourceKind; id: string };
 
 /**
- * What a page's *Tasks* card is about (P4.7): a source, or a customer. A customer is beside a task's source, not one of them: a task from an
- * order also names the order's customer, so the customer's page lists it too.
+ * What a page's *Tasks* card is about (P4.7): a source, a customer, or a deal whose next steps the tasks are (D910). A customer and a deal are
+ * beside a task's source, not among them: a task from an order also names the order's customer, and one made on a deal's page names the
+ * deal's, so the customer's page lists it too.
  */
-export const LINK_KINDS = [...SOURCE_KINDS, "customer"] as const;
+export const LINK_KINDS = [...SOURCE_KINDS, "customer", "deal"] as const;
 export type LinkKind = (typeof LINK_KINDS)[number];
 export type TaskLink = { kind: LinkKind; id: string };
 
 /** A task's column for each kind of link. */
-export const LINK_COLUMNS: Record<LinkKind, (typeof SOURCE_COLUMNS)[SourceKind] | "customer_id"> = { ...SOURCE_COLUMNS, customer: "customer_id" };
+export const LINK_COLUMNS: Record<LinkKind, (typeof SOURCE_COLUMNS)[SourceKind] | "customer_id" | "deal_id"> = { ...SOURCE_COLUMNS, customer: "customer_id", deal: "deal_id" };
 
 /** The source a task's row names, if any (the row's four columns, at most one set). */
 export function sourceOf(row: { order_id: string | null; return_id: string | null; review_id: string | null; conversation_id: string | null }): TaskSource | null {

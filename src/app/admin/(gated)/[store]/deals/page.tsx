@@ -12,9 +12,11 @@ import { boardColumns, daysInStage, whoLine } from "@/lib/deals";
 import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { whenText } from "@/components/admin/activities/activity-view";
-import { activityWhen } from "@/lib/activities";
+import { activityWhen, nextStep } from "@/lib/activities";
 import { DEALS_WORDS } from "@/lib/admin-words/deals";
 import { nextActivities } from "@/server/activities";
+import { nextDealTasks, type DealTaskStep } from "@/server/projects-deals";
+import { projectsOn } from "@/lib/extensions";
 import { ensurePipeline, listDeals } from "@/server/deals";
 import { memberCan, requirePermission } from "@/server/permissions";
 
@@ -56,13 +58,20 @@ export default async function DealsPage({ params, searchParams }: PageProps<"/ad
   const now = new Date();
   const today = todayIn(now, store.timeZone);
   const deals = await listDeals(store, { pipelineId: pipeline.id, closedSince: new Date(now.getTime() - CLOSED_DAYS * 86_400_000) });
-  const nexts = await nextActivities(store.id, deals.filter((d) => d.status === "open").map((d) => d.id));
+  const openIds = deals.filter((d) => d.status === "open").map((d) => d.id);
+  // A deal's next steps are tasks too while the store has Projects (D910): the sooner of its next activity and its next task.
+  const [nexts, tasks] = await Promise.all([
+    nextActivities(store.id, openIds),
+    projectsOn(store) && memberCan(member, "projects:read") ? nextDealTasks(store.id, openIds) : Promise.resolve(new Map<string, DealTaskStep>()),
+  ]);
   const nextOf = (dealId: string): BoardColumnView["cards"][number]["next"] => {
-    const next = nexts.get(dealId);
+    const next = nextStep(nexts.get(dealId), tasks.get(dealId));
     if (!next) return "none";
     const kind = w.activities.kinds[next.kind].toLocaleLowerCase(locale);
-    const when = whenText({ ...next, durationMinutes: null }, { now, timeZone: store.timeZone, locale, words: w.activities });
-    return { text: fillWords(w.board.next, { kind, when }), late: activityWhen({ id: dealId, doneAt: null, ...next }, now, store.timeZone) === "late" };
+    if (next.dueAt === null) return { text: fillWords(w.board.next, { kind, when: "" }).trim(), late: false };
+    const due = { dueAt: next.dueAt, timed: next.timed };
+    const when = whenText({ ...due, durationMinutes: null }, { now, timeZone: store.timeZone, locale, words: w.activities });
+    return { text: fillWords(w.board.next, { kind, when }), late: activityWhen({ id: dealId, doneAt: null, ...due }, now, store.timeZone) === "late" };
   };
   const columns = boardColumns(
     pipeline.stages.map((s) => ({ id: s.id, name: s.name, probability: s.probability })),

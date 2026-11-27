@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 
+import { dealsOn } from "@/lib/extensions";
 import { PROJECT_LIMITS } from "@/lib/projects-model";
 
 import type { Membership } from "./auth";
@@ -11,12 +12,14 @@ import { memberCan } from "./permissions";
 import { createProject, linkChecklist } from "./projects";
 import type { ProjectsResult } from "./projects-errors";
 import { duplicateChecklist } from "./projects-lists";
+import { uuidList } from "./sql-arrays";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
  * Projects and Deals together (D904, `docs/projects.md` P8.3b), a pair of the octopus: a won deal starts a project, and each names the
- * other. Projects holds the link (`projects.deal_id`, cleared when the deal is deleted), so Deals' own tables know nothing of it; the pages
- * show it only while the store has both (`projectsOn()`, `dealsOn()`).
+ * other; and a deal's next steps are tasks (D910, P6.2). Projects holds the links (`projects.deal_id`, `checklist_items.deal_id`, cleared
+ * when the deal is deleted), so Deals' own tables know nothing of them; the pages show them only while the store has both (`projectsOn()`,
+ * `dealsOn()`).
  */
 
 const PROJECT_ROW = z.object({ id: col.uuid, name: col.text, status: col.text });
@@ -77,4 +80,51 @@ export async function startDealProject(member: Membership, raw: unknown): Promis
     await db().execute(sql`update commerce.checklists set primary_project_id = ${made.id}::uuid where store_id = ${storeId}::uuid and id = ${copy.id}::uuid`);
   }
   return { ok: true, id: made.id };
+}
+
+type TaskDealLink = { id: string; text: string; href: string };
+
+/**
+ * Which deal a list's tasks are next steps of (D910), by task: the deal's title and its page, while the store has Deals and for a member who
+ * may read customers (the deal's page's right); nothing for anyone else, nor for a deal that is gone. One statement, none when no task names
+ * a deal.
+ */
+export async function dealLinks(member: Membership, tasks: readonly { id: string; dealId: string | null }[]): Promise<Record<string, TaskDealLink>> {
+  const named = tasks.filter((t): t is { id: string; dealId: string } => t.dealId !== null);
+  if (named.length === 0 || !dealsOn(member.store) || !memberCan(member, "customers:read")) return {};
+  const rows = await typedRows(
+    z.object({ id: col.uuid, title: col.text }),
+    sql`select id, title from commerce.deals where store_id = ${member.store.id}::uuid and id = any(${uuidList([...new Set(named.map((t) => t.dealId))])})`,
+  );
+  const titles = new Map(rows.map((r) => [r.id, r.title]));
+  const links: Record<string, TaskDealLink> = {};
+  for (const { id, dealId } of named) {
+    const text = titles.get(dealId);
+    if (text) links[id] = { id: dealId, text, href: `/admin/${member.store.slug}/deals/${dealId}` };
+  }
+  return links;
+}
+
+/** A deal's next task: when it is due (none for one without a date) and whether a time of day was given. */
+export type DealTaskStep = { dueAt: string | null; timed: boolean };
+
+/**
+ * Each open deal's next task (D910), for the board's *Next* line beside its activities: the open task of a working list (not a template's,
+ * not archived) due first, an undated one only where none has a date. One statement on the deal index; none for no deals.
+ */
+export async function nextDealTasks(storeId: string, dealIds: readonly string[]): Promise<Map<string, DealTaskStep>> {
+  const out = new Map<string, DealTaskStep>();
+  if (dealIds.length === 0) return out;
+  const rows = await typedRows(
+    z.object({ deal_id: col.uuid, due_at: col.timestamp.nullable(), timed: col.bool }),
+    sql`
+      select distinct on (i.deal_id) i.deal_id, i.due_at, i.all_day is not true as timed
+        from commerce.checklist_items i
+        join commerce.checklists l on l.store_id = i.store_id and l.id = i.checklist_id
+       where i.store_id = ${storeId}::uuid and i.deal_id = any(${uuidList(dealIds)}) and i.done_at is null and i.archived_at is null and not l.as_template
+       order by i.deal_id, i.due_at nulls last, i.created_at
+    `,
+  );
+  for (const r of rows) out.set(r.deal_id, { dueAt: r.due_at, timed: r.timed });
+  return out;
 }

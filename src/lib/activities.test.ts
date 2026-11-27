@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { activityWhen, dueFields, nextActivity, todayList, todayWindow } from "./activities";
+import { activityWhen, dueFields, nextActivity, nextStep, offeredKinds, todayList, todayWindow } from "./activities";
 import { cleanActivityInput } from "./activities-schema";
 
 const OSLO = "Europe/Oslo";
@@ -74,5 +74,30 @@ describe("the Today list", () => {
     expect(todayWindow(now, OSLO)).toEqual({ startOfToday: "2026-11-08T23:00:00.000Z", endOfToday: "2026-11-09T23:00:00.000Z" });
     expect(nextActivity([a("done", "2026-11-01T08:00:00Z", true, "2026-11-01T09:00:00Z"), a("b", "2026-11-12T08:00:00Z", true), a("a", "2026-11-11T08:00:00Z", false)])?.id).toBe("a");
     expect(nextActivity([a("done", "2026-11-01T08:00:00Z", true, "2026-11-01T09:00:00Z")])).toBeNull();
+  });
+});
+
+describe("a deal's next step with tasks (D910)", () => {
+  const call = { kind: "call" as const, dueAt: "2026-12-02T09:00:00.000Z", timed: true };
+
+  it("takes the task when it is due sooner, the activity otherwise", () => {
+    expect(nextStep(call, { dueAt: "2026-12-01T00:00:00.000Z", timed: false })).toEqual({ kind: "task", dueAt: "2026-12-01T00:00:00.000Z", timed: false });
+    expect(nextStep(call, { dueAt: "2026-12-03T00:00:00.000Z", timed: false })).toEqual(call);
+    expect(nextStep(call, undefined)).toEqual(call);
+  });
+
+  it("lets a task with no date be the next step only of a deal with no activity to do", () => {
+    expect(nextStep(call, { dueAt: null, timed: true })).toEqual(call);
+    expect(nextStep(undefined, { dueAt: null, timed: true })).toEqual({ kind: "task", dueAt: null, timed: true });
+    expect(nextStep(undefined, undefined)).toBeUndefined();
+  });
+});
+
+describe("the kinds a new activity offers (D910)", () => {
+  it("leaves out the task where tasks are made in Projects, unless the activity is one already", () => {
+    expect(offeredKinds(false)).toEqual(["call", "meeting", "task"]);
+    expect(offeredKinds(true)).toEqual(["call", "meeting"]);
+    expect(offeredKinds(true, "task")).toEqual(["call", "meeting", "task"]);
+    expect(offeredKinds(true, "meeting")).toEqual(["call", "meeting"]);
   });
 });

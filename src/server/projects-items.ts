@@ -79,7 +79,8 @@ const mayName = (member: Membership, customerId: string | null | undefined) => c
 
 /**
  * A task from a source names its customer too (P4.7), when the source has one of the store's: an order's or its return's buyer, a review's
- * writer, a conversation's signed-in customer. Read inside the insert; a customer that is not the store's (or is gone) leaves none.
+ * writer, a conversation's signed-in customer, a deal's person (D910). Read inside the insert; a customer that is not the store's (or is
+ * gone) leaves none.
  */
 function customerOfLink(storeId: string, link: TaskLink): SQL {
   if (link.kind === "customer") return sql`${link.id}::uuid`;
@@ -90,7 +91,9 @@ function customerOfLink(storeId: string, link: TaskLink): SQL {
         ? sql`select o.customer_id from commerce.returns r join commerce.orders o on o.store_id = r.store_id and o.id = r.order_id where r.store_id = ${storeId}::uuid and r.id = ${link.id}::uuid`
         : link.kind === "review"
           ? sql`select customer_id from commerce.product_reviews where store_id = ${storeId}::uuid and id = ${link.id}::uuid`
-          : sql`select customer_id from commerce.support_conversations where store_id = ${storeId}::uuid and id = ${link.id}::uuid`;
+          : link.kind === "deal"
+            ? sql`select customer_id from commerce.deals where store_id = ${storeId}::uuid and id = ${link.id}::uuid`
+            : sql`select customer_id from commerce.support_conversations where store_id = ${storeId}::uuid and id = ${link.id}::uuid`;
   return sql`(select c.id from commerce.customers c where c.store_id = ${storeId}::uuid and c.id = (${named}))`;
 }
 
@@ -126,13 +129,14 @@ function repeatColumns(rule: Recurrence | null | undefined, timeZone: string, no
 
 /**
  * A new item at the end of a list (its status the list's default, by the database). Made from a page's *Tasks* card, it is linked to what the
- * page is about (`link`): a source (P8.3a) and its customer, or a customer (P4.7).
+ * page is about (`link`): a source (P8.3a) or a deal (D910) and its customer, or a customer (P4.7).
  */
 export async function addItem(member: Membership, checklistId: string, raw: unknown, link?: TaskLink): Promise<ProjectsResult<{ id: string }>> {
   if (!memberCan(member, WRITE)) return { ok: false, problem: "forbidden" };
   const input = itemInput.safeParse(raw);
   if (!input.success) return { ok: false, problem: "invalid", fields: problemFields(input.error) };
-  if (!mayName(member, input.data.customerId) || (link?.kind === "customer" && !mayName(member, link.id))) return { ok: false, problem: "forbidden" };
+  // A customer's or a deal's task (D910) shows who it is about: the right to read customers too.
+  if (!mayName(member, input.data.customerId) || ((link?.kind === "customer" || link?.kind === "deal") && !mayName(member, link.id))) return { ok: false, problem: "forbidden" };
   const storeId = member.store.id;
   if (!(await listExists(storeId, checklistId))) return { ok: false, problem: "not_found" };
   if (!(await assignable(storeId, input.data.assignedTo))) return { ok: false, problem: "invalid", fields: ["assignedTo"] };

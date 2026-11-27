@@ -556,6 +556,82 @@ describe("the customer a task is about (D903 P4.7)", () => {
   });
 });
 
+describe("a deal's next steps are tasks (D910)", () => {
+  // Deals on for the store (the feature `sales`; the test store's account has every extension), or off.
+  const withSales = (on: boolean) => ({
+    ...store.member,
+    store: { ...store.member.store, features: on ? [...new Set([...store.member.store.features, "sales" as const])] : store.member.store.features.filter((f) => f !== "sales") },
+  });
+  let n = 0;
+  const deal = async (storeId: string, customerId: string | null) => {
+    n += 1;
+    const [pipeline] = await db().execute<{ id: string }>(sql`insert into commerce.deal_pipelines (store_id, name) values (${storeId}::uuid, ${`D910 ${n}`}) returning id`);
+    const [stage] = await db().execute<{ id: string }>(
+      sql`insert into commerce.deal_stages (store_id, pipeline_id, name, position) values (${storeId}::uuid, ${pipeline.id}::uuid, 'New', 0) returning id`,
+    );
+    const [made] = await db().execute<{ id: string }>(sql`
+      insert into commerce.deals (store_id, title, pipeline_id, stage_id, currency, customer_id)
+      values (${storeId}::uuid, ${`Showroom ${n}`}, ${pipeline.id}::uuid, ${stage.id}::uuid, 'NOK', ${customerId}::uuid) returning id`);
+    return made.id;
+  };
+  const buyer = async () => (await db().execute<{ id: string }>(sql`insert into commerce.customers (store_id, email, name) values (${store.storeId}::uuid, ${`d910-${++n}@example.com`}, 'Ada') returning id`))[0].id;
+  const linksOf = async (itemId: string) =>
+    (await db().execute<{ deal_id: string | null; customer_id: string | null }>(sql`select deal_id, customer_id from commerce.checklist_items where id = ${itemId}::uuid`))[0];
+
+  it("is made on the deal's page, names the deal's customer, and is listed on both pages and linked on its list", async () => {
+    const seller = withSales(true);
+    const person = await buyer();
+    const showroom = await deal(store.storeId, person);
+    const made = ok(await sources.addSourceTask(seller, { kind: "deal", sourceId: showroom, title: "Next step for the deal", checklistId: null }, "Follow-ups"));
+    expect(await linksOf(made.id)).toEqual({ deal_id: showroom, customer_id: person });
+    expect((await sources.sourceTasks(store.storeId, { kind: "deal", id: showroom })).tasks.map((t) => t.id)).toEqual([made.id]);
+    expect((await sources.sourceTasks(store.storeId, { kind: "customer", id: person })).tasks.map((t) => t.id)).toEqual([made.id]);
+    const listId = (await sources.sourceTasks(store.storeId, { kind: "deal", id: showroom })).tasks[0].checklistId;
+    expect((await detail(listId)).entries.find((e) => e.kind === "item" && e.item.id === made.id)).toMatchObject({ item: { dealId: showroom } });
+    expect(await dealProjects.dealLinks(seller, [{ id: made.id, dealId: showroom }])).toEqual({
+      [made.id]: { id: showroom, text: expect.stringMatching(/^Showroom \d+$/), href: `/admin/${store.member.store.slug}/deals/${showroom}` },
+    });
+  });
+
+  it("needs Deals and the right to read customers, and refuses another store's deal", async () => {
+    const showroom = await deal(store.storeId, null);
+    const input = { kind: "deal" as const, sourceId: showroom, title: "Next step for the deal", checklistId: null };
+    expect(await sources.addSourceTask(withSales(false), input, "Follow-ups")).toEqual({ ok: false, problem: "forbidden" });
+    const planner = { ...withSales(true), role: "admin" as const, permissions: ["projects:read", "projects:write"] };
+    expect(await sources.addSourceTask(planner, input, "Follow-ups")).toEqual({ ok: false, problem: "forbidden" });
+    const theirs = await deal(other.storeId, null);
+    expect(await sources.addSourceTask(withSales(true), { ...input, sourceId: theirs }, "Follow-ups")).toEqual({ ok: false, problem: "not_found" });
+    // A task with no customer on its deal names none; its link shows nothing without Deals or the right to read customers.
+    const made = ok(await sources.addSourceTask(withSales(true), input, "Follow-ups"));
+    expect(await linksOf(made.id)).toEqual({ deal_id: showroom, customer_id: null });
+    expect(await dealProjects.dealLinks(withSales(false), [{ id: made.id, dealId: showroom }])).toEqual({});
+    expect(await dealProjects.dealLinks(planner, [{ id: made.id, dealId: showroom }])).toEqual({});
+  });
+
+  it("is the deal's next step on the board: the open task due first, an undated one only where none has a date", async () => {
+    const seller = withSales(true);
+    const showroom = await deal(store.storeId, null);
+    const undated = await deal(store.storeId, null);
+    const { id: listId } = ok(await lists.createChecklist(store.member, { title: "Deal steps" }));
+    const { id: template } = ok(await lists.createChecklist(store.member, { title: "Deal template" }));
+    ok(await lists.setChecklistMode(store.member, template, { asTemplate: true }));
+    const link = { kind: "deal" as const, id: showroom };
+    ok(await items.addItem(seller, listId, { title: "No date" }, link));
+    ok(await items.addItem(seller, listId, { title: "Later", dueAt: "2099-03-01T10:00:00Z" }, link));
+    const { id: sooner } = ok(await items.addItem(seller, listId, { title: "Sooner", dueAt: "2099-02-01T10:00:00Z" }, link));
+    ok(await items.addItem(seller, template, { title: "A template's", dueAt: "2099-01-01T10:00:00Z" }, link));
+    const { id: ticked } = ok(await items.addItem(seller, listId, { title: "Done already", dueAt: "2099-01-02T10:00:00Z" }, link));
+    ok(await items.setItemDone(seller, ticked, true));
+    ok(await items.addItem(seller, listId, { title: "Some day" }, { kind: "deal", id: undated }));
+    const next = await dealProjects.nextDealTasks(store.storeId, [showroom, undated]);
+    expect(next.get(showroom)).toEqual({ dueAt: "2099-02-01T10:00:00.000Z", timed: true });
+    expect(next.get(undated)).toEqual({ dueAt: null, timed: true });
+    // Ticked, the next one takes its place.
+    ok(await items.setItemDone(seller, sooner, true));
+    expect((await dealProjects.nextDealTasks(store.storeId, [showroom])).get(showroom)?.dueAt).toBe("2099-03-01T10:00:00.000Z");
+  });
+});
+
 describe("a project from a won deal (D904 P8.3b)", () => {
   it("is named after the deal, linked to it, and starts with a copy of the template list, at home in the new project", async () => {
     const [pipeline] = await db().execute<{ id: string }>(sql`insert into commerce.deal_pipelines (store_id, name) values (${store.storeId}::uuid, 'Sales') returning id`);

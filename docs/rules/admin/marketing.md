@@ -509,6 +509,10 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   moves them; an erasure deletes those about the person alone and takes the person off the rest. Audited as `activity.*` with ids only.
   Added and done are events (`activity.created`, `activity.done`, ecosystem plan E5.1, D757), queued by the table's trigger; the note is
   never in a payload.
+  Where Deals and Projects meet (D910), a deal's next steps are tasks: on a page whose *Tasks* card makes tasks (a deal's or a person's, for a
+  member who may change projects) a new activity is a call or a meeting (`offeredKinds()`; one that is a task keeps its kind), and the
+  board's next step is `nextStep()` of the deal's next activity and its next task (`nextDealTasks()`), never one alone while both arms are
+  there. The API, the AI manager's tools and the Pipedrive move write every kind.
 
 ## Finding companies and do not contact (email plan P5.1, P5.6, D893, `src/lib/prospect-search.ts`, `src/server/prospect-search.ts`, `src/server/do-not-contact.ts`, `/admin/{store}/companies/find`)
 

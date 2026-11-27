@@ -17,14 +17,14 @@ export const projectSourcesEn = {
   cancel: "Cancel",
   inList: "In {list}",
   tick: "Tick off {title}",
-  /** The title written in advance: a number the system made, never a name a customer typed, since task titles reach the AI manager. */
+  /** The title written in advance: a number the system made, never a name (a customer's, a deal's title), since titles reach the AI manager. */
   suggested: {
     order: "Follow up order {label}",
     return: "Follow up return {label}",
     review: "Answer the review",
     conversation: "Follow up the conversation",
-    /** A customer's page (P4.7): never their name, which would reach the AI manager in the task's title. */
     customer: "Follow up the customer",
+    deal: "Next step for the deal",
   },
   /** After a task is made from a conversation, where the inbox has no room for its list. */
   added: "Task added to {list}.",
