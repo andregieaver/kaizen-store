@@ -19256,6 +19256,12 @@ export const socialPosts = commerce
        */
       rulesQueuedAt: timestamp("rules_queued_at", { withTimezone: true }),
       heldAt: timestamp("held_at", { withTimezone: true }),
+      /**
+       * The post's formats (D870 S2.1b): a carousel of the drawn picture, the product's other photos and a closing slide, and the same post as
+       * a Story too (Instagram and Facebook). Changing either takes back the post's yes.
+       */
+      carousel: boolean("carousel").notNull().default(false),
+      story: boolean("story").notNull().default(false),
       createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
       createdAt: createdAt(),
     },

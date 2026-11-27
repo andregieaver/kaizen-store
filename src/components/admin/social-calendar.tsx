@@ -8,6 +8,7 @@ import { Field, TextArea } from "@/components/admin/ui/field";
 import { fillWords } from "@/lib/admin-fill";
 import type { SocialMessages } from "@/lib/admin-messages/social.en";
 import type { CalendarItem, CalendarWeek } from "@/lib/social-calendar";
+import { mayCarousel, mayStory } from "@/lib/social-formats";
 import { SCENE_TRIES_MAX } from "@/lib/social-scenes";
 import { CHANNEL_SPECS } from "@/lib/social-posts";
 
@@ -97,6 +98,8 @@ export function SocialCalendar({
     });
   const schedule = (id: string, on: boolean) => run(`schedule-${id}`, [() => postJson(`${base}/calendar`, { do: on ? "schedule" : "unschedule", ids: [id] })]);
   const when = (iso: string) => new Date(iso).toLocaleString(dateLocale, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone });
+  /** A carousel or one picture, a Story too or not (S2.1b): it takes back the post's yes, as new pictures go out with it. */
+  const setFormat = (id: string, change: { carousel?: boolean; story?: boolean }) => run(`format-${id}`, [() => postJson(`${base}/calendar`, { do: "format", id, ...change })]);
   const drawn = (id: string) => run(`drawn-${id}`, [() => postJson(`${base}/calendar`, { do: "no_scene", id })]);
   /** The slideshow (S2.5): made in this browser from the post's pictures, uploaded to the library, kept on the post. */
   const video = (id: string) =>
@@ -186,6 +189,23 @@ export function SocialCalendar({
                           className="h-28 w-auto self-start rounded-md border border-line"
                           loading="lazy"
                         />
+                      )}
+                      {it.draft && (it.draft.formats?.carousel || it.draft.formats?.story) && (
+                        <div role="group" className="flex gap-1 self-start" aria-label={w.morePictures}>
+                          {it.draft.formats.carousel &&
+                            Array.from({ length: it.draft.formats.slides - 1 }, (_, n) => (
+                              <a key={n} href={`${base}/picture/${it.draft!.id}?slide=${n + 1}&download=1`}>
+                                {/* eslint-disable-next-line @next/next/no-img-element -- a carousel slide, drawn by the page's route on request */}
+                                <img src={`${base}/picture/${it.draft!.id}?slide=${n + 1}`} alt={fillWords(w.slide, { n: String(n + 2) })} className="h-28 w-auto rounded-md border border-line" loading="lazy" />
+                              </a>
+                            ))}
+                          {it.draft.formats.story && (
+                            <a href={`${base}/picture/${it.draft.id}?story=1&download=1`}>
+                              {/* eslint-disable-next-line @next/next/no-img-element -- the Story frame, drawn by the page's route on request */}
+                              <img src={`${base}/picture/${it.draft.id}?story=1`} alt={w.storyFrame} className="h-28 w-auto rounded-md border border-line" loading="lazy" />
+                            </a>
+                          )}
+                        </div>
                       )}
                       <div className="flex min-w-0 flex-1 flex-col gap-1">
                         <span className="text-body-strong text-ink">
@@ -279,6 +299,16 @@ export function SocialCalendar({
                           {it.draft?.approved && !it.draft.published && publishTo[it.channel] && (it.channel !== "tiktok" || it.draft.video) && (
                             <button type="button" className={secondary} disabled={pending} onClick={() => schedule(it.draft!.id, !it.draft!.scheduledFor)}>
                               {it.draft.scheduledFor ? w.dontPostOnItsDay : w.postOnItsDay}
+                            </button>
+                          )}
+                          {it.draft && !it.draft.published && mayCarousel(it.channel, Boolean(it.draft.productId)) && (
+                            <button type="button" className={secondary} disabled={pending} onClick={() => setFormat(it.draft!.id, { carousel: !it.draft!.formats?.carousel })}>
+                              {it.draft.formats?.carousel ? w.onePicture : w.makeCarousel}
+                            </button>
+                          )}
+                          {it.draft && !it.draft.published && mayStory(it.channel) && (
+                            <button type="button" className={secondary} disabled={pending} onClick={() => setFormat(it.draft!.id, { story: !it.draft!.formats?.story })}>
+                              {it.draft.formats?.story ? w.noStory : w.alsoStory}
                             </button>
                           )}
                           {it.draft && !it.draft.published && makesPictures && (it.draft.scene?.tries ?? 0) < SCENE_TRIES_MAX ? (

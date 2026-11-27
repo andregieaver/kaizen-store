@@ -76,8 +76,11 @@ export const usernameFrom = (json: unknown): string => {
 
 type PinPost = { channel: PostChannel; title: string; caption: string; hashtags: readonly string[]; link: string; priceLine: string | null };
 
-/** The Pin made from a post: its title (100 characters), its words with the price line and hashtags (800), its link and its picture. */
-export function pinBody(boardId: string, post: PinPost, imageUrl: string) {
+/**
+ * The Pin made from a post: its title (100 characters), its words with the price line and hashtags (800), its link and its picture, or a
+ * carousel Pin of up to five pictures (S2.1b), each with the post's link.
+ */
+export function pinBody(boardId: string, post: PinPost, imageUrl: string | readonly string[]) {
   const tags = post.hashtags.map((t) => `#${t}`).join(" ");
   const description = [post.caption, post.priceLine ?? "", tags].filter(Boolean).join("\n\n").slice(0, 800);
   return {
@@ -86,7 +89,10 @@ export function pinBody(boardId: string, post: PinPost, imageUrl: string) {
     description,
     link: post.link,
     alt_text: (post.title || post.caption).slice(0, 500),
-    media_source: { source_type: "image_url", url: imageUrl },
+    media_source:
+      typeof imageUrl === "string"
+        ? { source_type: "image_url", url: imageUrl }
+        : { source_type: "multiple_image_urls", items: imageUrl.slice(0, 5).map((url) => ({ url, title: post.title.slice(0, 100), link: post.link })) },
   };
 }
 
