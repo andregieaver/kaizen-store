@@ -117,9 +117,12 @@ describe("cookie scans (D58)", () => {
       update commerce.cookie_scans set status = 'running', started_at = now()
       where store_id = ${demoId}::uuid and status in ('queued', 'running') returning id
     `);
-    await runScan({ id: String(queued.id), storeId: demoId }, async () => {
-      throw new Error("No browser here.");
-    });
+    // The outcome is what the cron route counts as a failed run (incident 74c699bf).
+    expect(
+      await runScan({ id: String(queued.id), storeId: demoId }, async () => {
+        throw new Error("No browser here.");
+      }),
+    ).toEqual({ status: "failed", error: "No browser here." });
     const [failed] = await listScans(demoId, 1);
     expect(failed).toMatchObject({ status: "failed", error: "No browser here." });
     expect(await latestFindings(demoId)).toBeNull();

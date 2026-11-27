@@ -754,6 +754,8 @@ the path, component or table you change, or list the rules with a search for lin
   site) runs from `/api/cron/cookie-scan` via `cookie-scan-runner.ts`, the
   only module that loads Chromium; keep it out of other routes' imports.
   A site is scanned weekly; a failed scan is tried again after an hour, and after a day from the third failure in a row.
+  `runScan()` answers how the scan ended; a broken scan is reported as a failed run of `route.cookie-scan.work`, so the platform home
+  says the job is failing, while a site that is not open is not counted (incident 74c699bf, 27 November 2026).
   A store's own code (D61, `src/lib/custom-code.ts`, `stores.custom_code`)
   is added in the browser: necessary code at once, the rest by
   `ConsentManager` after consent. Pass it through `liveCustomCode()`, which

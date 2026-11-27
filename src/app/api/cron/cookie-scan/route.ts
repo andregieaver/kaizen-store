@@ -22,10 +22,12 @@ async function run(request: Request) {
   if (scan) {
     after(async () => {
       // The route's own record says only that it answered; the work is kept as `route.cookie-scan.work` (bloat review step 1.26).
-      await trackedWork("route.cookie-scan", 60, async () => {
-        await runScan(scan);
+      await trackedWork("route.cookie-scan", 60, async (report) => {
+        const outcome = await runScan(scan);
         // The cookie page and banner follow what the scan found.
         revalidateTag(cookiesTag(scan.storeId), "max");
+        // A broken scan is a failed run, so the platform home says the job is failing (incident 74c699bf); a closed site is not.
+        if (outcome.status === "failed") report(new Error(`The cookie scan failed: ${outcome.error}`), "scan");
       });
     });
   }
