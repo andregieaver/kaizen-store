@@ -504,6 +504,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   facebook_pages: "A store's Facebook Page connected for its posts' figures (D870 S1.2b): the Page's id and name, its encrypted token (and the connecting person's, only until a Page is chosen), the names of their Pages to choose among and the staff account that connected it; never a shopper's data.",
   pinterest_accounts: "A store's Pinterest account connected to pin its approved posts (D870 S3.4): the account's name, its encrypted tokens, its boards' names to choose among and the chosen one, and the staff account that connected it; never a shopper's data.",
   tiktok_accounts: "A store's TikTok account connected to post its approved videos (D870 S3.5): the account's TikTok id and name, its encrypted tokens and the staff account that connected it; never a shopper's data.",
+  linkedin_accounts: "A store's LinkedIn connected to post its approved posts (D870 S3.6): the connecting member's name, their encrypted tokens, the profile or Company Page posts go to and the places to choose among, and the staff account that connected it; never a shopper's data.",
   google_places: "A business place's address, the store's own.",
   inventory_locations: "The name of a stock location.",
   inventory_movements: "Stock counts and the staff account that changed them (an id, never a name); the note is staff text about stock, and a movement holds no shopper's data.",

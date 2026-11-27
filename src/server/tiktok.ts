@@ -10,6 +10,7 @@ import { grantsVideoPublish, parseCreator, parseTokens, renewDue, TIKTOK_API, ti
 
 import { audit } from "./auth";
 import { encryptionKey } from "./encryption-key";
+import { dropConnection, keepProblem, keepTokens } from "./social-connect-tokens";
 import type { Connection } from "./social-connect-routes";
 import { ConnectError, connectStart, connectStarted } from "./social-connect-state";
 import { col, typedRow } from "./typed-rows";
@@ -116,8 +117,7 @@ export async function connectTiktok(accountId: string, storeId: string, params: 
 
 /** Disconnects the store's TikTok account: the row and its tokens go. TikTok's own list of apps is the owner's to tidy. */
 export async function disconnectTiktok(accountId: string, storeId: string): Promise<void> {
-  const gone = await db().execute(sql`delete from commerce.tiktok_accounts where store_id = ${storeId}::uuid returning id`);
-  if (gone.length > 0) await audit(accountId, storeId, "store.tiktok_disconnected", {});
+  await dropConnection("tiktok_accounts", accountId, storeId, "store.tiktok_disconnected");
 }
 
 const TARGET = z.object({ username: col.text, access: col.text, refresh: col.text, expires: col.timestamp, refresh_expires: col.timestamp, publish: col.bool });
@@ -142,14 +142,11 @@ export async function tiktokTarget(storeId: string, now = new Date(), call: type
     tokens = parseTokens(await tokenCall(app, { grant_type: "refresh_token", refresh_token: decryptSecret(row.refresh, key) }, call), now);
   } catch (error) {
     if (!(error instanceof TiktokError)) throw error;
-    await db().execute(sql`update commerce.tiktok_accounts set problem = ${error.message.slice(0, 300)}, updated_at = now() where store_id = ${storeId}::uuid`);
+    await keepProblem("tiktok_accounts", storeId, error.message);
     return { problem: error.message };
   }
   if (!tokens) return { problem: "TikTok did not renew the connection. Connect it again." };
-  await db().execute(sql`
-    update commerce.tiktok_accounts set access_token_encrypted = ${encryptSecret(tokens.access, key)}, refresh_token_encrypted = ${encryptSecret(tokens.refresh, key)},
-      token_expires_at = ${tokens.expiresAt.toISOString()}::timestamptz, refresh_expires_at = ${tokens.refreshExpiresAt.toISOString()}::timestamptz, problem = null, updated_at = now()
-    where store_id = ${storeId}::uuid`);
+  await keepTokens("tiktok_accounts", storeId, key, tokens);
   return { username: row.username, token: tokens.access };
 }
 

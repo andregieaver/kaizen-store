@@ -187,6 +187,12 @@ TikTok post goes out as its slideshow video, uploaded as a file in one piece (no
 words, by *Post now*, the queue, the rules and `publish_social_post`; one without a video is refused and never queued. Each post is private
 (`SELF_ONLY`) until `TIKTOK_PUBLIC=1`, set once TikTok has audited the app. The day-long token is renewed whenever it is used near its end.
 
+S3.6 as built: a LinkedIn card on Social posts connects (`src/server/linkedin.ts`, pure parts `src/lib/linkedin.ts`; `LINKEDIN_CLIENT_ID`,
+`LINKEDIN_CLIENT_SECRET`; `openid`, `profile`, `w_member_social`, and with `LINKEDIN_PAGES=1`, once LinkedIn grants the Community Management
+API, `r_organization_admin` and `w_organization_social`). Posts go to the member's profile or a Page they administer, chosen like a board
+(`linkedin_accounts`, tokens encrypted); an approved LinkedIn post goes out public with its picture (the Images API) by every path. The 60-day
+token is renewed where LinkedIn gives a refresh token; otherwise the card says until when it lasts. Every channel now posts.
+
 | Step | What |
 |---|---|
 | S3.1 | Publishing to Instagram and Facebook, approval per post. **Done 2026-11-26** (below) |
@@ -194,7 +200,7 @@ words, by *Post now*, the queue, the rules and `publish_social_post`; one withou
 | S3.3 | The toggle and the rules, through `autonomyDecision()`. **Done 2026-11-26** (below) |
 | S3.4 | Pinterest. **Done 2026-11-26** (below) |
 | S3.5 | TikTok (after the audit). **Done 2026-11-26**, private until TikTok audits the app (below) |
-| S3.6 | LinkedIn |
+| S3.6 | LinkedIn. **Done 2026-11-27** (below) |
 
 ## 7. Models per stage
 

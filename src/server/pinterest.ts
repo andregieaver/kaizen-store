@@ -10,6 +10,7 @@ import { siteUrl } from "@/lib/site";
 
 import { audit } from "./auth";
 import { encryptionKey } from "./encryption-key";
+import { dropConnection, keepProblem, keepTokens } from "./social-connect-tokens";
 import type { Connection } from "./social-connect-routes";
 import { ConnectError, connectStart, connectStarted } from "./social-connect-state";
 import { col, typedRow } from "./typed-rows";
@@ -124,8 +125,7 @@ export async function choosePinterestBoard(accountId: string, storeId: string, b
 
 /** Disconnects the store's Pinterest account: the row and its tokens go. Pinterest's own list of apps is the owner's to tidy. */
 export async function disconnectPinterest(accountId: string, storeId: string): Promise<void> {
-  const gone = await db().execute(sql`delete from commerce.pinterest_accounts where store_id = ${storeId}::uuid returning id`);
-  if (gone.length > 0) await audit(accountId, storeId, "store.pinterest_disconnected", {});
+  await dropConnection("pinterest_accounts", accountId, storeId, "store.pinterest_disconnected");
 }
 
 const TARGET = z.object({
@@ -161,14 +161,11 @@ export async function pinterestTarget(storeId: string, now = new Date(), call: t
     tokens = parseTokens(await tokenCall(app, { grant_type: "refresh_token", refresh_token: kept.refresh }, call), now, kept);
   } catch (error) {
     if (!(error instanceof PinterestError)) throw error;
-    await db().execute(sql`update commerce.pinterest_accounts set problem = ${error.message.slice(0, 300)}, updated_at = now() where store_id = ${storeId}::uuid`);
+    await keepProblem("pinterest_accounts", storeId, error.message);
     return { problem: error.message };
   }
   if (!tokens) return { problem: "Pinterest did not renew the connection. Connect it again." };
-  await db().execute(sql`
-    update commerce.pinterest_accounts set access_token_encrypted = ${encryptSecret(tokens.access, key)}, refresh_token_encrypted = ${encryptSecret(tokens.refresh, key)},
-      token_expires_at = ${tokens.expiresAt.toISOString()}::timestamptz, refresh_expires_at = ${tokens.refreshExpiresAt.toISOString()}::timestamptz, problem = null, updated_at = now()
-    where store_id = ${storeId}::uuid`);
+  await keepTokens("pinterest_accounts", storeId, key, tokens);
   return { boardId: row.board_id, token: tokens.access };
 }
 

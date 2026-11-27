@@ -1,6 +1,6 @@
 {
-  "id": "e51a9bbb-57d3-4364-b52d-9e4b20dceb1c",
-  "prevId": "2a8943de-0de3-4389-bb19-952e04d36d02",
+  "id": "2d3a97dc-616a-417a-afaa-fc925b5f1d1c",
+  "prevId": "e51a9bbb-57d3-4364-b52d-9e4b20dceb1c",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -50144,6 +50144,186 @@
         }
       },
       "isRLSEnabled": false
+    },
+    "commerce.linkedin_accounts": {
+      "name": "linkedin_accounts",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "member_name": {
+          "name": "member_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "access_token_encrypted": {
+          "name": "access_token_encrypted",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "refresh_token_encrypted": {
+          "name": "refresh_token_encrypted",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "token_expires_at": {
+          "name": "token_expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "refresh_expires_at": {
+          "name": "refresh_expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "author_urn": {
+          "name": "author_urn",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "author_name": {
+          "name": "author_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "choices": {
+          "name": "choices",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "publish": {
+          "name": "publish",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "problem": {
+          "name": "problem",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "connected_by": {
+          "name": "connected_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "linkedin_accounts_connected_by_idx": {
+          "name": "linkedin_accounts_connected_by_idx",
+          "columns": [
+            {
+              "expression": "connected_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "linkedin_accounts_store_id_stores_id_fk": {
+          "name": "linkedin_accounts_store_id_stores_id_fk",
+          "tableFrom": "linkedin_accounts",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "linkedin_accounts_connected_by_accounts_id_fk": {
+          "name": "linkedin_accounts_connected_by_accounts_id_fk",
+          "tableFrom": "linkedin_accounts",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "connected_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "linkedin_accounts_store_key": {
+          "name": "linkedin_accounts_store_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "store_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "linkedin_accounts_author": {
+          "name": "linkedin_accounts_author",
+          "value": "\"commerce\".\"linkedin_accounts\".\"author_urn\" is null or \"commerce\".\"linkedin_accounts\".\"author_urn\" ~ '^urn:li:(person|organization):[A-Za-z0-9_-]{1,64}$'"
+        },
+        "linkedin_accounts_names": {
+          "name": "linkedin_accounts_names",
+          "value": "char_length(\"commerce\".\"linkedin_accounts\".\"member_name\") <= 200 and char_length(\"commerce\".\"linkedin_accounts\".\"author_name\") <= 200"
+        },
+        "linkedin_accounts_choices": {
+          "name": "linkedin_accounts_choices",
+          "value": "jsonb_typeof(\"commerce\".\"linkedin_accounts\".\"choices\") = 'array' and octet_length(\"commerce\".\"linkedin_accounts\".\"choices\"::text) < 20000"
+        },
+        "linkedin_accounts_problem": {
+          "name": "linkedin_accounts_problem",
+          "value": "\"commerce\".\"linkedin_accounts\".\"problem\" is null or char_length(\"commerce\".\"linkedin_accounts\".\"problem\") <= 300"
+        }
+      },
+      "isRLSEnabled": true
     },
     "commerce.live_drills": {
       "name": "live_drills",

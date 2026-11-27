@@ -2449,7 +2449,7 @@ const ALL_OWNER_TOOLS = [
   ),
   tool(
     "publish_social_post",
-    "Publishes one approved social post (D870 S3.2) to the store's Instagram account, Facebook Page, Pinterest board or TikTok account, as it shows on Social posts: the posting queue puts it out within minutes of the owner's yes. Only a post a person approved, from social_report's ready_to_post, and only Instagram, Facebook, Pinterest and TikTok (a TikTok post needs its slideshow video); LinkedIn is copied by hand. Needs the owner's approval.",
+    "Publishes one approved social post (D870 S3.2) to its channel (the store's Instagram account, Facebook Page, Pinterest board, TikTok account or LinkedIn profile or Page), as it shows on Social posts: the posting queue puts it out within minutes of the owner's yes. Only a post a person approved, from social_report's ready_to_post; a TikTok post needs its slideshow video. Needs the owner's approval.",
     z.object({ post_id: z.uuid().describe("The post's id from social_report's ready_to_post.") }),
     "public",
   ),
