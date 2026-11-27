@@ -282,7 +282,7 @@ export function SocialCalendar({
                         )}
                       </div>
                       {mayWrite && (
-                        <div className="flex flex-wrap items-start gap-2 sm:max-w-sm">
+                        <div className="flex flex-wrap items-start gap-2 self-start sm:max-w-sm">
                           {!it.draft && canWrite && it.idea && (
                             <button type="button" className={secondary} disabled={pending} onClick={() => write([it], `write-${it.day}-${it.channel}`)}>
                               {w.write}
