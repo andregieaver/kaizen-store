@@ -136,6 +136,8 @@ export function methodGroup(p: PaymentFacts): { key: string; label: string } {
   if (p.provider === "exchange") return { key: "exchange", label: "Credit from a return" };
   if (p.provider === "venue") return { key: "venue", label: "At the venue" };
   if (p.provider === "gift_card") return { key: "gift_card", label: "Gift card" };
+  // An order that cost nothing (D913): its record of nothing paid.
+  if (p.provider === "free") return { key: "free", label: "Nothing to pay" };
   if (p.wallet) return { key: `wallet:${p.wallet}`, label: WALLET_WORDS[p.wallet] ?? spaced(p.wallet) };
   if (p.methodType) return { key: `method:${p.methodType}`, label: METHOD_WORDS[p.methodType] ?? spaced(p.methodType) };
   return { key: "unknown", label: "Unknown" };

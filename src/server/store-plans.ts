@@ -27,6 +27,7 @@ const PLAN_ROW = z.object({
   interval: z.enum(["month", "year"]),
   discount_percent: col.int,
   trial_days: col.int,
+  zero_free: col.bool,
   store_audience: col.text,
   vat_rate: col.decimal,
 });
@@ -55,6 +56,7 @@ export async function getStorePlans(storeId: string, market: Market): Promise<St
       coalesce(tl.description, tf.description, '') as description,
       v.id as variant_id, cp.amount_minor, cp.currency,
       sp.id as selling_plan_id, sp.interval::text as interval, sp.discount_percent, sp.trial_days,
+      commerce.zero_shows_free(p.store_id, p.id) as zero_free,
       ${STORE_AUDIENCE} as store_audience, commerce.vat_rate(${market.code}, p.vat_category) as vat_rate
     from commerce.products p
     join commerce.stores s on s.id = p.store_id
@@ -86,6 +88,7 @@ export async function getStorePlans(storeId: string, market: Market): Promise<St
           name: row.title,
           line: row.excerpt.trim(),
           included: includedLines(row.description),
+          zeroFree: row.zero_free,
           prices: [],
           all: [],
         })

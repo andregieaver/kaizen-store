@@ -58,8 +58,9 @@ async function loadCartView(store: Store, market: Market, m: Messages) {
     money(parts.reduce((sum, part) => sum + (business ? withoutVat(part.minor, part.rate) : part.minor), 0));
   // A signed-in customer's saved company and details fill the fields in. A company's account may also buy on its payment terms (D293).
   const businessOn = featureOn(store, "business");
-  // Who pays is asked here when no payment page follows: a booking paid at the venue, Mollie's page, or gift cards that pay it all (D300 F3).
-  const asksPayer = summary.atVenueOnly || checkout.provider === "mollie" || summary.giftCards.coverAll;
+  // Who pays is asked here when no payment page follows: a booking paid at the venue, Mollie's page, gift cards that pay it all (D300 F3), or nothing
+  // to pay at all (D913).
+  const asksPayer = summary.atVenueOnly || checkout.provider === "mollie" || summary.giftCards.coverAll || summary.nothingDue;
   const mustSignIn = accountsMode(store) === "required";
   const customer = (business && !cart.company) || asksPayer || businessOn || mustSignIn ? await getCustomer(store.id) : null;
   const saved = (business && !cart.company) || asksPayer ? customer : null;
@@ -71,11 +72,12 @@ async function loadCartView(store: Store, market: Market, m: Messages) {
       ? await (await import("@/server/payment-terms")).termsForBasket(store.id, customer.id, { goodsOnly, totalMinor: summary.total, currency: cart.currency })
       : null;
   // No payment page follows an order on terms: the store's terms of sale (D158) are shown here instead, as the checkout shows them.
-  const termsDisplay = termsOffer?.ok || summary.giftCards.coverAll || summary.atVenueOnly ? await termsDisplayFor(store, market) : null;
+  const termsDisplay = termsOffer?.ok || summary.giftCards.coverAll || summary.atVenueOnly || summary.nothingDue ? await termsDisplayFor(store, market) : null;
   // Gift cards that pay it all (D300 F3): no payment page follows either, so the terms of sale are shown with the button here.
   // A booking paid wholly at the venue (D66, D379): no payment page follows, so the terms are shown here too and the button confirms the booking.
+  // Nothing to pay at all (D913): the same, the button placing the order.
   const cardsPayAll =
-    summary.giftCards.coverAll || summary.atVenueOnly
+    summary.giftCards.coverAll || summary.atVenueOnly || summary.nothingDue
       ? {
           display: termsDisplay,
           template: termsDisplay ? termsTemplate(m.terms, termsDisplay) : "",
@@ -121,14 +123,24 @@ async function loadCartView(store: Store, market: Market, m: Messages) {
   };
   // Express checkout (D373): a basket of goods sent by post, nothing to ask first (a company, questions, terms or cards that pay it all).
   const expressable =
-    expressFits(cart.lines) && !summary.blocked && !summary.giftCards.coverAll && !termsOffer?.ok && !companyNeeded && !business && questions.fields.length === 0;
+    expressFits(cart.lines) &&
+    !summary.blocked &&
+    !summary.giftCards.coverAll &&
+    // A wallet pays something: never offered for a basket that costs nothing (D913).
+    !summary.nothingDue &&
+    !termsOffer?.ok &&
+    !companyNeeded &&
+    !business &&
+    questions.fields.length === 0;
   const [express, klarna] = await Promise.all([
     expressable ? expressAreaFor(store, market, m) : null,
     expressable ? klarnaMessaging(store, market) : null,
   ]);
-  // The subscription's terms, said the same way in the summary and the consent (D29).
+  // The subscription's terms, said the same way in the summary and the consent (D29); one that costs nothing says so (D913).
   const terms = plan
-    ? [
+    ? renewal === 0
+      ? m.freeSubscription
+      : [
         m.renewsEvery(every, money(renewal ?? 0)),
         plan.trialDays > 0 && m.trialNote(plan.trialDays),
         plan.minCycles > 0 && m.commitmentNote(plan.minCycles),

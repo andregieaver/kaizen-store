@@ -17,9 +17,11 @@ export type ProductSettings = {
   tileStock: boolean;
   /** A quantity chooser and Add to cart on a product's tile, for a product that can be bought from there. */
   tileQuantity: boolean;
+  /** A price of nothing shows as Free (D913), where no product, tag or category says otherwise. */
+  zeroFree: boolean;
 };
 
-export const DEFAULT_PRODUCT_SETTINGS: ProductSettings = { tileStock: false, tileQuantity: false };
+export const DEFAULT_PRODUCT_SETTINGS: ProductSettings = { tileStock: false, tileQuantity: false, zeroFree: true };
 
 /** A grid's own choice for one of the two: absent follows the store. */
 export type TileChoice = "show" | "hide";

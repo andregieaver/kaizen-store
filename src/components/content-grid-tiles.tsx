@@ -60,6 +60,8 @@ export type GridWords = Pick<
   | "vatIncluded"
   | "vatExcluded"
 > & {
+  /** A price of nothing (D913): a grid drawn on the server says Free; one the browser draws (a recommending grid) shows the amount. */
+  freeGift?: string;
   quotes: Pick<Messages["quotes"], "priceOnRequest">;
   preorder: Pick<Messages["preorder"], "page">;
   group: Pick<Messages["group"], "choose">;

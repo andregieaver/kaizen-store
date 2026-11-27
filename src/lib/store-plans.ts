@@ -25,6 +25,8 @@ export type StorePlan = {
   included: string[];
   /** At most one a billing period, the lowest a subscriber pays. */
   prices: StorePlanPrice[];
+  /** Whether a price of nothing says Free (D913), as the plan, its tags, its categories or the store choose; absent is Free. */
+  zeroFree?: boolean;
 };
 
 /**

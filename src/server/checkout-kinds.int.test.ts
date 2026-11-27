@@ -321,8 +321,10 @@ function chargedNow(params: Record<string, unknown>): number {
  */
 async function expectDocuments(orderId: string, scenario: { euro?: boolean; gifts?: number; giftCards?: number[] }) {
   // A gift card payment keeps the mode the store was in (D300 F3): paid in part with a test card, the order is a test, and no invoice is numbered,
-  // whatever its Stripe account says now. (The invoice's gift card line is held in `src/db/gift-cards.test.ts`.)
-  if (scenario.giftCards) {
+  // whatever its Stripe account says now. (The invoice's gift card line is held in `src/db/gift-cards.test.ts`.) An order of nothing (a free trial's
+  // first, D913) is invoiced never: there is nothing to invoice (`invoice_eligibility()`'s `zero_total`).
+  const [{ total }] = await db().execute<Row>(sql`select total_minor as total from commerce.orders where id = ${orderId}::uuid`);
+  if (scenario.giftCards || Number(total) === 0) {
     await db().execute(sql`update commerce.stripe_accounts set mode = 'live' where store_id = ${storeId}::uuid`);
     try {
       await issueWaitingInvoices(storeId);
@@ -974,6 +976,17 @@ const planScenarios: Scenario[] = [
     fill: async () => {
       expect(await choosePlan(shop(), variant["KINDS-PLAN-Y"], planOption["KINDS-PLAN-Y"])).toMatchObject({ outcome: "added" });
       expect(await choosePlan(shop(), variant["KINDS-PLAN-M"], planOption["KINDS-PLAN-M"])).toMatchObject({ outcome: "added", quantity: 1 });
+    },
+    consent: { subscription: true },
+    bookings: 0,
+  },
+  {
+    // A free trial with nothing due now (D913): Stripe still takes the card, and its session's record is a payment of nothing, which the database
+    // refused before (a plan's trial ended the checkout in an error).
+    name: "a plan's free trial, with nothing due now",
+    fill: async () => {
+      await db().execute(sql`update commerce.selling_plans set trial_days = 14 where id = ${planOption["KINDS-PLAN-Y"]}::uuid`);
+      expect(await choosePlan(shop(), variant["KINDS-PLAN-Y"], planOption["KINDS-PLAN-Y"])).toMatchObject({ outcome: "added" });
     },
     consent: { subscription: true },
     bookings: 0,

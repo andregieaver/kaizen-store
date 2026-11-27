@@ -80,6 +80,8 @@ export type ChatLabels = {
   vatExcluded: string;
   fromPrice: string;
   priorPrice: string;
+  /** A price of nothing (D913). */
+  freeGift?: string;
   /** In place of the price of a product priced on request (D431). */
   priceOnRequest?: string;
   /** The words of a unit price (D160), so a card shows the price per kg, litre or metre worked out in code from the price it shows. */
@@ -1126,6 +1128,7 @@ export function ProductCard({ product, locale, labels, onOpen }: { product: Chat
                 labels={labels}
                 decimals={price.decimals}
                 words={price.words}
+                free={product.from || price.free === false ? undefined : labels.freeGift}
               />
             </span>
             {price.referenceMinor !== null && (

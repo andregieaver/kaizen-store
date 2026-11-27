@@ -1101,7 +1101,7 @@ async function VariantsWithStock({
             currency={price.currency}
             locale={market.locale}
             vat={price.vat}
-            labels={{ vatIncluded: m.vatIncluded, vatExcluded: m.vatExcluded }}
+            labels={{ vatIncluded: m.vatIncluded, vatExcluded: m.vatExcluded, freeGift: price.free === false ? undefined : m.freeGift }}
             measure={price.measure}
             unitLabels={unitLabelsOf(m)}
             decimals={price.decimals}
@@ -1116,7 +1116,7 @@ async function VariantsWithStock({
             currency={price.currency}
             locale={market.locale}
             vat={price.vat}
-            labels={{ vatIncluded: m.vatIncluded, vatExcluded: m.vatExcluded }}
+            labels={{ vatIncluded: m.vatIncluded, vatExcluded: m.vatExcluded, freeGift: price.free === false ? undefined : m.freeGift }}
             decimals={price.decimals}
           />
         ),
@@ -1262,6 +1262,8 @@ async function VariantsWithStock({
           chooseVariant: m.chooseVariantLabel,
           soldOut: m.soldOut,
           goCart: m.goCart,
+          // A price of nothing says Free where the product's setting says so (D913).
+          free: product.variants[0]?.price.free === false ? undefined : m.freeGift,
         }}
       />
       </PurchaseOptions>

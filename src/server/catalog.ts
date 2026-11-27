@@ -276,8 +276,11 @@ const shownMeasure = (row: Row, market: Pick<Market, "code">): ShownMeasure | nu
   shownMeasureFromColumns(row.measure_amount, row.measure_unit, row.measure_base, market.code);
 
 /** A product's price as its market shows it (D429): the market's decimals, and the words around it in the market's language (`price_words`). */
-const styled = (view: PriceView, row: Row, market: Market): PriceView =>
-  styledPrice(view, market.priceStyle, parseProductPriceWords(row.price_words), market.locale);
+const styled = (view: PriceView, row: Row, market: Market): PriceView => ({
+  ...styledPrice(view, market.priceStyle, parseProductPriceWords(row.price_words), market.locale),
+  // A price of nothing says Free unless the product, its tags or categories, or the store say the amount (D913).
+  free: row.zero_free !== false,
+});
 
 /** Who a product is for (B2B): only in stores selling to both does it matter. */
 const productAudience = (row: Row): ProductAudience =>
@@ -306,7 +309,7 @@ const cardColumns = (locale: string, marketCode: string) => sql`
         select coalesce(max(sp.discount_percent) filter (where sp.variant_id is null), min(sp.discount_percent))
         from commerce.selling_plans sp where sp.product_id = p.id and sp.active
       ) end as subscriber_discount,
-      p.audience, p.price_words, p.price_on_request,
+      p.audience, p.price_words, p.price_on_request, commerce.zero_shows_free(p.store_id, p.id) as zero_free,
       ${STORE_AUDIENCE} as store_audience,
       commerce.vat_rate(${marketCode}, p.vat_category) as vat_rate`;
 
@@ -400,6 +403,7 @@ export async function getProduct(storeId: string, market: Market, handle: string
     select
       p.id, p.handle, p.group_id::text as group_id, p.withdrawal_exclusion, p.subscription_only, p.kind, p.standard_category, p.standard_attributes, p.standard_shown, p.price_on_request,
       p.audience, p.price_words, ${STORE_AUDIENCE} as store_audience, commerce.vat_rate(${marketCode}, p.vat_category) as vat_rate,
+      commerce.zero_shows_free(p.store_id, p.id) as zero_free,
       coalesce(tl.title, tf.title) as title,
       -- The country's own description over its language's (D338), else the language's. A country whose language the product is not
       -- written in reads the description in the language it falls back to, so the country's own is the one written in that language.

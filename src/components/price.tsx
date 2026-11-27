@@ -6,7 +6,8 @@ import type { PriceVat, PriceView } from "@/lib/pricing";
 import { unitPrice, unitPriceShown, type ShownMeasure, type UnitPriceResult } from "@/lib/unit-price";
 import { unitLabelsOf, unitPriceWords, type UnitLabels, type UnitWords } from "@/lib/unit-price-text";
 
-export type VatLabels = { vatIncluded: string; vatExcluded: string };
+/** The VAT labels, and the word for a price of nothing (D913: "Free"), which an amount says only where its caller asks (`free`). */
+export type VatLabels = { vatIncluded: string; vatExcluded: string; freeGift?: string };
 
 /**
  * An amount kept with VAT, as the store shows it (B2B): with VAT, without,
@@ -23,6 +24,7 @@ export function VatAmount({
   label = true,
   decimals,
   words,
+  free,
 }: {
   amountMinor: number;
   currency: string;
@@ -35,7 +37,13 @@ export function VatAmount({
   decimals?: PriceDecimals;
   /** The owner's words before and after a product's price (D429), never a line's or a total's. */
   words?: PriceWords;
+  /**
+   * The word for a price of nothing (D913): a product's, a purchase option's or a plan's own price at 0 says "Free", with no VAT label or words
+   * around it. Only where the caller passes it: a total, a line's VAT or a reference is a sum, and stays one.
+   */
+  free?: string;
 }) {
+  if (free && amountMinor === 0) return <>{free}</>;
   const shown = (excl: boolean) => (
     <>
       {words?.prefix && (
@@ -213,6 +221,8 @@ export function Price({
           labels={m}
           decimals={price.decimals}
           words={price.words}
+          // Free (D913) where the product's setting says so, unless other variants cost more: "From" then keeps its amount.
+          free={from || price.free === false ? undefined : m.freeGift}
         />
       </p>
       {price.referenceMinor !== null && (

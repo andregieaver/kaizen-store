@@ -452,7 +452,7 @@ export const productNb: ProductMessages = {
     bundle: "En pakke",
     bundleNote: "Flere av produktene dine solgt sammen",
     plan: "En plan",
-    planNote: "Tilgang til appen din, som abonnement",
+    planNote: "Tilgang, som abonnement",
     planPeriods: ["Betaling", "Månedlig", "Årlig"],
     lostContent: "Innholdet i variantene ble fjernet: bare varer som sendes, har enhetspris per kg eller liter.",
   },

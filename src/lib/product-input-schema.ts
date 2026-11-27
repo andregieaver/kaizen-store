@@ -306,6 +306,11 @@ export const productInput = z.object({
     .max(200)
     .optional(),
   /**
+   * Whether its price of nothing says Free (D913): true, false, or null as its tags, categories and the store say. Left out, the product keeps what
+   * it has.
+   */
+  zeroFree: z.boolean().nullable().optional(),
+  /**
    * Its own words before and after its price (D429, `price-words.ts`): the store's, none, or its own by language. Left out, the product keeps
    * what it has (an import, the AI manager, an older editor); the server checks each word (`priceWordProblem()`) for the store's languages.
    */

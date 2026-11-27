@@ -206,3 +206,45 @@ describe("the purchase option's price (D25)", () => {
     expect(choose({ subscriptionOnly: true, measure: null })).not.toContain("data-unit-price");
   });
 });
+
+describe("a price of nothing (D913)", () => {
+  it("says Free, with no VAT label, in the shopper's language", () => {
+    const copy = text(price(priceView(0, "NOK", null, WITH_VAT)));
+    expect(copy).toBe("Gratis");
+    expect(text(price(priceView(0, "EUR", null, WITH_VAT), en, "en-GB"))).toBe("Free");
+  });
+
+  it("keeps the amount where other variants cost more, and the 30-day reference beside a reduction to nothing", () => {
+    const from = renderToString(createElement(Price, { price: priceView(0, "NOK", null, WITH_VAT), locale: "nb-NO", m: nb, from: true }));
+    expect(text(from)).toContain("0,00 kr");
+    const reduced = text(price(priceView(0, "NOK", 4990, WITH_VAT)));
+    expect(reduced).toContain("Gratis");
+    expect(reduced).toContain("Laveste pris siste 30 dager: 49,90 kr");
+  });
+
+  it("says Free for a purchase option that costs nothing", () => {
+    const html = renderToString(
+      createElement(
+        PurchaseOptions,
+        {
+          plans: [{ id: "p1", variantId: null, discountPercent: 0, label: "Every month", note: "" }],
+          subscriptionOnly: true,
+          labels: { legend: "Buy", oneTime: "Once" },
+        } as ComponentProps<typeof PurchaseOptions>,
+        createElement(
+          PlanPrice,
+          {
+            amountMinor: 0,
+            currency: "NOK",
+            locale: "nb-NO",
+            vat: WITH_VAT,
+            labels: { vatIncluded: "inkl. mva.", vatExcluded: "ekskl. mva.", freeGift: "Gratis" },
+          } as ComponentProps<typeof PlanPrice>,
+          createElement("span", null, "once"),
+        ),
+      ),
+    );
+    expect(text(html)).toContain("Gratis");
+    expect(text(html)).not.toContain("0,00");
+  });
+});

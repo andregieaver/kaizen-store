@@ -79,6 +79,7 @@ import {
   rhythmIn,
 } from "@/lib/subscriptions";
 import { slugify } from "@/lib/slug";
+import { ZeroFreeChoice } from "@/components/admin/zero-free-choice";
 import { uploadToSignedUrl } from "@/lib/supabase/signed-upload";
 import type { EditorContext, Operator } from "@/server/products";
 import { ProductPreview } from "./product-preview";
@@ -3039,6 +3040,8 @@ function PriceWordsSection({
   languageNames,
 }: SectionProps & { context: EditorContext; languageNames: Record<string, string> }) {
   const w = useAdminText("product").priceWords;
+  // The same words as a category's and a tag's (D913), which the product page hands too.
+  const zero = useAdminText("productsEditor").terms.zero;
   const choice = product.priceWords ?? INHERIT_WORDS;
   const ownWords = choice.mode === "own" ? choice.words : {};
   // The store's words (an editor context from before D429 has none).
@@ -3128,6 +3131,10 @@ function PriceWordsSection({
           })}
         </div>
       )}
+      {/* A price of nothing (D913): the product's own choice, over its tags', categories' and the store's. */}
+      <div className="mt-4 border-t border-line pt-4">
+        <ZeroFreeChoice id="product-zero-free" value={product.zeroFree ?? null} onChange={(zeroFree) => update((p) => ({ ...p, zeroFree }))} words={zero} />
+      </div>
     </section>
   );
 }

@@ -490,8 +490,8 @@ export const nb: Messages = {
   problemProcessing: "Betalingen for denne handlekurven behandles fortsatt.",
   shipping: "Frakt",
   freeShipping: "Gratis frakt",
-  /** A product a campaign gives with the order (D114): its price is "Gratis", and this labels the cart's line for it. */
   freeGift: "Gratis",
+  /** A product a campaign gives with the order (D114): its price is "Gratis", and this labels the cart's line for it. */
   giftFrom: (campaign: string) => `Gave: ${campaign}`,
   campaignNotWithCode: (campaign: string) => `${campaign}: ikke brukt, fordi rabattkoden din gir deg mer og de ikke kan kombineres.`,
   /**
@@ -1051,6 +1051,7 @@ export const nb: Messages = {
   purchaseOptions: "Kjøpsalternativ",
   planSave: (percent: number) => `Spar ${percent} %`,
   perDelivery: "per levering",
+  freeSubscription: "Gratis til du sier opp. Ingenting blir trukket, og du kan si opp når som helst.",
   renewsEvery: (every: string, amount: string) =>
     `Fornyes ${every.toLowerCase()} for ${amount} til du sier opp. Du kan si opp når som helst.`,
   subscriptionConsent: (every: string, amount: string) =>

@@ -143,7 +143,7 @@ function footer(store: EmailStore, text: EmailText): string[] {
 async function orderUrl(storeId: string, store: EmailStore, market: Market, orderId: string): Promise<string | null> {
   const [payment] = await db().execute<Row>(sql`
     select provider_reference from commerce.payments
-    where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and provider in ('stripe', 'mollie', 'venue', 'manual', 'exchange', 'terms', 'gift_card')
+    where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and provider in ('stripe', 'mollie', 'venue', 'manual', 'exchange', 'terms', 'gift_card', 'free')
     -- An exchange order (D239) paid wholly by its return's credit has only its exchange payment to open its page by; an order on payment terms (D293) opens by its terms payment, its first.
     order by (provider = 'exchange'), (provider = 'gift_card'), created_at limit 1
   `);
@@ -330,7 +330,8 @@ export async function sendOrderConfirmation(
     {
       subject: renewal ? text.renewalSubject(store.name, order.number) : text.orderSubject(store.name, order.number),
       heading: text.orderHeading,
-      intro: renewal ? text.renewalIntro(order.number) : text.orderIntro(order.number),
+      // An order that cost nothing (D913) received no payment.
+      intro: renewal ? text.renewalIntro(order.number) : order.totalMinor === 0 ? text.orderIntroFree(order.number) : text.orderIntro(order.number),
     },
     { ...commonValues(order, store), order_total: money(order.totalMinor) },
   );
@@ -394,7 +395,9 @@ export async function sendOrderConfirmation(
           { type: "divider" as const },
           {
             type: "paragraph" as const,
-            text: text.subscription(m.planEvery(subscription.interval, subscription.intervalCount), money(subscription.totalMinor)),
+            text: subscription.free
+              ? text.subscriptionFree
+              : text.subscription(m.planEvery(subscription.interval, subscription.intervalCount), money(subscription.totalMinor)),
           },
           {
             type: "button" as const,
@@ -1100,13 +1103,15 @@ export async function sendSubscriptionChanged(
   const { store, market, text, m } = ctx;
   const money = (minor: number) => formatMoney(minor, subscription.currency, market.locale, market.priceStyle);
   const date = (value: string | null) => dateIn(store, value, "long", market.locale);
+  // A free subscription (D913) cancelled has ended now: said as an ending at once, with no renewal's blocks.
+  const now = change === "cancel" && subscription.free ? "cancel_now" : change;
   const intro =
-    change === "cancel"
+    now === "cancel"
       ? text.changes.cancel(date(subscription.endsAt))
-      : change === "pause" || change === "skip"
-        ? text.changes[change](date(subscription.nextChargeAt))
-        : text.changes[change]();
-  const ended = change === "cancel_now";
+      : now === "pause" || now === "skip"
+        ? text.changes[now](date(subscription.nextChargeAt))
+        : text.changes[now]();
+  const ended = now === "cancel_now";
   const email = renderEmail({
     subject: text.changedSubject(store.name),
     preview: intro,

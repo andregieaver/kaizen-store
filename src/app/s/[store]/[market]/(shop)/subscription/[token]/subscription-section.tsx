@@ -75,6 +75,10 @@ async function Details({ store, market, token }: { store: Store; market: Market;
             </li>
           ))}
         </ul>
+        {/* A free subscription (D913) renews at nothing: it says so, and nothing about renewals' totals or VAT. */}
+        {subscription.free ? (
+          <p className="mt-3 border-t border-border pt-3 text-sm">{m.freeSubscription}</p>
+        ) : (
         <dl className="mt-3 flex flex-col gap-1 border-t border-border pt-3">
           {subscription.shippingMinor > 0 && (
             <div className="flex justify-between">
@@ -93,6 +97,7 @@ async function Details({ store, market, token }: { store: Store; market: Market;
             <dd>{money(subscription.taxMinor)}</dd>
           </div>
         </dl>
+        )}
       </section>
 
       {(allowed.pause || allowed.skip || allowed.unpause) && (
@@ -161,7 +166,7 @@ async function Details({ store, market, token }: { store: Store; market: Market;
           ) : (
             <>
               <p className="text-sm text-muted">
-                {subscription.commitmentEndsAt ? m.commitmentUntil(date(subscription.commitmentEndsAt)) : m.cancelHelp}
+                {subscription.free ? m.freeSubscription : subscription.commitmentEndsAt ? m.commitmentUntil(date(subscription.commitmentEndsAt)) : m.cancelHelp}
               </p>
               <SubscriptionButton
                 {...button}

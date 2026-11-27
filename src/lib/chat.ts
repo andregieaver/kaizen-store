@@ -42,6 +42,8 @@ export type ChatProduct = {
     decimals?: PriceDecimals;
     /** The owner's words before and after the price (D429), in the shopper's language; absent for none. */
     words?: PriceWords;
+    /** Whether a price of nothing says Free (D913); absent is Free. */
+    free?: boolean;
   } | null;
   from: boolean;
   /** The store's campaigns on the product (D115), in the shopper's words, for a badge on the card. */

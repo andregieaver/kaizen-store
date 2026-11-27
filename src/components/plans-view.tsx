@@ -99,7 +99,7 @@ export function PlansView({ block, data, lang = "en", sale }: { block: PlansBloc
     return (
       <>
         {form(card.main.interval, label, look.className, look.style)}
-        {card.other && form(card.other.interval, m.yearlyPrice(money(card.other)), "text-sm underline underline-offset-2 hover:no-underline")}
+        {card.other && card.main.amountMinor > 0 && form(card.other.interval, m.yearlyPrice(money(card.other)), "text-sm underline underline-offset-2 hover:no-underline")}
       </>
     );
   };
@@ -119,6 +119,8 @@ export function PlansView({ block, data, lang = "en", sale }: { block: PlansBloc
           card={card}
           button={button(card, buttonLook({ variant: card.highlighted ? "filled" : "outline" }, true))}
           vatNote={vatNote}
+          // A store's plan says Free as its setting chooses (D913); Kaizena Flow's always do.
+          freeWord={sale?.plans.find((p) => p.id === card.id)?.zeroFree === false ? null : all.freeGift}
           trial={trialOf(card)}
           seller={sale ? "store" : "platform"}
           money={money}
@@ -233,6 +235,7 @@ function PlanCardView({
   card,
   button,
   vatNote,
+  freeWord,
   trial,
   seller,
   money,
@@ -246,6 +249,8 @@ function PlanCardView({
   /** The card's button: Kaizena Flow's sign-up link, or a store's *Choose plan* form (D912). */
   button: ReactNode;
   vatNote: string;
+  /** The word for a plan that costs nothing (D913): "Free", in place of its month, year and VAT; null where its setting shows the amount. */
+  freeWord: string | null;
   /** A store's plan's free trial (D912), said under its price. */
   trial: string | null;
   /** Kaizena Flow's plans say their fee per sale and the other price in a line; a store's other price is its own button. */
@@ -270,6 +275,12 @@ function PlanCardView({
         </h3>
         {card.description && <p className="mt-1 text-sm text-muted">{card.description}</p>}
       </div>
+      {/* A plan that costs nothing (D913) says so, and nothing about months, years or VAT. */}
+      {card.main.amountMinor === 0 && !card.campaign && freeWord ? (
+        <p className="text-3xl font-semibold" data-kz-text="price">
+          {freeWord}
+        </p>
+      ) : (
       <div>
         {/* Monthly or yearly, the card leads with a month (D481): a yearly price as its twelfth, and what the year comes to under it. */}
         <p className="text-3xl font-semibold" data-kz-text="price">
@@ -293,6 +304,7 @@ function PlanCardView({
         {card.other && seller === "platform" && <p className="mt-1 text-sm">{m.yearlyPrice(money(card.other))}</p>}
         {card.yearlySavingPercent !== null && <p className="text-sm font-medium text-accent">{m.saveYearly(String(card.yearlySavingPercent))}</p>}
       </div>
+      )}
       {seller === "platform" && <p className="text-sm">{m.fee(formatBps(card.saleFeeBps, lang))}</p>}
       <div className="flex flex-col items-center gap-2">{button}</div>
       {card.limits.length > 0 && (

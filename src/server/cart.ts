@@ -122,6 +122,8 @@ export type CartLine = {
   image: { url: string; alt: string } | null;
   quantity: number;
   unitPriceMinor: number | null;
+  /** Whether a line that costs nothing says Free (D913), as the product, its tags, categories or the store choose. */
+  zeroFree: boolean;
   /** The price list that prices the line for this buyer (D321), null for the market price: such a line takes no group percentage on top. */
   priceListId: string | null;
   /** The quantity of the product's price break that prices the line (D323), null for none: the price at that quantity, never a reduction. */
@@ -267,6 +269,7 @@ export async function getCart(
   const rows = await typedRows(CART_LINE_ROW, sql`
     select
       cl.variant_id, cl.quantity, v.options, v.delivery, p.handle, p.id as product_id, p.audience,
+      commerce.zero_shows_free(p.store_id, p.id) as zero_free,
       v.measure_amount, v.measure_unit, v.measure_base,
       commerce.vat_rate(c.market_code, p.vat_category) as vat_rate,
       cl.starts_at, cl.resource_id, br.name as staff, st.time_zone, aps.payment, aps.deposit_percent,
@@ -407,6 +410,7 @@ export async function getCart(
         variantId: String(row.variant_id),
         productId: String(row.product_id),
         handle: String(row.handle),
+        zeroFree: row.zero_free !== false,
         title: String(row.title ?? ""),
         options: (row.options ?? {}) as Record<string, string>,
         image: row.image_url

@@ -23,6 +23,8 @@ export const termInput = z
     parentId: z.uuid().nullable().default(null),
     /** Unit price (D160): left out means unchanged on an update and off on a new one; true only for a product category. */
     requiresUnitPrice: z.boolean().optional(),
+    /** A price of nothing on its products (D913): true Free, false the amount, null as the level above; left out means unchanged. Products' only. */
+    zeroFree: z.boolean().nullable().optional(),
     /**
      * Search title and description per language (D168): left out means unchanged on an update and none on a new one; a language with both empty is removed.
      * The shape is held here; the server checks the languages against the store's own (`termSeoInput(locales)`).

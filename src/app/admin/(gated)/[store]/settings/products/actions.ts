@@ -14,7 +14,11 @@ export async function saveProductSettingsAction(storeSlug: string, _previous: Fo
   const member = await checkPermission(storeSlug, "settings:write");
   if (!member) return { status: "error", messages: [PRODUCTS_WORDS[await actionAdminLang()].settings.noChange] };
   const w = PRODUCTS_WORDS[adminLangOf(member.account.adminLocale)].settings;
-  await saveProductSettings(member, { tileStock: form.get("tileStock") === "on", tileQuantity: form.get("tileQuantity") === "on" });
+  await saveProductSettings(member, {
+    tileStock: form.get("tileStock") === "on",
+    tileQuantity: form.get("tileQuantity") === "on",
+    zeroFree: form.get("zeroFree") === "on",
+  });
   refresh();
   return { status: "ok", messages: [w.saved] };
 }

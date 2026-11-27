@@ -159,6 +159,7 @@ const text = {
     orderSubject: (store: string, number: string) => `Ordrebekreftelse ${number} fra ${store}`,
     orderHeading: "Takk for bestillingen!",
     orderIntro: (number: string) => `Vi har mottatt betalingen for ordre ${number}.`,
+    orderIntroFree: (number: string) => `Vi har mottatt ordre ${number}.`,
     renewalSubject: (store: string, number: string) => `Abonnementet ditt er fornyet: ordre ${number} fra ${store}`,
     renewalIntro: (number: string) => `Abonnementet ditt er fornyet, og ordre ${number} er betalt.`,
     subtotal: "Sum varer",
@@ -171,6 +172,7 @@ const text = {
     downloadsReady: "Filene dine er klare til nedlasting fra bestillingssiden.",
     subscription: (every: string, amount: string) =>
       `Abonnement: fornyes ${every.toLowerCase()} for ${amount} til du sier opp.`,
+    subscriptionFree: "Abonnement: gratis til du sier opp. Ingenting blir trukket.",
     manageSubscription: "Se eller endre abonnementet",
     account: "Min konto",
     questions: (email: string) => `Spørsmål? Svar på denne e-posten eller skriv til ${email}.`,
@@ -460,6 +462,7 @@ const text = {
     orderSubject: (store: string, number: string) => `Orderbekräftelse ${number} från ${store}`,
     orderHeading: "Tack för din beställning!",
     orderIntro: (number: string) => `Vi har tagit emot betalningen för order ${number}.`,
+    orderIntroFree: (number: string) => `Vi har tagit emot order ${number}.`,
     renewalSubject: (store: string, number: string) => `Din prenumeration har förnyats: order ${number} från ${store}`,
     renewalIntro: (number: string) => `Din prenumeration har förnyats och order ${number} är betald.`,
     subtotal: "Summa varor",
@@ -472,6 +475,7 @@ const text = {
     downloadsReady: "Dina filer är redo att laddas ned från beställningssidan.",
     subscription: (every: string, amount: string) =>
       `Prenumeration: förnyas ${every.toLowerCase()} för ${amount} tills du säger upp den.`,
+    subscriptionFree: "Prenumeration: gratis tills du säger upp den. Inget dras.",
     manageSubscription: "Se eller ändra prenumerationen",
     account: "Mitt konto",
     questions: (email: string) => `Frågor? Svara på det här mejlet eller skriv till ${email}.`,
@@ -761,6 +765,7 @@ const text = {
     orderSubject: (store: string, number: string) => `Ordrebekræftelse ${number} fra ${store}`,
     orderHeading: "Tak for din bestilling!",
     orderIntro: (number: string) => `Vi har modtaget betalingen for ordre ${number}.`,
+    orderIntroFree: (number: string) => `Vi har modtaget ordre ${number}.`,
     renewalSubject: (store: string, number: string) => `Dit abonnement er fornyet: ordre ${number} fra ${store}`,
     renewalIntro: (number: string) => `Dit abonnement er fornyet, og ordre ${number} er betalt.`,
     subtotal: "Varer i alt",
@@ -773,6 +778,7 @@ const text = {
     downloadsReady: "Dine filer er klar til download fra bestillingssiden.",
     subscription: (every: string, amount: string) =>
       `Abonnement: fornyes ${every.toLowerCase()} for ${amount}, indtil du opsiger det.`,
+    subscriptionFree: "Abonnement: gratis, indtil du opsiger det. Der trækkes intet.",
     manageSubscription: "Se eller ændr abonnementet",
     account: "Min konto",
     questions: (email: string) => `Spørgsmål? Svar på denne mail, eller skriv til ${email}.`,
@@ -1062,6 +1068,8 @@ const text = {
     orderSubject: (store: string, number: string) => `Order confirmation ${number} from ${store}`,
     orderHeading: "Thank you for your order!",
     orderIntro: (number: string) => `We have received the payment for order ${number}.`,
+    /** An order that cost nothing (D913): nothing was paid. */
+    orderIntroFree: (number: string) => `We have received order ${number}.`,
     renewalSubject: (store: string, number: string) => `Your subscription has renewed: order ${number} from ${store}`,
     renewalIntro: (number: string) => `Your subscription has renewed, and order ${number} is paid.`,
     subtotal: "Subtotal",
@@ -1074,6 +1082,8 @@ const text = {
     downloadsReady: "Your files are ready to download from the order page.",
     subscription: (every: string, amount: string) =>
       `Subscription: renews ${every.toLowerCase()} at ${amount} until you cancel.`,
+    /** A subscription that costs nothing (D913). */
+    subscriptionFree: "Subscription: free until you cancel. Nothing is ever charged.",
     manageSubscription: "See or change the subscription",
     account: "My account",
     questions: (email: string) => `Questions? Reply to this email or write to ${email}.`,

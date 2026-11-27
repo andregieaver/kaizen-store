@@ -8,13 +8,13 @@ const v = (over: Partial<TileVariant> = {}): TileVariant => ({ inStock: 10, canO
 describe("a grid's choices and the store's settings (D557)", () => {
   it("follows the store unless the grid says otherwise", () => {
     expect(tileAsk(undefined)).toEqual({ stock: "store", quantity: "store" });
-    expect(tileShows(tileAsk(undefined)!, { tileStock: true, tileQuantity: false })).toEqual({ stock: true, quantity: false });
-    expect(tileShows(tileAsk({ quantity: "show" })!, { tileStock: false, tileQuantity: false })).toEqual({ stock: false, quantity: true });
+    expect(tileShows(tileAsk(undefined)!, { tileStock: true, tileQuantity: false, zeroFree: true })).toEqual({ stock: true, quantity: false });
+    expect(tileShows(tileAsk({ quantity: "show" })!, { tileStock: false, tileQuantity: false, zeroFree: true })).toEqual({ stock: false, quantity: true });
   });
 
   it("asks nothing for a grid that hides both", () => {
     expect(tileAsk({ stock: "hide", quantity: "hide" })).toBeNull();
-    expect(tileShows(tileAsk({ stock: "hide" })!, { tileStock: true, tileQuantity: true })).toEqual({ stock: false, quantity: true });
+    expect(tileShows(tileAsk({ stock: "hide" })!, { tileStock: true, tileQuantity: true, zeroFree: true })).toEqual({ stock: false, quantity: true });
   });
 
   it("keeps only show and hide", () => {
@@ -57,9 +57,9 @@ describe("tileAskFor", () => {
     expect(tileAskFor({ stock: "show" }, DEFAULT_PRODUCT_SETTINGS)).toEqual({ stock: "show", quantity: null });
   });
   it("keeps the store's word for a part the store switched on", () => {
-    expect(tileAskFor(undefined, { tileStock: true, tileQuantity: false })).toEqual({ stock: "store", quantity: null });
+    expect(tileAskFor(undefined, { tileStock: true, tileQuantity: false, zeroFree: true })).toEqual({ stock: "store", quantity: null });
   });
   it("lets the store never beat a grid's own hide", () => {
-    expect(tileAskFor({ stock: "hide", quantity: "hide" }, { tileStock: true, tileQuantity: true })).toBeNull();
+    expect(tileAskFor({ stock: "hide", quantity: "hide" }, { tileStock: true, tileQuantity: true, zeroFree: true })).toBeNull();
   });
 });

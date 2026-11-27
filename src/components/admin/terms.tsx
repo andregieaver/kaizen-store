@@ -24,6 +24,7 @@ import { TermPageFields, TermProductOrder, type TermPageDraft, type TermPageSetu
 import { TermRulesFields, type TermRulesDraft } from "./term-rules-fields";
 import { Card } from "@/components/admin/ui/card";
 import { PhoneRow } from "./phone-row";
+import { ZeroFreeChoice } from "./zero-free-choice";
 
 /**
  * Categories and tags in the admin (D50): `TermPicker` chooses an item's
@@ -46,7 +47,7 @@ export type TermActions = {
   }) => Promise<TermsResult>;
   update: (
     id: string,
-    input: { name: string; slug: string; parentId: string | null; requiresUnitPrice?: boolean; seo?: TermSeo } & Partial<TermPageDraft>,
+    input: { name: string; slug: string; parentId: string | null; requiresUnitPrice?: boolean; zeroFree?: boolean | null; seo?: TermSeo } & Partial<TermPageDraft>,
   ) => Promise<TermsOutcome>;
   remove: (id: string) => Promise<TermsResult>;
 };
@@ -419,6 +420,7 @@ function TermRow({
     slug: term.slug,
     parentId: term.parentId,
     requiresUnitPrice: marked,
+    zeroFree: term.zeroFree ?? null,
     seo: term.seo ?? ({} as TermSeo),
     page: pageOf(term),
     rules: rulesOf(term),
@@ -445,7 +447,7 @@ function TermRow({
           onSubmit={(event) => {
             event.preventDefault();
             // Only a screen that offers the mark sends it, and only one that offers search texts sends those: left out, they stay as they were.
-            const { requiresUnitPrice, seo: drafted, page: pageDraft, rules: rulesDraft, ...rest } = draft;
+            const { requiresUnitPrice, zeroFree, seo: drafted, page: pageDraft, rules: rulesDraft, ...rest } = draft;
             // Rules are sent only when they changed (D319), so a rename never re-checks them.
             const rulesChanged = JSON.stringify(rulesDraft.rules) !== JSON.stringify(term.rules ?? null);
             run(
@@ -453,6 +455,8 @@ function TermRow({
                 actions.update(term.id, {
                   ...rest,
                   ...(unitPrice ? { requiresUnitPrice } : {}),
+                  // A store's product categories and tags (the screens with a page of their own) choose for their products' price of nothing (D913).
+                  ...(page ? { zeroFree } : {}),
                   ...(seo ? { seo: drafted } : {}),
                   ...(page ? pageDraft : {}),
                   ...(page?.countRules && rulesChanged ? { rules: rulesDraft.rules, keepMatches: rulesDraft.keepMatches } : {}),
@@ -507,6 +511,7 @@ function TermRow({
           {unitPrice && (
             <UnitPriceMark id={`${id}-unit-price`} checked={draft.requiresUnitPrice} onChange={(requiresUnitPrice) => setDraft({ ...draft, requiresUnitPrice })} />
           )}
+          {page && <ZeroFreeChoice id={`${id}-zero`} value={draft.zeroFree} onChange={(zeroFree) => setDraft({ ...draft, zeroFree })} words={w.zero} />}
           {page && <TermPageFields setup={page} value={draft.page} onChange={(next) => setDraft({ ...draft, page: next })} />}
           {page && !draft.requiresUnitPrice && (
             <TermRulesFields setup={page} termId={term.id} before={term.rules ?? null} value={draft.rules} onChange={(next) => setDraft({ ...draft, rules: next })} />
@@ -523,7 +528,7 @@ function TermRow({
               type="button"
               onClick={() => {
                 setEditing(false);
-                setDraft({ name: term.name, slug: term.slug, parentId: term.parentId, requiresUnitPrice: marked, seo: term.seo ?? {}, page: pageOf(term), rules: rulesOf(term) });
+                setDraft({ name: term.name, slug: term.slug, parentId: term.parentId, requiresUnitPrice: marked, zeroFree: term.zeroFree ?? null, seo: term.seo ?? {}, page: pageOf(term), rules: rulesOf(term) });
                 setProblems([]);
               }}
               className={button}

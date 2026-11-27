@@ -292,3 +292,31 @@ describe("a store's own plans (D912)", () => {
     expect(out).toContain("AI summaries");
   });
 });
+
+describe("a free plan (D913)", () => {
+  const free: StorePlan = {
+    id: "free",
+    handle: "free",
+    name: "Free",
+    line: "",
+    included: ["Notes"],
+    prices: [{ currency: "NOK", interval: "month", amountMinor: 0, variantId: "00000000-0000-4000-8000-00000000b009", sellingPlanId: "00000000-0000-4000-8000-00000000c009", trialDays: 0 }],
+  };
+  const paid: StorePlan = { ...free, id: "plus", handle: "plus", name: "Plus", prices: [{ ...free.prices[0], amountMinor: 19900 }] };
+  const draw = (lang = "nb") =>
+    renderToStaticMarkup(
+      createElement(PlansView, { block: block(), data: storePlansData([paid, free]), lang, sale: { action: async () => {}, store: "s", market: "no", plans: [free, paid], withVat: true } }),
+    );
+
+  it("says Free on its card, first, with no month, year or VAT", () => {
+    const out = draw();
+    const card = out.slice(out.indexOf('id="plan-free"'), out.indexOf('id="plan-plus"'));
+    expect(card).toMatch(/data-kz-text="price">Gratis</);
+    expect(card).not.toContain("per måned");
+    expect(card).not.toContain("inkl. mva.");
+    expect(out.indexOf('id="plan-free"')).toBeLessThan(out.indexOf('id="plan-plus"'));
+    // Its button still chooses it.
+    expect(card).toContain("00000000-0000-4000-8000-00000000c009");
+    expect(draw("en")).toMatch(/data-kz-text="price">Free</);
+  });
+});

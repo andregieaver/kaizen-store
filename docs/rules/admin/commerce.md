@@ -1185,6 +1185,16 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   pricing table shows it. Its `/p/` address leads to the page with the Plans component (`planPricingPath()`). Linking a plan to the app it
   gives access in is step 2 of D912 (not built): build it there, never as a store setting of its own.
 
+## Free prices, orders and subscriptions (D913, `commerce.zero_shows_free()`, `confirmFree()`, `activate_free_subscription()`)
+
+- **Free (D913)**: a price of nothing says Free where `commerce.zero_shows_free()` says so (product, then tags, then categories' nearest, then
+  Settings > Products; the amount wins a disagreement). A new reader that draws a product's own price at 0 selects it and passes the word to
+  `VatAmount`'s `free`; a total, a line's VAT or a reference never says Free. An order with nothing due at all (`cartSummary().nothingDue`: no
+  total, no venue part or duties, no subscription that charges later) is confirmed by `confirmFree()` with a `free` payment (amount 0, the order
+  page's key: every provider list that opens an order page names `free`) and needs no provider. A subscription renewing at nothing is provider
+  `none` (`subscriptions_free`): switched on by `activate_free_subscription()` when its order is paid, never sent to Stripe (`openPaymentSession()`
+  drops it), ended at once by `endFreeSubscription()`, skipped by charge reminders. A free trial of a paid one is not free: Stripe takes the card.
+
 ## Subscription boxes (D102, named so in every text shoppers and staff read; `src/lib/standing-orders.ts`, `src/server/standing-orders.ts`,…
 
 - Subscription boxes (D102, named so in every text shoppers and staff read; `src/lib/standing-orders.ts`, `src/server/standing-orders.ts`,

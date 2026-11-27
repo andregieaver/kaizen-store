@@ -21,7 +21,8 @@ export type ReminderRun = { checked: number; sent: number; failed: number };
 export async function sendDueReminders(now = new Date()): Promise<ReminderRun> {
   const rows = await db().execute<Row>(sql`
     select store_id, id, reminded_for from commerce.subscriptions
-    where status in ('active', 'paused') and email is not null
+    -- A free subscription (D913, provider none) is never charged: nothing to remind of.
+    where status in ('active', 'paused') and email is not null and provider = 'stripe'
       and not cancel_at_period_end and cancel_at is null
       -- Only in a store with Subscriptions on (D178; switching it off waits until none runs, so this is a guard).
       and commerce.feature_on(store_id, 'subscriptions')

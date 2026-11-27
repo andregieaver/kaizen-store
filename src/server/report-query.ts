@@ -106,7 +106,7 @@ function knownCurrencies(store: Store): SQL {
 /** A payment's method as `methodGroup()` keys it (`src/lib/payment-facts.ts`), so a row is one group on the Payments by method table. */
 const METHOD_KEY = (p: string) =>
   sql.raw(`(case when ${p}.provider = 'manual' then 'manual:' || coalesce(${p}.method, 'other')
-    when ${p}.provider in ('exchange', 'venue', 'gift_card') then ${p}.provider
+    when ${p}.provider in ('exchange', 'venue', 'gift_card', 'free') then ${p}.provider
     when ${p}.wallet is not null then 'wallet:' || ${p}.wallet
     when ${p}.method_type is not null then 'method:' || ${p}.method_type
     when ${p}.provider is null then '${NONE_KEY}'

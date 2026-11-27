@@ -163,11 +163,13 @@ export type PaymentSessionResult =
 
 export async function openPaymentSession(
   shop: CheckoutShop,
-  order: PlacedOrder,
+  placedOrder: PlacedOrder,
   origin: string,
   shippingLabel: string,
   options: PaymentSessionOptions,
 ): Promise<PaymentSessionResult> {
+  // A free subscription (D913) is Kaizena Flow's own: the goods beside it are paid once, and it is switched on when the order is paid.
+  const order: PlacedOrder = placedOrder.subscription?.free ? { ...placedOrder, subscription: null } : placedOrder;
   const { connection, ui, stripe } = options;
   // Renewals (D25) and refunds that complete later or are made in Stripe (D159) arrive as webhook events that older platform
   // webhooks were not sent; checked once per server instance and mode.

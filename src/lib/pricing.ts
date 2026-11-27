@@ -31,6 +31,11 @@ export type PriceView = {
    * line, a total or the 30-day reference. Absent for none. Set by `styledPrice()`.
    */
   words?: PriceWords;
+  /**
+   * Whether a price of nothing says Free (D913), as the product, its tags, its categories or the store choose (`commerce.zero_shows_free()`); absent
+   * is Free. Set by the catalogue's readers.
+   */
+  free?: boolean;
 };
 
 export type PriceVat = { rate: number; shown: VatShown };

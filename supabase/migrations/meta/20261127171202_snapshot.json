@@ -1,6 +1,6 @@
 {
-  "id": "973d7fd6-12a5-4d29-a5da-67ddc67a3b0b",
-  "prevId": "ea585121-e4c6-4e30-9751-8f844e9e2736",
+  "id": "a29197b5-55a8-45ec-9950-005ac285a0c9",
+  "prevId": "20a22f37-9176-48f1-8855-cab87ed520a3",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -63429,7 +63429,7 @@
         },
         "payments_amount_positive": {
           "name": "payments_amount_positive",
-          "value": "\"commerce\".\"payments\".\"amount_minor\" > 0"
+          "value": "\"commerce\".\"payments\".\"amount_minor\" > 0 or (\"commerce\".\"payments\".\"amount_minor\" = 0 and \"commerce\".\"payments\".\"provider\" in ('free', 'stripe'))"
         }
       },
       "isRLSEnabled": false
@@ -74689,6 +74689,13 @@
           "notNull": true,
           "default": false
         },
+        "zero_free": {
+          "name": "zero_free",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp with time zone",
@@ -75540,6 +75547,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": false
+        },
+        "zero_free": {
+          "name": "zero_free",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
         },
         "audience": {
           "name": "audience",
@@ -99605,6 +99618,10 @@
           "name": "subscriptions_interval_count_positive",
           "value": "\"commerce\".\"subscriptions\".\"interval_count\" > 0"
         },
+        "subscriptions_free": {
+          "name": "subscriptions_free",
+          "value": "\"commerce\".\"subscriptions\".\"provider\" <> 'none' or (\"commerce\".\"subscriptions\".\"provider_reference\" is null and \"commerce\".\"subscriptions\".\"total_minor\" = 0)"
+        },
         "subscriptions_total_adds_up": {
           "name": "subscriptions_total_adds_up",
           "value": "\"commerce\".\"subscriptions\".\"total_minor\" = \"commerce\".\"subscriptions\".\"subtotal_minor\" + \"commerce\".\"subscriptions\".\"shipping_minor\""
@@ -103504,6 +103521,12 @@
           "notNull": true,
           "default": false
         },
+        "zero_free": {
+          "name": "zero_free",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
         "seo": {
           "name": "seo",
           "type": "jsonb",
@@ -103668,6 +103691,10 @@
         "terms_kind": {
           "name": "terms_kind",
           "value": "\"commerce\".\"terms\".\"kind\" in ('category', 'tag')"
+        },
+        "terms_zero_free": {
+          "name": "terms_zero_free",
+          "value": "\"commerce\".\"terms\".\"zero_free\" is null or \"commerce\".\"terms\".\"content_type\" = 'product'"
         },
         "terms_products_in_stores": {
           "name": "terms_products_in_stores",

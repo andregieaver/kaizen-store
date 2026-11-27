@@ -27,7 +27,7 @@
   "hot": {
     "orders": {
       "indexes": 33,
-      "triggers": 27
+      "triggers": 28
     },
     "order_lines": {
       "indexes": 8,
@@ -946,6 +946,12 @@
       "from": 7,
       "to": 8,
       "decision": "D912"
+    },
+    {
+      "count": "hot.orders.triggers",
+      "from": 27,
+      "to": 28,
+      "decision": "D913"
     }
   ]
 }

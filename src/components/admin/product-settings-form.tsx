@@ -18,6 +18,13 @@ export function ProductSettingsForm({
   return (
     <ActionForm action={action} successMessage={w.saved} className="flex flex-col gap-6">
       <fieldset disabled={!canEdit} className="contents">
+        {/* A price of nothing (D913): the store's choice, which a category, tag or product may override. */}
+        <section aria-label={w.zeroFree} className="flex flex-col gap-4 rounded-lg border border-line bg-card p-5">
+          <label className="flex items-start gap-2 text-sm">
+            <input type="checkbox" name="zeroFree" defaultChecked={settings.zeroFree} className="mt-0.5 size-4" />
+            <span className="font-medium">{w.zeroFree}</span>
+          </label>
+        </section>
         <section aria-labelledby="tiles" className="flex flex-col gap-4 rounded-lg border border-line bg-card p-5">
           <h2 id="tiles" className="text-title text-ink">
             {w.tilesTitle}

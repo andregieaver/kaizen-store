@@ -17,6 +17,7 @@ export const productsEn = {
     // Named apart from the Products section (ecosystem plan E3.7, D718).
     title: "Product settings",
     intro: "What shoppers see of your products in grids across your site. Each grid can say otherwise for itself in the page builder.",
+    zeroFree: "Price 0 shows as Free",
     tilesTitle: "Product tiles",
     stock: "Show how many are left",
     stockHint: "\"In stock\", \"Only 3 left\" or \"Sold out\" under the price, read live from your stock. Products without stock to count (downloads, services) say nothing.",
@@ -437,6 +438,8 @@ export const productsEn = {
     name: "Name",
     address: "Address",
     redirectNote: "If you change the address, the old address redirects to the new one.",
+    /** A price of nothing (D913): a category's, tag's or product's choice, over the store's. */
+    zero: { label: "A price of nothing", inherit: "As above", free: "Free", amount: "The amount" },
     save: "Save",
     cancel: "Cancel",
     seoIn: "Search results text in {languages}",

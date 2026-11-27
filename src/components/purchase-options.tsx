@@ -122,6 +122,7 @@ export function PlanPrice({
           labels={labels}
           decimals={decimals}
           words={words}
+          free={labels.freeGift}
         />
       </p>
       <p className="text-sm text-muted">{plan.label}</p>
@@ -166,6 +167,7 @@ export function PlanAmount({
       labels={labels}
       label={false}
       decimals={decimals}
+      free={labels.freeGift}
     />
   );
 }

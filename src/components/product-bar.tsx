@@ -75,7 +75,7 @@ export function ProductBar({
   variants: BarVariant[];
   /** Open the slide-out cart once added (D64). */
   openCart?: boolean;
-  labels: AddToCartLabels & { chooseVariant: string; soldOut: string; goCart: string };
+  labels: AddToCartLabels & { chooseVariant: string; soldOut: string; goCart: string; /** A price of nothing (D913). */ free?: string };
   /** Each option is chosen in a list of its own on the page (D320): the bar names the variant chosen there and adds it, with no list of every variant. */
   choosesOnPage?: boolean;
   /** The market's way with a whole amount's decimals (D429). */
@@ -110,6 +110,7 @@ export function ProductBar({
     // An option for one variant (D911) prices only that variant.
     const fits = plan && (!plan.variantId || plan.variantId === v.id);
     const amount = fits ? planPrice(v.amountMinor, plan.discountPercent) : v.amountMinor;
+    if (amount === 0 && labels.free) return labels.free;
     return withWords(formatMoney(vat.shown !== "incl" && buyer === "business" ? withoutVat(amount, vat.rate) : amount, currency, locale, { decimals }), words);
   };
   const message =

@@ -456,7 +456,7 @@ export const productEn = {
     bundle: "A bundle",
     bundleNote: "Several of your products sold together",
     plan: "A plan",
-    planNote: "Access to your app, by subscription",
+    planNote: "Access, by subscription",
     planPeriods: ["Billing", "Monthly", "Yearly"],
     lostContent: "The content of its variants was taken away: only shipped goods have a price per kg or litre.",
   },

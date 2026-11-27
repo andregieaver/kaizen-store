@@ -3199,6 +3199,8 @@ export const products = commerce.table(
     downloadDays: integer("download_days"),
     /** Sold only through its purchase options (selling plans), never once (D25). */
     subscriptionOnly: boolean("subscription_only").notNull().default(false),
+    /** Whether its price of nothing shows as Free (D913): null as its tags, categories and the store say (`commerce.zero_shows_free()`). */
+    zeroFree: boolean("zero_free"),
     /** In stores selling to both (B2B): shown to everyone, only to private shoppers or only to businesses. */
     audience: text("audience").notNull().default("all"),
     /** Which VAT rate it takes (D65, D157): a row of `vat_categories` (standard, accommodation, exempt, food, books, ...). */
@@ -5844,7 +5846,7 @@ export const subscriptions = commerce.table(
     totalMinor: money("total_minor"),
     taxMinor: money("tax_minor"),
     firstOrderId: uuid("first_order_id").notNull(),
-    /** The Stripe subscription, on the store's account. */
+    /** The Stripe subscription, on the store's account; `none` for a free one Kaizena Flow keeps itself (D913). */
     provider: text("provider").notNull().default("stripe"),
     providerReference: text("provider_reference"),
     providerAccount: text("provider_account"),
@@ -5877,6 +5879,8 @@ export const subscriptions = commerce.table(
     index("subscriptions_first_order_idx").on(t.storeId, t.firstOrderId),
     index("subscriptions_store_status_idx").on(t.storeId, t.status),
     check("subscriptions_interval_count_positive", sql`${t.intervalCount} > 0`),
+    // A free subscription (D913) is Kaizena Flow's own: no provider behind it, nothing to renew.
+    check("subscriptions_free", sql`${t.provider} <> 'none' or (${t.providerReference} is null and ${t.totalMinor} = 0)`),
     check("subscriptions_total_adds_up", sql`${t.totalMinor} = ${t.subtotalMinor} + ${t.shippingMinor}`),
     check(
       "subscriptions_amounts_non_negative",
@@ -6351,7 +6355,9 @@ export const payments = commerce.table(
     unique("payments_provider_reference_key").on(t.storeId, t.provider, t.providerReference),
     orderRef("payments_order_fk", t),
     index("payments_order_idx").on(t.storeId, t.orderId),
-    check("payments_amount_positive", sql`${t.amountMinor} > 0`),
+    // Nothing is a payment only for an order that costs nothing (D913: provider `free`, the order page's key) and a Stripe session with nothing due now (a
+    // free trial with no sign-up fee or shipping).
+    check("payments_amount_positive", sql`${t.amountMinor} > 0 or (${t.amountMinor} = 0 and ${t.provider} in ('free', 'stripe'))`),
   ],
 );
 
@@ -10601,6 +10607,11 @@ export const terms = commerce.table(
     /** Unit price (D160), on a product category only: its products (and its subcategories') need a measure. */
     requiresUnitPrice: boolean("requires_unit_price").notNull().default(false),
     /**
+     * Whether its products' price of nothing shows as Free (D913): true or false for the products in it (a category's for those in its subcategories
+     * too), null as the level above (`commerce.zero_shows_free()`). Products' categories and tags only.
+     */
+    zeroFree: boolean("zero_free"),
+    /**
      * A product category's or tag's own title and description for search results and shares, per language (wave 2, D168):
      * `{ "nb-NO": { "title": "…", "description": "…" } }`, keyed by the store's locale strings as `product_translations.locale` is. The shape,
      * the languages and the lengths are `termSeoInput`'s (`src/lib/term-seo.ts`). Empty is `{}`: the page uses the term's name.
@@ -10634,6 +10645,7 @@ export const terms = commerce.table(
     index("terms_parent_idx").on(t.parentId),
     check("terms_content_type", sql`${t.contentType} in ('page', 'article', 'product')`),
     check("terms_kind", sql`${t.kind} in ('category', 'tag')`),
+    check("terms_zero_free", sql`${t.zeroFree} is null or ${t.contentType} = 'product'`),
     check("terms_products_in_stores", sql`${t.contentType} <> 'product' or ${t.storeId} is not null`),
     check("terms_product_layout", sql`${t.productLayoutId} is null or ${t.contentType} = 'product'`),
     check("terms_tags_flat", sql`${t.kind} = 'category' or ${t.parentId} is null`),
@@ -17526,6 +17538,8 @@ export const productSettings = commerce.table("product_settings", {
     .references(() => stores.id, { onDelete: "cascade" }),
   tileStock: boolean("tile_stock").notNull().default(false),
   tileQuantity: boolean("tile_quantity").notNull().default(false),
+  /** A price of nothing shows as Free (D913), where no product, tag or category says otherwise (`commerce.zero_shows_free()`). */
+  zeroFree: boolean("zero_free").notNull().default(true),
   updatedAt: updatedAt(),
 });
 

@@ -150,6 +150,8 @@ export type PlacedOrder = {
     /** Days free before Stripe first charges what renews (D29). */
     trialDays: number;
     shippingMinor: number;
+    /** It renews at nothing (D913): Kaizena Flow keeps it itself (provider `none`), switched on when the order is paid; Stripe never hears of it. */
+    free: boolean;
   } | null;
   /** Shipping before any discount code, and what the code takes off it (D31). */
   shippingMinor: number;
@@ -438,7 +440,9 @@ export async function placeOrder(
     // In a free trial, what renews costs nothing now (D29); commitments take the longest option's.
     const trial = Boolean(rhythm && rhythm.trialDays > 0);
     const minCycles = Math.max(0, ...planned.map((l) => Number(l.min_cycles)));
-    if (rhythm && !consent.subscription) return { ok: false, problem: "subscription_consent" };
+    // A subscription that renews at nothing (D913: its variants free, nothing shipped each time) charges nothing ever: no consent to charges is asked.
+    const freeRenewal = Boolean(rhythm) && planned.every((l) => planPrice(Number(l.amount_minor), Number(l.discount_percent)) === 0 && l.delivery !== "physical");
+    if (rhythm && !freeRenewal && !consent.subscription) return { ok: false, problem: "subscription_consent" };
     const physical = lines.filter((l) => l.delivery === "physical");
     // Downloads (D24): a gift card is emailed as a code (D300), so it asks no tick and keeps its right of withdrawal.
     const digital = lines.some((l) => l.delivery === "digital" && l.kind !== "gift_card");
@@ -1107,17 +1111,19 @@ export async function placeOrder(
       const renewalSubtotal = renewing.reduce((sum, p) => sum + p.renewUnit * p.quantity, 0);
       const renewalTax =
         renewing.reduce((sum, p) => sum + vatIncluded(p.renewUnit * p.quantity, p.rate), 0) + vatIncluded(basket.renewal, taxOutcome.shippingRate);
+      // Renewing at nothing (D913), it is Kaizena Flow's own: no Stripe subscription, switched on when the order is paid (`activate_free_subscription()`).
+      const free = renewalSubtotal + basket.renewal === 0;
       const row = await typedRow(
         ID_ROW,
         sql`
         insert into commerce.subscriptions (
           store_id, number, market_code, currency, locale, interval, interval_count, min_cycles,
-          subtotal_minor, shipping_minor, total_minor, tax_minor, first_order_id, manage_token, customer_id
+          subtotal_minor, shipping_minor, total_minor, tax_minor, first_order_id, manage_token, customer_id, provider
         ) values (
           ${storeId}::uuid, ${orderNumber}, ${market.code}, ${market.currency}, ${market.locale},
           ${rhythm.interval}, ${rhythm.intervalCount}, ${minCycles}, ${renewalSubtotal}, ${basket.renewal},
           ${renewalSubtotal + basket.renewal}, ${renewalTax}, ${orderId}::uuid,
-          replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', ''), ${customerId}::uuid
+          replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', ''), ${customerId}::uuid, ${free ? "none" : "stripe"}
         )
         returning id
       `,
@@ -1141,7 +1147,7 @@ export async function placeOrder(
         update commerce.orders set subscription_id = ${subscriptionId}::uuid
         where store_id = ${storeId}::uuid and id = ${orderId}::uuid
       `);
-      subscription = { id: subscriptionId, ...rhythm, shippingMinor: basket.renewal };
+      subscription = { id: subscriptionId, ...rhythm, shippingMinor: basket.renewal, free };
     }
     // Gift cards (D300 F3) pay first, in the order the cart added them, up to what is due online without the order's own gift cards: each part is a
     // pending `gift_card` payment, held on its card by the database as it is written (under the cards' locks, taken in id order), spent when the order
@@ -1362,6 +1368,32 @@ async function confirmPaidByGiftCards(storeId: string, order: PlacedOrder): Prom
 }
 
 /**
+ * Confirms an order that costs nothing (D913), as an order gift cards pay in full is confirmed (D300 F3): who it is for on the order, a payment of
+ * nothing (provider `free`) as its record and the key to its order page, then `complete_order_payment()`, which makes it paid (stock drawn, downloads
+ * made) and so switches its free subscription on (`activate_free_subscription()`). No provider is asked. Returns the order page's key.
+ */
+async function confirmFree(storeId: string, order: PlacedOrder, payer: PayerDetails, country: string): Promise<string> {
+  const token = `free_${randomBytes(18).toString("base64url")}`;
+  await writePayer(storeId, order.orderId, payer, country);
+  // All or nothing (code review FV7): the payment row is the order page's key, and is of no use without the completion.
+  await db().transaction(async (tx) => {
+    await tx.execute(sql`
+      insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status)
+      values (${storeId}::uuid, ${order.orderId}::uuid, 'free', ${token}, 0, ${order.currency}, 'pending')
+    `);
+    await tx.execute(sql`select commerce.complete_order_payment(${order.orderId}::uuid, ${token})`);
+  });
+  const notify = () => sendOrderConfirmation(storeId, order.orderId);
+  try {
+    after(notify);
+  } catch {
+    // Not in a request (scripts, tests).
+    await notify();
+  }
+  return token;
+}
+
+/**
  * Confirms an order bought on payment terms (D293), as a venue booking is confirmed (D66): a pending `terms` payment as its record (never money: the key
  * to its order page, and what a cancellation before payment voids), then `complete_order_payment()`, so the order is paid as a shop status (stock drawn,
  * the goods may be sent) and its invoice is issued with the payment line `due`. It is a sale only when its balance arrives. Returns the order page's key.
@@ -1503,7 +1535,8 @@ export async function startCheckout(
   // The store's checkout provider for the mode it is in (D292): Mollie while chosen and connected, else Stripe.
   const mollieMode = await mollieCheckoutMode(shop.storeId);
   const connected = await paymentConnection(shop.storeId);
-  // Who pays given with no provider on: gift cards may pay it all (D300 F3); if they do not, the order is refused below as `payments_off`.
+  // Who pays given with no provider on: gift cards may pay it all (D300 F3), or the order costs nothing (D913); if neither, it is refused below as
+  // `payments_off`.
   if (!onTerms && !connected && !mollieMode && !payer) return { ok: false, problem: "payments_off" };
   if (onTerms && !customerId) return { ok: false, problem: "terms" };
   // A store not opened yet (wave 10 unit F, D369: still private, its setup not completed) takes no live payment, whoever has its password; its owner
@@ -1643,8 +1676,25 @@ export async function startCheckout(
     const token = await confirmPaidByGiftCards(shop.storeId, order);
     return { ok: true, url: `${base}/order/${order.orderId}?session_id=${token}` };
   }
+  // Nothing to pay at all (D913): a free product or a free subscription, and no provider is asked. Who it is for is kept on the order, the store's
+  // terms recorded, and it is paid (by nothing) at once, which switches a free subscription on. A free trial of a paid one is not this: Stripe takes its card.
+  if (order.dueNowMinor === 0 && order.balanceMinor === 0 && (order.giftCardsMinor ?? 0) === 0 && (!order.subscription || order.subscription.free)) {
+    if (!cleanedPayer) {
+      await cancelUnpaidOrder(shop.storeId, order.orderId, "who it is for was not given");
+      return { ok: false, problem: "payer" };
+    }
+    if (recordTerms && !(await recordTerms(order.orderId)).ok) {
+      await cancelUnpaidOrder(shop.storeId, order.orderId, "the terms could not be recorded");
+      return { ok: false, problem: "consent" };
+    }
+    const base = `${storeOrigin(shop.storeSlug) ?? origin}${marketPath(shop.storeSlug, shop.market.slug)}`;
+    const token = await confirmFree(shop.storeId, order, cleanedPayer, shop.market.code);
+    return { ok: true, url: `${base}/order/${order.orderId}?session_id=${token}` };
+  }
   // On Mollie (D292), an order Mollie can take: what Stripe alone does stays Stripe's (a subscription's renewals, a deposit's saved card, a host's account).
-  const onMollie = mollieMode !== null && !order.subscription && !order.hostId && !order.lines.some((line) => line.deposit);
+  // A free subscription (D913) has no renewals: the goods beside it are paid once.
+  const onMollie =
+    mollieMode !== null && (!order.subscription || order.subscription.free) && !order.hostId && !order.lines.some((line) => line.deposit);
   if (onMollie) {
     if (!cleanedPayer) {
       await cancelUnpaidOrder(shop.storeId, order.orderId, "who pays was not given");

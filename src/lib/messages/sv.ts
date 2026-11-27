@@ -1047,6 +1047,7 @@ export const sv: Messages = {
   purchaseOptions: "Köpalternativ",
   planSave: (percent: number) => `Spara ${percent} %`,
   perDelivery: "per leverans",
+  freeSubscription: "Gratis tills du säger upp den. Inget dras någonsin, och du kan säga upp när som helst.",
   renewsEvery: (every: string, amount: string) =>
     `Förnyas ${every.toLowerCase()} för ${amount} tills du säger upp den. Du kan säga upp när som helst.`,
   subscriptionConsent: (every: string, amount: string) =>

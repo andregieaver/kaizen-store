@@ -2,6 +2,7 @@ import "server-only";
 
 import { sql } from "drizzle-orm";
 import type Stripe from "stripe";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { MAX_LINE_QUANTITY } from "@/lib/cart";
@@ -26,6 +27,7 @@ import {
 
 import { insertOrder } from "./order-insert";
 import { WEBHOOK_EVENTS, platformStripe } from "./stripe";
+import { col, typedRow } from "./typed-rows";
 
 type Row = Record<string, unknown>;
 
@@ -82,6 +84,8 @@ export type SubscriptionView = {
   /** Until when the subscriber is committed (D29): cancelling before ends it then. */
   commitmentEndsAt: string | null;
   manageToken: string;
+  /** It costs nothing (D913): Kaizena Flow's own, with no Stripe subscription, no renewals, nothing to pause, and ended at once when cancelled. */
+  free: boolean;
   createdAt: string;
   lines: SubscriptionLine[];
   orders: { id: string; number: string; status: string; totalMinor: number; placedAt: string }[];
@@ -158,6 +162,7 @@ async function view(storeId: string, where: ReturnType<typeof sql>): Promise<Sub
     paidCycles: paid,
     commitmentEndsAt: commitment?.toISOString() ?? null,
     manageToken: String(row.manage_token),
+    free: row.provider === "none",
     createdAt: iso(row.created_at)!,
     lines: lines.map((l) => ({
       id: String(l.id),
@@ -481,6 +486,8 @@ async function logChange(storeId: string, orderId: string, type: string, data: R
 export function allowedChanges(sub: SubscriptionView, now = new Date()) {
   const live = sub.status === "active" || sub.status === "paused" || sub.status === "past_due";
   const running = live && sub.endsAt === null;
+  // A free subscription (D913) is only ended: nothing is charged or sent to pause, skip or change.
+  if (sub.free) return { cancel: running, resume: false, pause: false, skip: false, unpause: false, contents: false };
   const inTrial = sub.trialEndsAt !== null && new Date(sub.trialEndsAt) > now;
   const canPause = running && !inTrial && sub.status !== "past_due" && sub.nextChargeAt !== null;
   const limit = sub.currentPeriodEnd
@@ -509,6 +516,9 @@ export async function changeSubscription(
   change: SubscriptionChange,
   { periods = 1, actor = "shopper" }: { periods?: number; actor?: "shopper" | "staff" | "privacy" } = {},
 ): Promise<ChangeResult> {
+  // A free subscription (D913) has no Stripe subscription behind it: Kaizena Flow ends it itself, at once, as nothing paid runs on.
+  const own = await getSubscription(storeId, subscriptionId);
+  if (own?.free) return endFreeSubscription(storeId, own, change, actor);
   const c = await connected(storeId, subscriptionId);
   if (!c) return { ok: false, problem: "not_found" };
   const { stripe, reference, options, subscription: sub } = c;
@@ -563,6 +573,32 @@ export async function changeSubscription(
   }
   await logChange(storeId, c.firstOrderId, `subscription.${change}`, data, actor);
   const fresh = await getSubscription(storeId, subscriptionId);
+  return fresh ? { ok: true, subscription: fresh, changed: true } : { ok: false, problem: "not_found" };
+}
+
+/**
+ * Ends a free subscription (D913): cancelling it, by the subscriber, staff or an erasure, ends it now (there is no paid period to run on), which the
+ * database's trigger tells endpoints and apps as `subscription.cancelled`. Nothing else applies to it.
+ */
+async function endFreeSubscription(
+  storeId: string,
+  sub: SubscriptionView,
+  change: SubscriptionChange,
+  actor: "shopper" | "staff" | "privacy",
+): Promise<ChangeResult> {
+  if (change !== "cancel" && change !== "cancel_now") return { ok: false, problem: "not_allowed" };
+  if (!allowedChanges(sub).cancel) return { ok: false, problem: "not_allowed" };
+  const ended = await typedRow(
+    z.object({ first_order_id: col.uuid }),
+    sql`
+    update commerce.subscriptions set status = 'cancelled', cancelled_at = now(), cancel_at_period_end = false, updated_at = now()
+    where store_id = ${storeId}::uuid and id = ${sub.id}::uuid and provider = 'none' and status in ('active', 'paused', 'past_due')
+    returning first_order_id
+  `,
+  );
+  if (!ended) return { ok: false, problem: "not_allowed" };
+  await logChange(storeId, ended.first_order_id, `subscription.${change}`, { free: true }, actor);
+  const fresh = await getSubscription(storeId, sub.id);
   return fresh ? { ok: true, subscription: fresh, changed: true } : { ok: false, problem: "not_found" };
 }
 

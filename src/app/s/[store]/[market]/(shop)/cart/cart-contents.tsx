@@ -261,7 +261,10 @@ function linesList({ store, market, m, view }: Draw, drawer: boolean) {
               </div>
               {line.unitPriceMinor !== null && line.status !== "unavailable" && (
                 <p className="shrink-0 text-right font-medium whitespace-nowrap">
-                  {trial && line.plan ? (
+                  {/* A line that costs nothing says so (D913). */}
+                  {line.unitPriceMinor === 0 && line.zeroFree ? (
+                    m.freeGift
+                  ) : trial && line.plan ? (
                     <>
                       {money(0)}
                       <span className="block text-sm font-normal text-muted">
@@ -695,7 +698,8 @@ function checkoutAction({ store, market, m, view }: Draw) {
         <Link href={marketPath(store.slug, market.slug, "/account")} className="button-primary flex min-h-12 items-center justify-center rounded-button px-6 font-medium">
           {m.signInToCheckOut}
         </Link>
-      ) : checkout.paymentsOn || onTerms ? (
+      ) : checkout.paymentsOn || onTerms || summary.nothingDue ? (
+        // A basket that costs nothing (D913) needs no payments switched on: no provider is asked.
         <CheckoutButton
           store={store.slug}
           market={market.slug}
@@ -719,7 +723,7 @@ function checkoutAction({ store, market, m, view }: Draw) {
           payer={
             // Mollie's page asks for no address (D292), and an order gift cards pay in full (D300 F3) has no payment page at all: who pays,
             // and where the goods go, are asked here first.
-            (checkout.provider === "mollie" || summary.giftCards.coverAll) && !atVenueOnly
+            (checkout.provider === "mollie" || summary.giftCards.coverAll || summary.nothingDue) && !atVenueOnly
               ? {
                   needs: {
                     address: summary.ships && summary.deliveryState?.method !== "pickup",
@@ -786,8 +790,9 @@ function checkoutAction({ store, market, m, view }: Draw) {
           consents={{
             digital: digital ? m.digitalConsent : undefined,
             service: serviceRequest ? m.serviceRequest : undefined,
+            // A subscription that costs nothing (D913) charges nothing ever: no consent to charges is asked (`placeOrder()` asks none either).
             subscription:
-              renewal !== null && plan
+              renewal !== null && renewal > 0 && plan
                 ? [
                     m.subscriptionConsent(every, money(renewal)),
                     plan.trialDays > 0 && m.trialNote(plan.trialDays),

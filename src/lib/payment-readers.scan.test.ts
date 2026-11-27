@@ -19,6 +19,7 @@ const READERS: Record<string, { count: number; reason: string }> = {
   "src/server/stripe-refunds.ts": { count: 1, reason: "a refund Stripe reports belongs to the Stripe payment it names; a manual refund is never reported by Stripe" },
   "src/server/stripe-webhooks.ts": { count: 2, reason: "Stripe's events are recorded once under the provider `stripe` (`webhook_events`), and the platform home counts those that failed (`failedWebhookEvents()`), which are events, not payments; a session's payment is found by `applyPaymentAnswer()` under the answer's own provider (D292)" },
   "src/server/subscriptions.ts": { count: 3, reason: "a subscription's payments and Kaizena Flow's webhook endpoint are Stripe's; a draft order is never a subscription" },
+  "src/server/subscription-reminders.ts": { count: 1, reason: "reads `subscriptions.provider`, not payments: a free subscription (D913, provider `none`) is never charged, so it gets no reminder" },
   "src/server/standing-orders.ts": { count: 2, reason: "a weekly delivery's saved card and pay link are Stripe's; a draft order is never a delivery" },
   "src/server/status.ts": {
     count: 5,

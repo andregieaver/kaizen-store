@@ -544,6 +544,7 @@ export async function getProductForEdit(
     standardCategory: product.standard_category ? String(product.standard_category) : null,
     standardAttributes: (product.standard_attributes ?? {}) as StandardAttributes,
     priceWords: parseProductPriceWords(product.price_words),
+    zeroFree: product.zero_free === null || product.zero_free === undefined ? null : Boolean(product.zero_free),
     availability: await availabilityOf(store.id, productId),
     countryTexts: await countryTextsOf(store.id, productId),
     appointment: isBooked(kind)
@@ -1098,7 +1099,8 @@ async function upsertProduct(
         standard_category = ${input.standardCategory === undefined ? sql`standard_category` : sql`${input.standardCategory}`},
         standard_attributes = ${input.standardCategory === undefined ? sql`standard_attributes` : sql`${JSON.stringify(input.standardAttributes ?? {})}::jsonb`},
         standard_shown = ${input.standardCategory === undefined ? sql`standard_shown` : sql`${shownJson}::jsonb`},
-        price_words = ${input.priceWords === undefined ? sql`price_words` : priceWordsValue(input.priceWords)}
+        price_words = ${input.priceWords === undefined ? sql`price_words` : priceWordsValue(input.priceWords)},
+        zero_free = ${input.zeroFree === undefined ? sql`zero_free` : input.zeroFree}
       where store_id = ${storeId}::uuid and id = ${productId}::uuid
       returning id
     `);
@@ -1110,7 +1112,7 @@ async function upsertProduct(
       store_id, handle, status, manufacturer_id, responsible_person_id, tax_code, withdrawal_exclusion,
       delivery, download_limit, download_days, subscription_only, audience, vat_category, kind, host_id, product_layout_id,
       sold_by_measure, shipping_profile_id, bundle_pricing, bundle_percent_off, standard_category, standard_attributes, standard_shown, price_words,
-      price_on_request
+      price_on_request, zero_free
     ) values (
       ${storeId}::uuid, ${input.handle}, 'draft', ${manufacturerId}::uuid, ${responsibleId}::uuid,
       ${input.taxCode}, ${input.withdrawalExclusion}, ${input.delivery}, ${input.downloadLimit}, ${input.downloadDays},
@@ -1118,7 +1120,7 @@ async function upsertProduct(
       ${input.layoutId}::uuid, ${input.soldByMeasure && input.kind === "goods"}, (select sp.id from commerce.shipping_profiles sp where sp.store_id = ${storeId}::uuid and sp.id = ${input.shippingProfileId ?? null}::uuid),
       ${bundlePricing(input)}, ${bundlePercent(input)}, ${input.standardCategory ?? null},
       ${JSON.stringify(input.standardCategory ? (input.standardAttributes ?? {}) : {})}::jsonb, ${shownJson}::jsonb,
-      ${priceWordsValue(input.priceWords ?? INHERIT_WORDS)}, ${input.priceOnRequest && input.kind === "goods"}
+      ${priceWordsValue(input.priceWords ?? INHERIT_WORDS)}, ${input.priceOnRequest && input.kind === "goods"}, ${input.zeroFree ?? null}
     )
     returning id
   `);

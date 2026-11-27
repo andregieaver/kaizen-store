@@ -40,6 +40,7 @@ export const productsNb: ProductsMessages = {
   settings: {
     title: "Innstillinger for produkter",
     intro: "Hva kundene ser av produktene dine i rutenett på nettstedet. Hvert rutenett kan velge annerledes for seg selv i sidebyggeren.",
+    zeroFree: "Pris 0 vises som Gratis",
     tilesTitle: "Produktfliser",
     stock: "Vis hvor mange som er igjen",
     stockHint: "«På lager», «Bare 3 igjen» eller «Utsolgt» under prisen, lest direkte fra lageret. Produkter uten lager å telle (nedlastinger, tjenester) sier ingenting.",
@@ -453,6 +454,7 @@ export const productsNb: ProductsMessages = {
     name: "Navn",
     address: "Adresse",
     redirectNote: "Endrer du adressen, sender den gamle adressen videre til den nye.",
+    zero: { label: "En pris på null", inherit: "Som over", free: "Gratis", amount: "Beløpet" },
     save: "Lagre",
     cancel: "Avbryt",
     seoIn: "Tekst i søkeresultater på {languages}",

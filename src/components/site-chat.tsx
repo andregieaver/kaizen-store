@@ -101,6 +101,7 @@ export function chatLabels(lang: string, locale: string, profile: ChatWidgetProf
     vatExcluded: m.vatExcluded,
     fromPrice: m.fromPrice,
     priorPrice: m.priorPrice,
+    freeGift: m.freeGift,
     priceOnRequest: m.quotes.priceOnRequest,
     unit: unitLabelsOf(m),
   };

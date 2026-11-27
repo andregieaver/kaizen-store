@@ -376,6 +376,11 @@ export async function cartSummary(
     reliefLine,
     balance,
     atVenueOnly,
+    /**
+     * Nothing to pay at all (D913): no total, nothing at the venue or in duties, and no subscription that charges later (a free trial of a paid one is
+     * not this: Stripe takes its card). No payment page follows, and no provider is needed.
+     */
+    nothingDue: total === 0 && balance === 0 && customs.collectMinor === 0 && !renewal,
     /** What gift cards pay (D300 F3), card by card. */
     giftCards,
     /**
