@@ -1408,11 +1408,13 @@ async function saveVariants(
     from commerce.product_variants v
     left join commerce.prices p on p.variant_id = v.id and p.valid_to is null
     where v.store_id = ${storeId}::uuid and v.product_id = ${productId}::uuid
-    group by v.id, v.sku
+    group by v.id
   `);
   const current = new Map(existing.map((row) => [String(row.id), (row.prices ?? {}) as Record<string, number | string>]));
-  // A variant sent without its id whose SKU one of this product's variants has is that variant (D914).
-  const ids = (await import("./variant-ids")).keptVariantIds(input.variants, existing.map((r) => ({ id: String(r.id), sku: String(r.sku) })));
+  // A variant sent without its id (a stale editor copy, or variants made again) whose SKU one of this product's variants has, and that the save
+  // names by no id, is that variant: kept, never inserted beside itself (D914).
+  const sent = new Set(input.variants.map((v) => v.id));
+  const bySku = new Map(existing.filter((row) => !sent.has(row.id as string)).map((row) => [row.sku as string, row.id as string]));
 
   const ruled = input.kind === "goods" || input.kind === "bundle";
   const columns = input.variants.map((variant, n): VariantColumns => {
@@ -1426,7 +1428,7 @@ async function saveVariants(
     const keeps = physical && variant.stockPolicy === "continue";
     return {
       n,
-      id: ids[n],
+      id: variant.id && current.has(variant.id) ? variant.id : (bySku.get(variant.sku) ?? null),
       sku: variant.sku,
       gtin: variant.gtin,
       options: variant.options,
