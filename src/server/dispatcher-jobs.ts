@@ -18,7 +18,6 @@ import { endIdleGuideConversations } from "@/server/docs-guide-store";
 import { expireActions } from "@/server/support-actions";
 import { summarisePending } from "@/server/support-summary";
 import { reencryptSecrets } from "@/server/secret-rotation";
-import { expireAssistantApprovals } from "@/server/owner-assistant";
 import { refreshInstagramFeeds } from "@/server/instagram";
 import { watchRivals } from "@/server/market-rivals";
 import { refreshSocialInsights } from "@/server/social-insights";
@@ -28,24 +27,18 @@ import { expireDrafts } from "@/server/draft-orders";
 import { expireApprovals } from "@/server/company-approvals";
 import { archiveFinishedOrders } from "@/server/order-archive";
 import { expireOrderEdits } from "@/server/order-edits";
-import { runDataJobs } from "@/server/data-jobs";
-import { runDueMoves } from "@/server/shopify-move";
 import { refreshEmbeddings } from "@/server/embeddings";
 import { runExperimentJobs } from "@/server/experiment-jobs";
-import { runFollowUps } from "@/server/follow-up-runner";
 import { rollOverDueTasks } from "@/server/projects-repeat";
-import { runKaizenLifeHandoffs } from "@/server/kaizen-life-handoffs";
 import { measureAutopilotEffects } from "@/server/autopilot-effects";
 import { sendAutopilotReports } from "@/server/autopilot-reports";
 import { sendScheduledReports } from "@/server/report-schedules";
 import { invoiceJobs } from "@/server/invoice-issue";
-import { runContractUpkeep } from "@/server/contract-upkeep";
 import { runDocumentPdfAsk } from "@/server/document-pdf-ask";
 import { readDueLegalSources } from "@/server/legal-sources";
 import { runLegalUpkeep, runLegalWrites } from "@/server/legal-writer";
 import { runPaymentJobs } from "@/server/payment-disputes";
 import { keepStripeWebhooksCurrent } from "@/server/stripe-endpoints";
-import { runLiveDrills } from "@/server/live-drills";
 import { settleTrials } from "@/server/store-trial";
 import { sandboxJob } from "@/server/sandbox";
 import { runReturnJobs } from "@/server/return-jobs";
@@ -79,18 +72,16 @@ import { runPlatformBooks } from "@/server/platform-books";
 import { sendPlatformBriefing } from "@/server/platform-briefing";
 import { runEinvoiceSending } from "@/server/einvoice-sending";
 import { sendAutopilotBudgetAlerts } from "@/server/autopilot-settings";
-import { watchAutopilotChanges } from "@/server/autopilot-watch";
-import { decideAutopilotTests } from "@/server/autopilot-test-decider";
-import { watchChallengeVersions } from "@/server/challenge-pin";
 import { sendChallengeStallAlerts } from "@/server/challenge-watch";
-import { syncAllAdSpend } from "@/server/ad-accounts";
 import { runNightlyUiTranslations } from "@/server/ui-nightly";
 import { syncHouseCustomers } from "@/server/house-customers";
 
 /**
  * The dispatcher's jobs (`/api/cron/cart-reminders`, every five minutes), in the order they run, each kept in `commerce.cron_jobs` as
  * `dispatcher.{name}` in kebab case: the key is the job's row, so never rename one. They live here, not in the route, so a test can run
- * each one (bloat review step 1.10, `src/server/query-budget.int.test.ts`).
+ * each one (bloat review step 1.10, `src/server/query-budget.int.test.ts`). A job that reaches the product editor's save (`products.ts`,
+ * through the AI's tools, imports, drills or the ad accounts) is loaded when it runs (import()), so the route lists none of it at start
+ * (the api chunk budget, D915).
  */
 export const DISPATCHER_JOBS = {
   carts: () => sendDueCartReminders(),
@@ -166,12 +157,12 @@ export const DISPATCHER_JOBS = {
   returns: () => runReturnJobs(),
   invoices: () => invoiceJobs(),
   // Contracts (D695, D795): expiry, reminders, codes and retention.
-  contracts: () => runContractUpkeep(),
+  contracts: async () => (await import("@/server/contract-upkeep")).runContractUpkeep(),
   // The PDF route (Chromium) asked only while an invoice, a credit note or a signed contract waits for its PDF (D807).
   documentPdfs: () => runDocumentPdfAsk(),
   // A Shopify move due now starts, a running one goes on (D445 step 7a); before the imports it hands work to.
-  shopMoves: () => runDueMoves(),
-  dataJobs: () => runDataJobs(),
+  shopMoves: async () => (await import("@/server/shopify-move")).runDueMoves(),
+  dataJobs: async () => (await import("@/server/data-jobs")).runDataJobs(),
   lowStock: () => sendLowStockNotices(),
   // Drop shipping (D551): supplier orders made for paid orders' supplier lines, and those whose wait is over emailed to their suppliers.
   supplierOrders: () => runSupplierOrders(),
@@ -203,7 +194,7 @@ export const DISPATCHER_JOBS = {
   // Kaizena Flow's Stripe endpoints kept at the site's own address: Stripe follows no redirect (consolidation, 29 October 2026).
   stripeWebhooks: () => keepStripeWebhooksCurrent(),
   // Live drills (D406): a requested run of a test-mode store's money paths (refunds, marking sent, payment facts, webhooks), its results kept.
-  liveDrills: () => runLiveDrills(),
+  liveDrills: async () => (await import("@/server/live-drills")).runLiveDrills(),
   // Free trials' ends (D420): an open store whose trial ended with no plan made private, and made public again once a plan starts.
   trials: () => settleTrials(),
   // The page builder's sandboxes (D457) past their time ended (the pass stops working and the store is closed), and what was in ended
@@ -212,28 +203,28 @@ export const DISPATCHER_JOBS = {
   // Self-hosted fonts (D59): files not yet looked at cut to the weights their families are installed in, under the same name.
   fonts: () => trimFontFiles(),
   // The AI manager's follow-ups (PSI AGT-04): a few due ones given back to it, in the asker's name, and the asker emailed.
-  followUps: () => runFollowUps(),
+  followUps: async () => (await import("@/server/follow-up-runner")).runFollowUps(),
   // Repeating checklist tasks (D903 P4.1): those whose next time came open again at the time after, their subtasks unticked, 500 a run.
   repeats: () => rollOverDueTasks(),
   // Tasks the assistants hand each other (docs/assistants-together.md): one from Kaizen Life whose run never started run, Kaizen Life told
   // what it has not heard, and a task it never reported on given up.
-  lifeHandoffs: () => runKaizenLifeHandoffs(),
+  lifeHandoffs: async () => (await import("@/server/kaizen-life-handoffs")).runKaizenLifeHandoffs(),
   // The autopilot's daily digests and weekly reports (D309), to the people whose plans ran lately.
   autopilotReports: () => sendAutopilotReports(),
   // What the autopilot's changes moved (D418): once an hour, a few changes made two weeks or more ago measured on the figure each was meant to move.
   autopilotEffects: () => measureAutopilotEffects(),
   // Watch and roll back (docs/100-day-challenge.md F4): the autopilot's recent changes judged hourly, a clear fall undone.
-  autopilotWatch: () => watchAutopilotChanges(),
+  autopilotWatch: async () => (await import("@/server/autopilot-watch")).watchAutopilotChanges(),
   // The autopilot's tests of its own page changes (E4.1, D729): decided hourly by their verdicts, the change live only when it does better.
-  autopilotTests: () => decideAutopilotTests(),
+  autopilotTests: async () => (await import("@/server/autopilot-test-decider")).decideAutopilotTests(),
   // The autopilot's own AI budget (PSI AST-07): owners told once a month when it nears 80 % and again when it is spent.
   autopilotBudgets: () => sendAutopilotBudgetAlerts(),
   // The 100-day challenge's stall watch (docs/100-day-challenge.md A6): what holds a challenge store up, to the platform team at once.
   challengeStalls: () => sendChallengeStallAlerts(),
   // What each challenge store's AI runs on, against what was seen last: a change after a deploy is logged on the challenge (F5).
-  challengeVersions: () => watchChallengeVersions(),
+  challengeVersions: async () => (await import("@/server/challenge-pin")).watchChallengeVersions(),
   // The Meta ad accounts' daily spend into the books (docs/100-day-challenge.md D2), each account every six hours.
-  adSpend: () => syncAllAdSpend(),
+  adSpend: async () => (await import("@/server/ad-accounts")).syncAllAdSpend(),
   // Saved reports emailed on their schedules (D395), each once a store day.
   reportEmails: () => sendScheduledReports(),
   // The official legal texts the AI's legal pages rest on (D311): a few due reads, each source a week after its last good read.
@@ -255,7 +246,7 @@ export const DISPATCHER_JOBS = {
   // A rotation of the settings key (PSI SEC-06): while a previous key is set, a batch of secrets written again under the current one.
   secretRotation: () => reencryptSecrets(),
   // The AI manager's calls nobody answered in seven days (PSI AGT-03): ended, never run.
-  assistantApprovals: async () => (await expireAssistantApprovals()).length,
+  assistantApprovals: async () => (await (await import("@/server/owner-assistant")).expireAssistantApprovals()).length,
   // A VAT rate that begins or ends at a country's midnight (D379): the catalogue's cached labels refreshed then, not at the daily job's hour.
   vatLabels: () => refreshVatLabelsAtMidnight(),
   // Interface text added since (D436): once a night from 02:00 Oslo time, the texts the translated languages lack, by the platform's AI,
