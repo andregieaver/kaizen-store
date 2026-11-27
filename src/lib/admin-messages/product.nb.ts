@@ -359,6 +359,7 @@ export const productNb: ProductMessages = {
     intro:
       "La kundene abonnere og få produktet jevnlig. Stripe belaster hver fornyelse automatisk, og kundene kan si opp når som helst fra bestillingssiden sin.",
     forVariant: "Gjelder",
+    pickVariant: "Velg en variant",
     forWhich: "Kjøpsvalg {n}: for hvilken variant",
     everyVariant: "Alle varianter",
     addSkuFirst: " (legg inn et varenummer først)",
@@ -456,6 +457,7 @@ export const productNb: ProductMessages = {
     planPeriods: ["Betaling", "Månedlig", "Årlig"],
     lostContent: "Innholdet i variantene ble fjernet: bare varer som sendes, har enhetspris per kg eller liter.",
   },
+  billing: { customise: "Tilpass" },
   bundle: {
     title: "Hva som er i pakken",
     intro: "Finn produktene dine på navn eller varenummer. Pakken er på lager så langt alle er det, og lageret holdes aldri for seg.",

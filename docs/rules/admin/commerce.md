@@ -1184,6 +1184,12 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   plan through `offeredTo()`; a cart holds one plan, one of it (`choosePlan()`, `ONE_RULE`). A plan renews every month or every year, as its
   pricing table shows it. Its `/p/` address leads to the page with the Plans component (`planPricingPath()`). Linking a plan to the app it
   gives access in is step 2 of D912 (not built): build it there, never as a store setting of its own.
+- **A plan's Billing card (D912, the owner's report of 27 November 2026)**: a plan in the usual shape (its active variants a period each,
+  every month or every year at its own price, no discount, one option at most) is edited as Monthly and Yearly with a price each
+  (`billingOf()`/`withBilling()` in `src/lib/plan-billing.ts`); its variants and purchase options are under Customise. A period switched
+  off keeps its variant, switched off, and switched on is that variant again. Editing a product's options never rebuilds its variants for a
+  rename: an option's name renames its variants' keys, and a value retyped keeps its variant (`renamedOptions()`), so SKUs, prices and the
+  purchase options that name them stay; a purchase option whose variant is gone says "Choose a variant" in its list.
 - **A pricing table of one product's plans (D914)**: plans are grouped by product category, never by a grouping of their own: the Plans
   component's `categoryId` shows the plans in that category or one under it (`plansOfCategory()` over `StorePlan.categoryIds`, which
   `getStorePlans()` fills with each plan's categories and every one above them); none shows every plan. The builder offers the choice only

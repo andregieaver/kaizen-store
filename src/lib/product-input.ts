@@ -285,7 +285,7 @@ export function productProblems(input: ProductInput, context: PublishContext): s
   const activeSkus = new Set(input.variants.filter((v) => v.active && v.sku).map((v) => v.sku));
   for (const plan of input.plans) {
     if (plan.variantSku !== null && !activeSkus.has(plan.variantSku)) {
-      problems.push(`${planSummary(plan)}: it is for a variant this product does not have (on). Choose which variant it is for.`);
+      problems.push(`${planSummary(plan)}: it is for a variant this product no longer has. Choose which variant it is for.`);
     }
   }
   if (input.subscriptionOnly && input.plans.length > 0) {

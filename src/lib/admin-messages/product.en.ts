@@ -363,6 +363,7 @@ export const productEn = {
     intro:
       "Let shoppers subscribe and get the product regularly. Stripe charges each renewal automatically, and shoppers can cancel any time from their order page.",
     forVariant: "For",
+    pickVariant: "Choose a variant",
     forWhich: "Purchase option {n}: for which variant",
     everyVariant: "Every variant",
     addSkuFirst: " (add a SKU first)",
@@ -460,6 +461,7 @@ export const productEn = {
     planPeriods: ["Billing", "Monthly", "Yearly"],
     lostContent: "The content of its variants was taken away: only shipped goods have a price per kg or litre.",
   },
+  billing: { customise: "Customise" },
   bundle: {
     title: "What's in the bundle",
     intro: "Find your products by name or SKU. The bundle is in stock as far as all of them are, and its stock is never kept on its own.",

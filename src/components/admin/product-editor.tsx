@@ -79,6 +79,7 @@ import {
   rhythmIn,
 } from "@/lib/subscriptions";
 import { slugify } from "@/lib/slug";
+import { BILLING_PERIODS, billingOf, renamedOptions, withBilling, type Billing, type BillingPeriod } from "@/lib/plan-billing";
 import { InheritChoice } from "@/components/admin/zero-free-choice";
 import { uploadToSignedUrl } from "@/lib/supabase/signed-upload";
 import type { EditorContext, Operator } from "@/server/products";
@@ -184,6 +185,8 @@ export function ProductEditor(props: Props) {
   const [result, setResult] = useState<SaveState>({ status: "idle" });
   // Lisa's settings, one step away (docs/admin-style.md 2.1); a save that fails opens them, so a problem there is in sight.
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  // A plan's billing as Monthly and Yearly (the Billing card), or its variants and purchase options as they are (Customise).
+  const [planDetail, setPlanDetail] = useState(false);
   const [saving, startSaving] = useTransition();
   const [handleTouched, setHandleTouched] = useState(props.productId !== null);
   const summaryRef = useRef<HTMLDivElement>(null);
@@ -228,6 +231,8 @@ export function ProductEditor(props: Props) {
 
   const primary = context.primaryLocale;
   const title = product.translations.find((t) => t.locale === primary)?.title ?? "";
+  // A plan in its usual shape, Monthly and Yearly at their own prices, is shown as the Billing card (null for anything else).
+  const billing = product.kind === "plan" ? billingOf(product) : null;
   // The custom field groups this product gets now: they follow its kind, audience, categories and tags as they change (D118).
   const fieldGroups = applicableGroups(props.fields.groups, {
     entity: "product",
@@ -463,6 +468,8 @@ export function ProductEditor(props: Props) {
       )}
       {product.kind === "bundle" ? (
         <BundleSection storeSlug={storeSlug} product={product} update={update} context={context} />
+      ) : billing && !planDetail ? (
+        <PlanBillingSection product={product} update={update} context={context} billing={billing} onCustomise={() => setPlanDetail(true)} />
       ) : (
         // Drawn again when the kind changes: a plan (D912) comes with its options made, which the section's own fields start from.
         <VariantsSection
@@ -596,6 +603,7 @@ export function ProductEditor(props: Props) {
       )}
       {/* A plan's billing periods (D912) are what it is: Homer's, beside its prices, never in the fold. */}
       {product.kind === "plan" &&
+        (!billing || planDetail) &&
         (context.subscriptionsOn ? (
           <SubscriptionSection product={product} update={update} markets={context.markets} netPrices={context.audience === "businesses"} />
         ) : (
@@ -1252,19 +1260,24 @@ function planBilling(p: ProductInput, [option, monthly, yearly]: readonly string
   return { options, variants, plans: [renews(variants[0].sku, "month"), renews(variants[1].sku, "year")] };
 }
 
-/** Variants for a new set of options, keeping what was typed for combinations that remain. */
+/**
+ * Variants for a new set of options, keeping what was typed for combinations that remain: `previousOptions` names them as they were, so
+ * an option or value retyped keeps its variants, their SKUs and prices (`renamedOptions()`).
+ */
 function variantsFor(
   options: ProductInput["options"],
   previous: VariantInput[],
   delivery: Delivery,
+  previousOptions: ProductInput["options"] = options,
 ): VariantInput[] {
+  const renamed = renamedOptions(previousOptions, options);
   const clean = options
     .map((o) => ({ name: o.name.trim(), values: [...new Set(o.values.map((v) => v.trim()).filter(Boolean))] }))
     .filter((o) => o.name && o.values.length > 0);
   const combos = combineOptions(clean);
   const key = (opts: Record<string, string>) =>
     JSON.stringify(clean.map((o) => opts[o.name] ?? ""));
-  const byKey = new Map(previous.map((v) => [key(v.options), v]));
+  const byKey = new Map(previous.map((v) => [key(renamed(v.options)), v]));
   const template = previous[0];
   return combos.map((combo) => {
     const kept = byKey.get(key(combo));
@@ -1319,7 +1332,14 @@ function VariantsSection({
   const service = isBooked(product.kind) || product.kind === "plan";
 
   const setOptions = (options: ProductInput["options"]) =>
-    update((p) => ({ ...p, options, variants: variantsFor(options, p.variants, p.delivery) }));
+    update((p) => ({ ...p, options, variants: variantsFor(options, p.variants, p.delivery, p.options) }));
+  // An option's name only names it: its variants keep their SKUs, prices and purchase options, even while the name is cleared to retype it.
+  const renameOption = (index: number, name: string) =>
+    update((p) => {
+      const options = p.options.map((o, i) => (i === index ? { ...o, name } : o));
+      const rename = renamedOptions(p.options, options);
+      return { ...p, options, variants: p.variants.map((v) => ({ ...v, options: rename(v.options) })) };
+    });
 
   const setVariant = (index: number, change: Partial<VariantInput>) =>
     update((p) => {
@@ -1479,11 +1499,7 @@ function VariantsSection({
                   <input
                     value={option.name}
                     placeholder={index === 0 ? w.variants.optionColour : w.variants.optionSize}
-                    onChange={(e) => {
-                      const options = [...product.options];
-                      options[index] = { name: e.target.value, values: parseValues(draft) };
-                      setOptions(options);
-                    }}
+                    onChange={(e) => renameOption(index, e.target.value)}
                     className={input}
                   />
                 </label>
@@ -2748,6 +2764,79 @@ function DigitalSection({ storeSlug, product, update, uploads }: SectionProps & 
 const INTERVALS: PlanInterval[] = ["week", "month", "year"];
 
 /** Purchase options for subscribing (D25), like Shopify's selling plans. */
+/**
+ * A plan's billing (D912): Monthly and Yearly, each on or off with its price in every country, which is all most plans need (the owner's
+ * "this shouldn't be this hard", 27 November 2026). `withBilling()` keeps the variants and purchase options under it; Customise shows them.
+ */
+function PlanBillingSection({ product, update, context, billing, onCustomise }: SectionProps & { context: EditorContext; billing: Billing; onCustomise: () => void }) {
+  const all = useAdminText("product");
+  const r = all.row;
+  const [optionWord = "", monthWord = "", yearWord = ""] = all.kind.planPeriods;
+  const names = [optionWord, monthWord, yearWord] as const;
+  const netPrices = context.audience === "businesses";
+  // A period switched off keeps its prices here, for when it is switched on again.
+  const [held, setHeld] = useState<Record<BillingPeriod, Record<string, string>>>(() => ({ month: billing.month.prices, year: billing.year.prices }));
+  const set = (next: Billing) =>
+    update((p) => withBilling(p, next, names, (options) => emptyVariant(options, "service"), (slugify(p.translations[0]?.title ?? "") || p.handle || "plan").slice(0, 48)));
+  const on = BILLING_PERIODS.filter((period) => billing[period].on);
+  return (
+    <section aria-labelledby="billing-heading" className={card}>
+      {/* Its name is the plan's option's: Billing (Betaling). */}
+      <h2 id="billing-heading" className="mb-1 text-title text-ink">
+        {optionWord}
+      </h2>
+      <div className="flex flex-col divide-y divide-line">
+        {BILLING_PERIODS.map((period) => {
+          const row = billing[period];
+          const name = period === "month" ? names[1] : names[2];
+          return (
+            <div key={period} className="flex flex-wrap items-start gap-x-4 gap-y-2 py-3">
+              <label className="flex min-h-10 w-28 items-center gap-2 text-sm font-medium text-ink">
+                <input
+                  type="checkbox"
+                  className="size-4"
+                  checked={row.on}
+                  // One period at least: a plan is paid for.
+                  disabled={row.on && on.length === 1}
+                  onChange={(e) => {
+                    if (!e.target.checked) setHeld({ ...held, [period]: row.prices });
+                    set({ ...billing, [period]: { on: e.target.checked, prices: e.target.checked ? held[period] : row.prices } });
+                  }}
+                />
+                {name}
+              </label>
+              {row.on &&
+                context.markets.map((market) => (
+                  <label key={market.code} className="flex flex-col gap-1 text-xs text-muted">
+                    <span>
+                      {market.name} · {fillWords(netPrices ? all.variants.exclVat : all.variants.inclVat, { currency: market.currency })}
+                    </span>
+                    <input
+                      inputMode="decimal"
+                      value={row.prices[market.code] ?? ""}
+                      placeholder="0,00"
+                      aria-label={fillWords(r.priceFor, { market: market.name, name, currency: market.currency })}
+                      onChange={(e) => {
+                        const prices = { ...row.prices, [market.code]: e.target.value };
+                        setHeld({ ...held, [period]: prices });
+                        set({ ...billing, [period]: { on: true, prices } });
+                      }}
+                      className={`${input} w-32`}
+                    />
+                    <VatLine typed={row.prices[market.code] ?? ""} market={market} category={product.vatCategory} netPrices={netPrices} words={r} />
+                  </label>
+                ))}
+            </div>
+          );
+        })}
+      </div>
+      <button type="button" onClick={onCustomise} className="mt-2 min-h-10 text-sm text-ink underline underline-offset-2">
+        {all.billing.customise}
+      </button>
+    </section>
+  );
+}
+
 function SubscriptionSection({
   product,
   update,
@@ -2825,6 +2914,11 @@ function SubscriptionSection({
                       className="w-44"
                     >
                       <option value="">{w.everyVariant}</option>
+                      {plan.variantSku !== null && !choosable.some((v) => v.sku === plan.variantSku) && (
+                        <option value={plan.variantSku} disabled>
+                          {w.pickVariant}
+                        </option>
+                      )}
                       {choosable.map((v) => (
                         <option key={v.sku || nameOf(v)} value={v.sku} disabled={!v.sku}>
                           {nameOf(v)}

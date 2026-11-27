@@ -328,11 +328,11 @@ describe("productProblems", () => {
       it("refuses an option for a variant the product does not have on", () => {
         const gone = plan("year", 1, "PLUS-OLD");
         expect(productProblems({ ...billing, plans: [monthly, gone] }, context)).toContain(
-          "Every year, 10% off: it is for a variant this product does not have (on). Choose which variant it is for.",
+          "Every year, 10% off: it is for a variant this product no longer has. Choose which variant it is for.",
         );
         const off = { ...billing, variants: [billing.variants[0], { ...billing.variants[1], active: false }] };
         expect(productProblems({ ...off, plans: [monthly, yearly] }, context)).toContain(
-          "Every year: it is for a variant this product does not have (on). Choose which variant it is for.",
+          "Every year: it is for a variant this product no longer has. Choose which variant it is for.",
         );
       });
 
