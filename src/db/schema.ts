@@ -12026,12 +12026,19 @@ export const instagramAccounts = commerce.table(
     insightsProblem: text("insights_problem"),
     /** The token carries `instagram_business_content_publish` (D870 S3.1): approved posts may be published to the account. */
     publish: boolean("publish").notNull().default(false),
+    /**
+     * How the account was connected (D870): `instagram`, Instagram Login (`graph.instagram.com`, its own token renewed by the feed's job), or
+     * `facebook`, with the Facebook Page it is linked to (Meta's unified login for newer apps): the Page's token, which does not end, on
+     * `graph.facebook.com`.
+     */
+    via: text("via").notNull().default("instagram"),
     connectedBy: uuid("connected_by").references(() => accounts.id, { onDelete: "set null" }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     unique("instagram_accounts_store_key").on(t.storeId).nullsNotDistinct(),
+    check("instagram_accounts_via", sql`${t.via} in ('instagram', 'facebook')`),
     index("instagram_accounts_connected_by_idx").on(t.connectedBy),
     check("instagram_accounts_user", sql`${t.igUserId} ~ '^[0-9]{1,40}$'`),
     check("instagram_accounts_username", sql`char_length(${t.username}) between 1 and 60`),

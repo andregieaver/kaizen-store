@@ -76,3 +76,14 @@ describe("connecting and upkeep", () => {
     expect(postsDue(new Date("2026-11-10T10:59:00Z"), now)).toBe(true);
   });
 });
+
+describe("an account linked to a Facebook Page (D870, unified login)", () => {
+  it("is reached on Facebook's API by its id, and an Instagram Login account on Instagram's as me", async () => {
+    const { igApi, igSelf, linkedAccount } = await import("./instagram");
+    expect(`${igApi("facebook")}/${igSelf("facebook", "17841400000000077")}/media`).toBe("https://graph.facebook.com/v24.0/17841400000000077/media");
+    expect(`${igApi("instagram")}/${igSelf("instagram", "17841400000000077")}/media`).toBe("https://graph.instagram.com/v24.0/me/media");
+    expect(linkedAccount({ instagram_business_account: { id: "17841400000000077", username: "keramikk" } })).toEqual({ id: "17841400000000077", username: "keramikk" });
+    expect(linkedAccount({ id: "5550001" })).toBeNull();
+    expect(linkedAccount({ instagram_business_account: { id: "x1", username: "a" } })).toBeNull();
+  });
+});

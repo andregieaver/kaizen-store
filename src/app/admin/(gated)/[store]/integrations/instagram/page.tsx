@@ -4,6 +4,8 @@ import { InstagramSettings, instagramReturned } from "@/components/admin/instagr
 import { PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
 import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
+import { storeExtensionOn } from "@/lib/extensions";
+import { facebookAppOn } from "@/server/facebook-pages";
 import { instagramAppOn, instagramStatus } from "@/server/instagram";
 import { memberCan, requirePermission } from "@/server/permissions";
 
@@ -32,6 +34,7 @@ export default async function StoreInstagramPage({ params, searchParams }: PageP
           connect={connectInstagramAction.bind(null, store.slug)}
           disconnect={disconnectInstagramAction.bind(null, store.slug)}
           timeZone={store.timeZone}
+          pageHref={facebookAppOn() && storeExtensionOn(store, "social") ? `/admin/${store.slug}/social#social-facebook` : null}
         />
       </div>
     </>

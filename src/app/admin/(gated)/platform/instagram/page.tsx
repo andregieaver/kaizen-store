@@ -6,7 +6,8 @@ import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
 import { NOTIFICATIONS_WORDS } from "@/lib/admin-words/notifications";
 import { platformCan, requirePlatform } from "@/server/auth";
-import { instagramAppOn, instagramStatus } from "@/server/instagram";
+import { facebookAppOn } from "@/server/facebook-pages";
+import { instagramAppOn, platformInstagram } from "@/server/instagram";
 
 import { connectPlatformInstagramAction, disconnectPlatformInstagramAction } from "./actions";
 
@@ -17,16 +18,19 @@ export default async function PlatformInstagramPage({ searchParams }: PageProps<
   const admin = await requirePlatform("settings", "read");
   const lang = adminLangOf(admin.adminLocale);
   const w = NOTIFICATIONS_WORDS[lang].instagram;
+  // Through Kaizena Flow's own store's Facebook Page where the platform has no Instagram Login of its own (D870, unified login).
+  const own = await platformInstagram();
   return (
     <>
       <div className="flex flex-col gap-6">
         <PageHeader title={w.title} description={w.description} />
         <InstagramSettings
-          status={await instagramStatus(null)}
+          status={own.status}
           appOn={instagramAppOn()}
           canEdit={platformCan(admin, "settings")}
           lang={lang}
-          pictureBase="/api/instagram/kaizen"
+          pictureBase={own.pictureBase}
+          pageHref={facebookAppOn() ? own.pageHref : null}
           timeZone={PLATFORM_TIME_ZONE}
           returned={instagramReturned((await searchParams).instagram)}
           connect={connectPlatformInstagramAction}

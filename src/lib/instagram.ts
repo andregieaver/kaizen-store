@@ -144,3 +144,24 @@ export const tokenDue = (expiresAt: Date, now: Date): boolean => expiresAt.getTi
 
 /** Whether the posts should be read again now. */
 export const postsDue = (fetchedAt: Date | null, now: Date): boolean => !fetchedAt || now.getTime() - fetchedAt.getTime() >= POSTS_EVERY_MINUTES * 60_000;
+
+/**
+ * How an account was connected (D870): `instagram`, with Instagram Login, or `facebook`, with the Facebook Page it is linked to (Meta's
+ * unified login, the only one newer apps have). Each reaches the account through its own host: the account is `me` to its own token, and
+ * named by its id to a Page's.
+ */
+export type InstagramVia = "instagram" | "facebook";
+
+/** The API an account is reached through, with its version. */
+export const igApi = (via: InstagramVia): string => (via === "facebook" ? "https://graph.facebook.com/v24.0" : "https://graph.instagram.com/v24.0");
+
+/** The account's own address on its API: `me` with its own token, its id with a Page's. */
+export const igSelf = (via: InstagramVia, igUserId: string): string => (via === "facebook" ? igUserId : "me");
+
+/** The Instagram professional account linked to a Facebook Page, from `/{page-id}?fields=instagram_business_account{id,username}`. */
+export function linkedAccount(json: unknown): { id: string; username: string } | null {
+  const account = (json as { instagram_business_account?: Record<string, unknown> } | null)?.instagram_business_account;
+  const id = typeof account?.id === "string" && /^[0-9]{1,40}$/.test(account.id) ? account.id : null;
+  const username = typeof account?.username === "string" ? account.username.slice(0, 60) : "";
+  return id && username ? { id, username } : null;
+}

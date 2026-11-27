@@ -5,10 +5,10 @@ import { facebookAuthorizeUrl, grantsPageInsights, keptChoices, parsePageInsight
 const since = new Date("2026-09-01T00:00:00Z");
 
 describe("a store's Facebook Page (D870 S1.2b)", () => {
-  it("asks Facebook Login for the Page's posts and their figures only", () => {
+  it("asks Facebook Login for the Page's posts and figures, and its linked Instagram account's (unified login)", () => {
     const url = new URL(facebookAuthorizeUrl("123", "https://kaizenaflow.com/api/integrations/facebook/callback", "st"));
     expect(url.origin + url.pathname).toBe("https://www.facebook.com/v24.0/dialog/oauth");
-    expect(url.searchParams.get("scope")).toBe("pages_show_list,pages_read_engagement,read_insights");
+    expect(url.searchParams.get("scope")).toBe("pages_show_list,pages_read_engagement,read_insights,instagram_basic,instagram_manage_insights,instagram_content_publish");
     expect(url.searchParams.get("state")).toBe("st");
     // On Facebook Login for Business the saved configuration holds the permissions: it is sent in their place.
     const business = new URL(facebookAuthorizeUrl("123", "https://kaizenaflow.com/api/integrations/facebook/callback", "st", "998877"));

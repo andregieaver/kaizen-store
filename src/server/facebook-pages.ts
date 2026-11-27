@@ -16,7 +16,9 @@ import {
   POST_FIELDS,
   type PageChoice,
   type PagePost,
+  grantsPermission,
 } from "@/lib/facebook-pages";
+import { linkedAccount } from "@/lib/instagram";
 import { grantsPagePublish } from "@/lib/social-publish-grants";
 import { INSIGHTS_DAYS, INSIGHTS_KEPT_DAYS, INSIGHTS_POSTS_MAX, insightsDue } from "@/lib/social-insights";
 import { decryptSecret, encryptSecret } from "@/lib/secret-box";
@@ -92,6 +94,35 @@ export async function graph(url: string, init: RequestInit = {}, timeoutMs = TIM
 
 const q = (params: Record<string, string>) => new URLSearchParams(params).toString();
 
+/**
+ * The Instagram professional account linked to the chosen Page (Meta's unified login, the only one newer apps have): kept as the store's
+ * Instagram, through the Page (`via` facebook, the Page's token, which does not end), with what the person allowed (`instagram_basic` to read
+ * it, `instagram_manage_insights` for its figures, `instagram_content_publish` to post). An account connected with Instagram Login stays as it
+ * is; one linked through another Page is replaced, and taken away when the Page has none. The account's name, or null.
+ */
+async function linkInstagram(storeId: string, accountId: string, page: { id: string; token: string }, granted: unknown, key: Buffer): Promise<string | null> {
+  const linked = grantsPermission(granted, "instagram_basic")
+    ? linkedAccount(await graph(`${FACEBOOK_GRAPH}/${page.id}?${q({ fields: "instagram_business_account{id,username}", access_token: page.token })}`).catch(() => null))
+    : null;
+  if (!linked) {
+    await db().execute(sql`delete from commerce.instagram_accounts where store_id = ${storeId}::uuid and via = 'facebook'`);
+    return null;
+  }
+  const insights = grantsPermission(granted, "instagram_manage_insights");
+  const publish = grantsPermission(granted, "instagram_content_publish");
+  await db().execute(sql`
+    insert into commerce.instagram_accounts (store_id, ig_user_id, username, token_encrypted, token_expires_at, insights, publish, via, connected_by)
+    values (${storeId}::uuid, ${linked.id}, ${linked.username}, ${encryptSecret(page.token, key)}, now() + interval '10 years', ${insights}, ${publish}, 'facebook', ${accountId}::uuid)
+    on conflict on constraint instagram_accounts_store_key do update set ig_user_id = excluded.ig_user_id, username = excluded.username,
+      token_encrypted = excluded.token_encrypted, token_expires_at = excluded.token_expires_at, insights = excluded.insights, publish = excluded.publish,
+      posts = case when commerce.instagram_accounts.ig_user_id = excluded.ig_user_id then commerce.instagram_accounts.posts else '[]'::jsonb end,
+      posts_fetched_at = null, problem = null, insights_problem = null, connected_by = excluded.connected_by, updated_at = now()
+    where commerce.instagram_accounts.via = 'facebook'
+  `);
+  await audit(accountId, storeId, "store.instagram_connected", { via: "facebook", insights, publish });
+  return linked.username;
+}
+
 /** Keeps the chosen Page: its token encrypted, the person's token and the choices gone, the figures read from the next run. */
 async function keepPage(storeId: string, page: { id: string; name: string; token: string }, key: Buffer): Promise<void> {
   await db().execute(sql`
@@ -137,7 +168,10 @@ export async function connectFacebook(accountId: string, storeId: string, params
   `);
   // The old Page's figures go with a new connection; the new Page's come with its first reading.
   await db().execute(sql`delete from commerce.social_post_insights where store_id = ${storeId}::uuid and channel = 'facebook'`);
-  if (pages.length === 1) await keepPage(storeId, pages[0], key);
+  if (pages.length === 1) {
+    await keepPage(storeId, pages[0], key);
+    await linkInstagram(storeId, accountId, pages[0], granted, key);
+  }
   await audit(accountId, storeId, "store.facebook_connected", { pages: pages.length, insights: permissions, publish });
   return { choose: pages.length === 1 ? [] : pages.map(({ id, name }) => ({ id, name })) };
 }
@@ -151,10 +185,15 @@ export async function chooseFacebookPage(accountId: string, storeId: string, pag
     sql`select user_token_encrypted as token, choices from commerce.facebook_pages where store_id = ${storeId}::uuid`,
   );
   if (!row?.token || !keptChoices(row.choices).some((c) => c.id === pageId)) return false;
-  const pages = parsePages(await graph(`${FACEBOOK_GRAPH}/me/accounts?${q({ fields: "id,name,access_token", limit: "50", access_token: decryptSecret(row.token, key) })}`));
+  const userToken = decryptSecret(row.token, key);
+  const [pages, granted] = await Promise.all([
+    graph(`${FACEBOOK_GRAPH}/me/accounts?${q({ fields: "id,name,access_token", limit: "50", access_token: userToken })}`).then(parsePages),
+    graph(`${FACEBOOK_GRAPH}/me/permissions?${q({ access_token: userToken })}`).catch(() => null),
+  ]);
   const page = pages.find((p) => p.id === pageId);
   if (!page) return false;
   await keepPage(storeId, page, key);
+  await linkInstagram(storeId, accountId, page, granted, key);
   await audit(accountId, storeId, "store.facebook_page_chosen", {});
   return true;
 }
@@ -162,6 +201,8 @@ export async function chooseFacebookPage(accountId: string, storeId: string, pag
 /** Disconnects the store's Page: the row, its tokens and its posts' figures go. Facebook's own list of apps is the owner's to tidy. */
 export async function disconnectFacebook(accountId: string, storeId: string): Promise<void> {
   const gone = await db().execute(sql`delete from commerce.facebook_pages where store_id = ${storeId}::uuid returning id`);
+  // The Instagram account that came with the Page goes with it; one connected with Instagram Login stays.
+  await db().execute(sql`delete from commerce.instagram_accounts where store_id = ${storeId}::uuid and via = 'facebook'`);
   if (gone.length > 0) await audit(accountId, storeId, "store.facebook_disconnected", {});
 }
 

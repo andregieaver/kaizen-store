@@ -1,6 +1,6 @@
 {
-  "id": "9416153d-8be1-42cc-b42c-d497385c31ca",
-  "prevId": "82e6dea8-79e4-4a45-a9c5-28c2ed017c17",
+  "id": "a089ba05-2e66-4e47-8f17-48c0944611b0",
+  "prevId": "9416153d-8be1-42cc-b42c-d497385c31ca",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -44768,6 +44768,13 @@
           "notNull": true,
           "default": false
         },
+        "via": {
+          "name": "via",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'instagram'"
+        },
         "connected_by": {
           "name": "connected_by",
           "type": "uuid",
@@ -44848,6 +44855,10 @@
       },
       "policies": {},
       "checkConstraints": {
+        "instagram_accounts_via": {
+          "name": "instagram_accounts_via",
+          "value": "\"commerce\".\"instagram_accounts\".\"via\" in ('instagram', 'facebook')"
+        },
         "instagram_accounts_user": {
           "name": "instagram_accounts_user",
           "value": "\"commerce\".\"instagram_accounts\".\"ig_user_id\" ~ '^[0-9]{1,40}$'"

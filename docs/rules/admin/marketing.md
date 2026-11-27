@@ -652,6 +652,13 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `published_url` or Meta's refusal in `publish_problem`; it is their only writer. A published post keeps its approval and words
   (`social_posts_published`; `editSocialPost()`, the unapproval and scenes refuse it). Audited.
 
+## Instagram through the Facebook Page (D870, `src/lib/instagram.ts` `igApi()`, `src/server/facebook-pages.ts` `linkInstagram()`)
+
+- **Instagram through the Facebook Page (D870, `src/lib/instagram.ts` `igApi()`, `src/server/facebook-pages.ts` `linkInstagram()`)**: every call
+  to an Instagram account goes through `igApi(via)` and `igSelf(via, id)`, never a fixed host. A `via` facebook row is written only by
+  `linkInstagram()` when a Page is kept, with the Page's token and `instagram_*` grants from `/me/permissions`; it never replaces a `via`
+  instagram row, and goes when the Page is disconnected or has no linked account. Its token is never renewed (`refreshInstagramFeeds()`).
+
 ## A social post's carousel and Story (D870 S2.1b, `src/lib/social-formats.ts` pure)
 
 - **A social post's carousel and Story (D870 S2.1b, `src/lib/social-formats.ts` pure)**: `social_posts.carousel` and `story` are written only by

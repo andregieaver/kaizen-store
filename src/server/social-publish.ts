@@ -8,6 +8,7 @@ import { decryptSecret } from "@/lib/secret-box";
 import { FACEBOOK_GRAPH } from "@/lib/facebook-pages";
 import { LINKEDIN_API, parseImageUpload, postBody, postUrl, postUrnFrom } from "@/lib/linkedin";
 import { CAROUSEL_CHANNELS, carouselSlides, mayStory } from "@/lib/social-formats";
+import { igApi, type InstagramVia } from "@/lib/instagram";
 import { pinBody, pinIdFrom, pinUrl } from "@/lib/pinterest";
 import { parseInit, postState, privacyFor, TIKTOK_ONE_CHUNK_MAX, videoInitBody, videoUrl } from "@/lib/tiktok";
 import { POST_CHANNELS } from "@/lib/social-posts";
@@ -26,7 +27,7 @@ import {
 import { audit, type Membership } from "./auth";
 import { encryptionKey } from "./encryption-key";
 import { FacebookError, graph } from "./facebook-pages";
-import { call, GRAPH, InstagramError } from "./instagram";
+import { call, InstagramError } from "./instagram";
 import { pinterestCall, PinterestError, pinterestTarget } from "./pinterest";
 import { linkedinCall, LinkedinError, linkedinTarget, restHeaders } from "./linkedin";
 import { loadSharp } from "./sharp-load";
@@ -67,7 +68,7 @@ type Post = z.infer<typeof POST>;
 type Media = { kind: "picture" | "video"; url: string } | { kind: "carousel"; urls: string[] } | { kind: "story"; url: string };
 type PictureOptions = { slide?: number; story?: boolean };
 type Target =
-  | { kind: "instagram"; userId: string; token: string }
+  | { kind: "instagram"; userId: string; token: string; via: InstagramVia }
   | { kind: "facebook"; pageId: string; token: string }
   | { kind: "pinterest"; boardId: string; token: string }
   | { kind: "tiktok"; username: string; token: string }
@@ -110,15 +111,22 @@ async function targetOf(store: Membership["store"], channel: PublishChannel, dep
   }
   if (channel === "instagram") {
     const rows = await typedRows(
-      z.object({ store_id: col.uuid.nullable(), user: col.text, token: col.text, publish: col.bool, live: col.bool }),
-      sql`select store_id, ig_user_id as user, token_encrypted as token, publish, token_expires_at > now() as live from commerce.instagram_accounts
+      z.object({ store_id: col.uuid.nullable(), user: col.text, token: col.text, publish: col.bool, live: col.bool, via: z.enum(["instagram", "facebook"]) }),
+      sql`select store_id, ig_user_id as user, token_encrypted as token, publish, token_expires_at > now() as live, via from commerce.instagram_accounts
         where store_id = ${store.id}::uuid ${store.house ? sql`or store_id is null` : sql``} order by store_id nulls last limit 1`,
     );
     const account = rows[0];
     if (!account) return { problem: "Connect the store's Instagram account first." };
     if (!account.live) return { problem: "The Instagram connection has run out. Connect it again." };
-    if (!account.publish) return { problem: "Connect Instagram again and allow publishing, so Kaizena Flow may post for you." };
-    return { kind: "instagram", userId: account.user, token: decryptSecret(account.token, key) };
+    if (!account.publish) {
+      return {
+        problem:
+          account.via === "facebook"
+            ? "Connect Facebook again and allow publishing to Instagram, so Kaizena Flow may post for you."
+            : "Connect Instagram again and allow publishing, so Kaizena Flow may post for you.",
+      };
+    }
+    return { kind: "instagram", userId: account.user, token: decryptSecret(account.token, key), via: account.via };
   }
   const [page] = await typedRows(
     z.object({ page_id: col.textOrNull, token: col.textOrNull, publish: col.bool }),
@@ -162,10 +170,10 @@ const form = (params: Record<string, string>): RequestInit => ({ method: "POST",
 async function toInstagram(target: Extract<Target, { kind: "instagram" }>, media: Media, text: string, deps: PublishDeps) {
   const ig = deps.instagram ?? call;
   const make = async (params: Record<string, string>) => {
-    const id = idFrom(await ig(`${GRAPH}/v24.0/${target.userId}/media`, form({ ...params, access_token: target.token })));
+    const id = idFrom(await ig(`${igApi(target.via)}/${target.userId}/media`, form({ ...params, access_token: target.token })));
     if (!id) throw new InstagramError("Instagram did not take the post.");
     for (let i = 0; ; i++) {
-      const state = containerState(await ig(`${GRAPH}/v24.0/${id}?${q({ fields: "status_code", access_token: target.token })}`));
+      const state = containerState(await ig(`${igApi(target.via)}/${id}?${q({ fields: "status_code", access_token: target.token })}`));
       if (state === "ready") return id;
       if (state === "failed") throw new InstagramError("Instagram could not process the post's picture or video.");
       if (i >= CONTAINER_CHECKS) throw new InstagramError("Instagram took too long to process the video. Try again in a moment.");
@@ -179,9 +187,9 @@ async function toInstagram(target: Extract<Target, { kind: "instagram" }>, media
     container = await make({ media_type: "CAROUSEL", children: children.join(","), caption: text });
   } else if (media.kind === "story") container = await make({ media_type: "STORIES", image_url: media.url });
   else container = await make(media.kind === "video" ? { media_type: "REELS", video_url: media.url, caption: text } : { image_url: media.url, caption: text });
-  const mediaId = idFrom(await ig(`${GRAPH}/v24.0/${target.userId}/media_publish`, form({ creation_id: container, access_token: target.token })));
+  const mediaId = idFrom(await ig(`${igApi(target.via)}/${target.userId}/media_publish`, form({ creation_id: container, access_token: target.token })));
   if (!mediaId) throw new InstagramError("Instagram did not publish the post.");
-  const url = permalinkFrom(await ig(`${GRAPH}/v24.0/${mediaId}?${q({ fields: "permalink", access_token: target.token })}`).catch(() => null));
+  const url = permalinkFrom(await ig(`${igApi(target.via)}/${mediaId}?${q({ fields: "permalink", access_token: target.token })}`).catch(() => null));
   return { id: mediaId, url };
 }
 

@@ -19,6 +19,7 @@ export function InstagramSettings({
   connect,
   disconnect,
   timeZone,
+  pageHref = null,
 }: {
   status: InstagramStatus | null;
   appOn: boolean;
@@ -29,6 +30,8 @@ export function InstagramSettings({
   returned: keyof ReturnType<typeof words>["returned"] | null;
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
+  /** Where the shop's Facebook Page is connected (Social posts), when Facebook can be connected here: its Instagram comes with it. */
+  pageHref?: string | null;
   /** The store's time zone, or `PLATFORM_TIME_ZONE` for Kaizena Flow's own: when the posts were last read, on that clock (D812). */
   timeZone: string;
 }) {
@@ -42,7 +45,7 @@ export function InstagramSettings({
           {w.returned[returned]}
         </p>
       )}
-      {!appOn && !status ? (
+      {!appOn && !status && !pageHref ? (
         <p className="text-sm text-muted">{w.notSetUp}</p>
       ) : status ? (
         <section className={card} aria-labelledby="instagram-account">
@@ -50,6 +53,7 @@ export function InstagramSettings({
             {fillWords(w.connected, { name: status.username })}
           </h2>
           <p className="text-sm text-muted">{fillWords(w.counts, { n: status.posts, when })}</p>
+          {status.via === "facebook" && <p className="text-sm text-muted">{w.viaPage}</p>}
           {status.problem && <p className="text-sm text-warning-text">{fillWords(w.problem, { problem: status.problem })}</p>}
           {status.recent.length > 0 && (
             <>
@@ -68,19 +72,24 @@ export function InstagramSettings({
           )}
           {canEdit ? (
             <div className="flex flex-wrap items-center gap-3 pt-2">
-              {appOn && (
+              {appOn && status.via === "instagram" && (
                 <QuietActionForm action={connect}>
                   <button type="submit" className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken">
                     {w.reconnect}
                   </button>
                 </QuietActionForm>
               )}
-              <QuietActionForm action={disconnect}>
-                <button type="submit" className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium text-danger-text hover:bg-sunken">
-                  {w.disconnect}
-                </button>
-              </QuietActionForm>
-              <p className="w-full text-xs text-muted">{w.disconnectHint}</p>
+              {/* An account that came with the Facebook Page goes with the Page (Social posts). */}
+              {status.via === "instagram" && (
+                <>
+                  <QuietActionForm action={disconnect}>
+                    <button type="submit" className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium text-danger-text hover:bg-sunken">
+                      {w.disconnect}
+                    </button>
+                  </QuietActionForm>
+                  <p className="w-full text-xs text-muted">{w.disconnectHint}</p>
+                </>
+              )}
             </div>
           ) : (
             <p className="text-sm text-muted">{w.readOnly}</p>
@@ -88,15 +97,23 @@ export function InstagramSettings({
         </section>
       ) : (
         <section className={card}>
-          <p className="text-sm">{w.connectHint}</p>
-          {canEdit ? (
+          {appOn && <p className="text-sm">{w.connectHint}</p>}
+          {canEdit && appOn ? (
             <QuietActionForm action={connect}>
               <button type="submit" className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
                 {w.connect}
               </button>
             </QuietActionForm>
-          ) : (
+          ) : !canEdit ? (
             <p className="text-sm text-muted">{w.readOnly}</p>
+          ) : null}
+          {pageHref && (
+            <p className="text-sm">
+              {w.throughPage}{" "}
+              <a href={pageHref} className="font-medium underline">
+                {w.throughPageLink}
+              </a>
+            </p>
           )}
         </section>
       )}

@@ -199,6 +199,12 @@ template (`socialPicture()`, `?slide=n`); an Instagram or Facebook post can go o
 Both are choices on the calendar that take back the post's yes (`setPostFormat()`). Published as an Instagram carousel or Story, a Page's
 photos in one post or its photo Story, a carousel Pin, a LinkedIn multi-image post; a Story that fails leaves the post out with why.
 
+Instagram through Facebook (27 November): Meta gives newer apps no Instagram Login ("API setup with Instagram login is not available for
+newer apps"), so Instagram's own sign-in answered "Invalid platform app". Connecting or choosing the Facebook Page now also connects the
+Instagram business account linked to it (`linkInstagram()`, `src/server/facebook-pages.ts`): `instagram_accounts.via` = `facebook`, the
+Page's token, which does not end, on `graph.facebook.com` by the account's id (`igApi()`, `igSelf()`), for the feed, the figures and posting.
+Facebook Login for Business's configuration asks `instagram_basic`, `instagram_manage_insights` and `instagram_content_publish` too.
+
 | Step | What |
 |---|---|
 | S3.1 | Publishing to Instagram and Facebook, approval per post. **Done 2026-11-26** (below) |

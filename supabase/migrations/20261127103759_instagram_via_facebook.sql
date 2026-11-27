@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."instagram_accounts" ADD COLUMN "via" text DEFAULT 'instagram' NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."instagram_accounts" ADD CONSTRAINT "instagram_accounts_via" CHECK ("commerce"."instagram_accounts"."via" in ('instagram', 'facebook'));

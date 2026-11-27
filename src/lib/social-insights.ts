@@ -74,7 +74,7 @@ export function parseMediaPage(json: unknown, since: Date): { items: MediaItem[]
     });
   }
   const next = (json as { paging?: { next?: unknown } })?.paging?.next;
-  return { items, next: !older && typeof next === "string" && next.startsWith("https://graph.instagram.com/") ? next : null };
+  return { items, next: !older && typeof next === "string" && (next.startsWith("https://graph.instagram.com/") || next.startsWith("https://graph.facebook.com/")) ? next : null };
 }
 
 /** A post's insights as counts: each metric's value (`values[0].value`, or `total_value.value`), null for one not given; `fields` names

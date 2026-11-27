@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
+import { igApi, igSelf, type InstagramVia } from "@/lib/instagram";
 import { decryptSecret } from "@/lib/secret-box";
 import {
   FALLBACK_METRICS,
@@ -22,7 +23,7 @@ import {
 
 import { jobReport } from "./cache-events";
 import { encryptionKey } from "./encryption-key";
-import { call, GRAPH, InstagramError } from "./instagram";
+import { call, InstagramError } from "./instagram";
 import { log } from "./log";
 import { owned } from "./owned";
 import { col, typedRows } from "./typed-rows";
@@ -35,14 +36,14 @@ import { col, typedRows } from "./typed-rows";
  */
 
 /** The account's posts on or after `since`, newest first, at most `INSIGHTS_POSTS_MAX`. */
-async function readMedia(token: string, since: Date): Promise<MediaItem[]> {
+async function readMedia(token: string, since: Date, via: InstagramVia, igUserId: string): Promise<MediaItem[]> {
   const params = new URLSearchParams({
     fields: "id,caption,media_type,media_product_type,permalink,timestamp",
     limit: "50",
     since: String(Math.floor(since.getTime() / 1000)),
     access_token: token,
   });
-  let url: string | null = `${GRAPH}/me/media?${params}`;
+  let url: string | null = `${igApi(via)}/${igSelf(via, igUserId)}/media?${params}`;
   const items: MediaItem[] = [];
   while (url && items.length < INSIGHTS_POSTS_MAX) {
     const page = parseMediaPage(await call(url), since);
@@ -53,10 +54,10 @@ async function readMedia(token: string, since: Date): Promise<MediaItem[]> {
 }
 
 /** One post's totals: the metrics its kind has, else reach alone, else none (a post Instagram keeps no figures for). */
-async function readFigures(token: string, mediaId: string, kind: InsightKind): Promise<PostFigures> {
+async function readFigures(token: string, mediaId: string, kind: InsightKind, via: InstagramVia): Promise<PostFigures> {
   for (const metrics of [METRICS[kind], FALLBACK_METRICS]) {
     try {
-      return parseInsights(await call(`${GRAPH}/${mediaId}/insights?${new URLSearchParams({ metric: metrics.join(","), access_token: token })}`));
+      return parseInsights(await call(`${igApi(via)}/${mediaId}/insights?${new URLSearchParams({ metric: metrics.join(","), access_token: token })}`));
     } catch (error) {
       if (!(error instanceof InstagramError)) throw error;
     }
@@ -65,13 +66,13 @@ async function readFigures(token: string, mediaId: string, kind: InsightKind): P
 }
 
 /** Reads and keeps one account's posts and figures; the number of posts kept. */
-async function readAccount(row: { id: string; store_id: string | null; token: string }, now: Date): Promise<number> {
+async function readAccount(row: { id: string; store_id: string | null; token: string; via: InstagramVia; user: string }, now: Date): Promise<number> {
   const key = encryptionKey();
   if (!key) return 0;
   const token = decryptSecret(row.token, key);
-  const media = await readMedia(token, new Date(now.getTime() - INSIGHTS_DAYS * 86_400_000));
+  const media = await readMedia(token, new Date(now.getTime() - INSIGHTS_DAYS * 86_400_000), row.via, row.user);
   for (const item of media) {
-    const f = await readFigures(token, item.id, item.kind);
+    const f = await readFigures(token, item.id, item.kind, row.via);
     await db().execute(sql`
       insert into commerce.social_post_insights
         (account_id, store_id, media_id, kind, media_type, posted_at, caption, permalink, reach, views, likes, comments, saves, shares, interactions, fetched_at)
@@ -95,9 +96,9 @@ export async function refreshSocialInsights(now = new Date(), limit = 10): Promi
   const outcome = { read: 0, posts: 0, failed: 0 };
   if (!encryptionKey()) return outcome;
   const rows = await typedRows(
-    z.object({ id: col.uuid, store_id: col.uuid.nullable(), token: col.text, fetched: col.timestampOrNull }),
+    z.object({ id: col.uuid, store_id: col.uuid.nullable(), token: col.text, fetched: col.timestampOrNull, via: z.enum(["instagram", "facebook"]), user: col.text }),
     sql`
-      select id, store_id, token_encrypted as token, insights_fetched_at as fetched
+      select id, store_id, token_encrypted as token, insights_fetched_at as fetched, via, ig_user_id as user
       from commerce.instagram_accounts
       where insights and token_expires_at > now()
       order by insights_fetched_at nulls first

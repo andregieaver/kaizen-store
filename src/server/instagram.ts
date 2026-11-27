@@ -7,7 +7,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { z } from "zod";
 
 import { db, readDb } from "@/db/client";
-import { authorizeUrl, keptPosts, parsePosts, postsDue, tokenDue, type InstagramPost } from "@/lib/instagram";
+import { authorizeUrl, igApi, igSelf, keptPosts, parsePosts, postsDue, tokenDue, type InstagramPost, type InstagramVia } from "@/lib/instagram";
 import { grantsInsights } from "@/lib/social-insights";
 import { grantsPublish } from "@/lib/social-publish-grants";
 import { decryptSecret, encryptSecret } from "@/lib/secret-box";
@@ -97,10 +97,10 @@ export async function call(url: string, init: RequestInit = {}): Promise<Record<
   return json;
 }
 
-/** The account's latest posts, read with its token. */
-async function readPosts(token: string): Promise<InstagramPost[]> {
+/** The account's latest posts, read with its token on its own API (Instagram's, or Facebook's for an account linked to a Page). */
+async function readPosts(token: string, via: InstagramVia = "instagram", igUserId = ""): Promise<InstagramPost[]> {
   const params = new URLSearchParams({ fields: FIELDS, limit: "60", access_token: token });
-  return parsePosts(await call(`${GRAPH}/me/media?${params}`));
+  return parsePosts(await call(`${igApi(via)}/${igSelf(via, igUserId)}/media?${params}`));
 }
 
 /**
@@ -154,18 +154,29 @@ export async function disconnectInstagram(accountId: string, storeId: string | n
   refreshTag(instagramTag(storeId));
 }
 
-export type InstagramStatus = { username: string; posts: number; fetchedAt: string | null; problem: string | null; recent: InstagramPost[] };
+export type InstagramStatus = { username: string; posts: number; fetchedAt: string | null; problem: string | null; recent: InstagramPost[]; via: InstagramVia };
 
 /** What the admin shows of the owner's connection; null when none. */
 export async function instagramStatus(storeId: string | null): Promise<InstagramStatus | null> {
   const mine = owned(storeId);
   const [row] = await typedRows(
-    z.object({ username: col.text, posts: z.unknown(), fetched: col.timestampOrNull, problem: col.textOrNull }),
-    sql`select username, posts, posts_fetched_at as fetched, problem from commerce.instagram_accounts where ${mine}`,
+    z.object({ username: col.text, posts: z.unknown(), fetched: col.timestampOrNull, problem: col.textOrNull, via: z.enum(["instagram", "facebook"]) }),
+    sql`select username, posts, posts_fetched_at as fetched, problem, via from commerce.instagram_accounts where ${mine}`,
   );
   if (!row) return null;
   const posts = keptPosts(row.posts);
-  return { username: row.username, posts: posts.length, fetchedAt: row.fetched, problem: row.problem, recent: posts.slice(0, 6) };
+  return { username: row.username, posts: posts.length, fetchedAt: row.fetched, problem: row.problem, recent: posts.slice(0, 6), via: row.via };
+}
+
+/**
+ * Kaizena Flow's own Instagram for the platform's page: the platform's own row (Instagram Login), else the one that came with its own
+ * store's Facebook Page (D870, unified login), and where that Page is connected.
+ */
+export async function platformInstagram(): Promise<{ status: InstagramStatus | null; pageHref: string | null; pictureBase: string }> {
+  const [house] = await typedRows(z.object({ id: col.uuid, slug: col.text }), sql`select id, slug from commerce.stores where house limit 1`);
+  const own = await instagramStatus(null);
+  const status = own ?? (house ? await instagramStatus(house.id) : null);
+  return { status, pageHref: house ? `/admin/${house.slug}/social#social-facebook` : null, pictureBase: !own && house ? `/api/instagram/${house.id}` : "/api/instagram/kaizen" };
 }
 
 /**
@@ -203,9 +214,9 @@ export async function refreshInstagramFeeds(now = new Date(), limit = 20): Promi
   const outcome = { refreshed: 0, read: 0, failed: 0 };
   if (!key) return outcome;
   const rows = await typedRows(
-    z.object({ id: col.uuid, store_id: col.uuid.nullable(), token: col.text, expires: col.timestamp, fetched: col.timestampOrNull }),
+    z.object({ id: col.uuid, store_id: col.uuid.nullable(), token: col.text, expires: col.timestamp, fetched: col.timestampOrNull, via: z.enum(["instagram", "facebook"]), user: col.text }),
     sql`
-      select id, store_id, token_encrypted as token, token_expires_at as expires, posts_fetched_at as fetched
+      select id, store_id, token_encrypted as token, token_expires_at as expires, posts_fetched_at as fetched, via, ig_user_id as user
       from commerce.instagram_accounts
       where token_expires_at > now()
       order by posts_fetched_at nulls first
@@ -213,7 +224,8 @@ export async function refreshInstagramFeeds(now = new Date(), limit = 20): Promi
     `,
   );
   for (const row of rows) {
-    const refresh = tokenDue(new Date(row.expires), now);
+    // A Page's token (an account linked to a Facebook Page) does not end: only Instagram Login's is renewed.
+    const refresh = row.via === "instagram" && tokenDue(new Date(row.expires), now);
     const read = postsDue(row.fetched ? new Date(row.fetched) : null, now);
     if (!refresh && !read) continue;
     try {
@@ -228,7 +240,7 @@ export async function refreshInstagramFeeds(now = new Date(), limit = 20): Promi
         }
       }
       if (read) {
-        const posts = await readPosts(token);
+        const posts = await readPosts(token, row.via, row.user);
         await db().execute(sql`update commerce.instagram_accounts set posts = ${JSON.stringify(posts)}::jsonb, posts_fetched_at = now(), problem = null, updated_at = now() where id = ${row.id}::uuid`);
         refreshTag(instagramTag(row.store_id));
         outcome.read += 1;

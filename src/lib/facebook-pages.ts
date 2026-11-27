@@ -10,7 +10,15 @@
 import { INSIGHT_CAPTION_KEPT, NO_FIGURES, parseInsights, type MediaItem, type PostFigures } from "./social-insights";
 
 export const FACEBOOK_GRAPH = "https://graph.facebook.com/v24.0";
-export const FACEBOOK_SCOPES = ["pages_show_list", "pages_read_engagement", "read_insights"] as const;
+export const FACEBOOK_SCOPES = [
+  "pages_show_list",
+  "pages_read_engagement",
+  "read_insights",
+  // The Instagram account linked to the Page (Meta's unified login): its posts, figures and publishing.
+  "instagram_basic",
+  "instagram_manage_insights",
+  "instagram_content_publish",
+] as const;
 
 /**
  * Where the owner signs in with Facebook and allows reading their Page's posts. An app on Facebook Login for Business names its saved
@@ -121,3 +129,9 @@ export const parsePageInsights = (json: unknown): Pick<PostFigures, "reach" | "v
   const f = parseInsights(json, PAGE_FIELDS);
   return { reach: f.reach, views: f.views };
 };
+
+/** Whether the person granted a permission, from `/me/permissions`. */
+export function grantsPermission(json: unknown, permission: string): boolean {
+  const data = (json as { data?: unknown })?.data;
+  return Array.isArray(data) && (data as Record<string, unknown>[]).some((p) => p?.permission === permission && p.status === "granted");
+}
