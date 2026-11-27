@@ -13,3 +13,7 @@ states (`test.use({ storageState: OWNER.state })`); a platform admin (`ADMIN`, D
 stand-in checking a code from `e2e/fixtures/totp.mjs`.
 
 Never add a bypass to the app's sign-in for a test: the stand-in is the only fake, and only it is told it is one.
+
+The specs that switch the one test store's Deals and Projects on and off (`contracts`, `deals`, `projects`) run one at a time in the project
+`signed-in-switches` beside the rest (`playwright.config.ts`); run them with `--project=signed-in-switches`, and add a spec
+there when it switches a store feature another spec relies on.

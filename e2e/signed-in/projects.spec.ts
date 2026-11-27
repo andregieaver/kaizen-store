@@ -58,6 +58,8 @@ test.beforeAll(async () => {
     const [store] = await sql`select id, 'projects' = any(features) as on, 'sales' = any(features) as sales from commerce.stores where slug = ${E2E_STORE}`;
     wasOn = Boolean(store.on);
     salesWasOn = Boolean(store.sales);
+    // Deals' switch shows while its pilot is open, as deals.spec.ts and contracts.spec.ts open it (all three run one at a time).
+    await sql`update commerce.stores set sales_pilot = true where slug = ${E2E_STORE}`;
     const [buyer] = await sql`insert into commerce.customers (store_id, email, name) values (${store.id}, ${`kari-${run}@example.com`}, ${BUYER}) returning id`;
     buyerId = String(buyer.id);
   } finally {
@@ -80,6 +82,12 @@ test.afterAll(async ({ browser }) => {
   if (!wasOn) await projects(page, false);
   if (!salesWasOn) await feature(page, "Deals", false);
   await page.close();
+  const pilot = testDb();
+  try {
+    await pilot`update commerce.stores set sales_pilot = false where slug = ${E2E_STORE}`;
+  } finally {
+    await pilot.end();
+  }
 });
 
 test("an owner makes a checklist, adds tasks with Enter and ticks one off", async ({ page }) => {

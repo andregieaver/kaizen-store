@@ -354,7 +354,8 @@ jobs:
         run: node scripts/db-setup.mjs --seed
       - run: node scripts/timed.mjs build-signed-in -- pnpm build
       - run: pnpm exec playwright install chromium
-      - run: node scripts/timed.mjs signed-in --playwright-report=playwright-report.json -- pnpm exec playwright test --project=signed-in
+      # signed-in-switches: the specs that switch Deals and Projects on and off, one at a time beside the rest (playwright.config.ts).
+      - run: node scripts/timed.mjs signed-in --playwright-report=playwright-report.json -- pnpm exec playwright test --project=signed-in --project=signed-in-switches
         env:
           PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-report.json
       - if: failure()

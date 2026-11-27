@@ -26,6 +26,10 @@ const chromium = {
 // The key the server decrypts AI keys with; the chat test (e2e/chat.spec.ts) encrypts its store's with it.
 process.env.SETTINGS_ENCRYPTION_KEY ??= Buffer.alloc(32, 7).toString("base64");
 
+// The signed-in specs that switch the store's Deals and Projects (and the Deals pilot) on and off for the one test store: run one at a time
+// in a project of their own beside the rest, so one spec's afterAll never switches off what another is using (run 2046, run 2047, D910).
+const SWITCHING_SPECS = ["signed-in/contracts.spec.ts", "signed-in/deals.spec.ts", "signed-in/projects.spec.ts"];
+
 // The shopper's own path in Safari's engine as well (PSI UX-12): in CI, or locally with E2E_WEBKIT and WebKit installed.
 const webkit = Boolean(process.env.CI || process.env.E2E_WEBKIT);
 const WEBKIT_SPECS = ["store-pages.spec.ts", "search.spec.ts", "cookies.spec.ts", "withdrawal.spec.ts", "cart.spec.ts", "account.spec.ts", "products-page.spec.ts"];
@@ -52,7 +56,8 @@ export default defineConfig({
       ? [
           // Signs the test people in through the real form and keeps their browser states (e2e/signed-in/auth.setup.ts).
           { name: "signed-in-setup", testMatch: "signed-in/auth.setup.ts", use: chromium },
-          { name: "signed-in", testMatch: "signed-in/**/*.spec.ts", dependencies: ["signed-in-setup"], use: chromium },
+          { name: "signed-in", testMatch: "signed-in/**/*.spec.ts", testIgnore: SWITCHING_SPECS, dependencies: ["signed-in-setup"], use: chromium },
+          { name: "signed-in-switches", testMatch: SWITCHING_SPECS, workers: 1, dependencies: ["signed-in-setup"], use: chromium },
         ]
       : []),
   ],
