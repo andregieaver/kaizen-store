@@ -915,6 +915,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D910 | **Where Deals and Projects meet, a deal's next steps are tasks** | 2026-11-27 | [text](decisions/D910.md) |
 | D911 | **A purchase option can be for one variant, so monthly and yearly are variants with their own prices** | 2026-11-27 | [text](decisions/D911.md) |
 | D912 | **Plans: a product kind shown in a pricing table, never on a page of its own, that gives access in an app** | 2026-11-27 | [text](decisions/D912.md) |
+| D913 | **A price of nothing is shown as Free, and a free order or subscription never goes to a payment provider** | 2026-11-27 | [text](decisions/D913.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
