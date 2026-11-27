@@ -913,6 +913,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D908 | **The phone app, a Capacitor shell around the admin, for iPhone and Android** | 2026-11-26 | [text](decisions/D908.md) |
 | D909 | **Guide: the admin shown around a little at a time** | 2026-11-26 | [text](decisions/D909.md) |
 | D910 | **Where Deals and Projects meet, a deal's next steps are tasks** | 2026-11-27 | [text](decisions/D910.md) |
+| D911 | **A purchase option can be for one variant, so monthly and yearly are variants with their own prices** | 2026-11-27 | [text](decisions/D911.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
