@@ -67,7 +67,11 @@ jobs:
           restore-keys: |
             eslint-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs') }}-
       - run: node scripts/timed.mjs lint -- pnpm lint
+      # A cold type check (no tsconfig.tsbuildinfo from an earlier run) used 7.4 to 7.6 GB on 26 November 2026, at the 7 GB heap above: run 2041
+      # ran out of it (docs/build-memory.md). The runner has 16 GB (a public repository), so the type check alone gets 12 GB; the builds keep 7 GB.
       - run: node scripts/timed.mjs typecheck --warm-if=tsconfig.tsbuildinfo -- pnpm typecheck
+        env:
+          NODE_OPTIONS: --max-old-space-size=12288
       # A one-week trial of bloat review step 2.42, until 25 November 2026: the native TypeScript 7 compiler (fetched for this step only, never installed in the project) checks the same program beside tsc,
       # and its errors are kept to compare with tsc's. It cannot fail the job and has no ceiling in scripts/ci-budgets.json (recorded, not held).
       - name: "Trial: native type check (does not fail the job)"
@@ -423,6 +427,9 @@ jobs:
       - name: "Quick gate: type check"
         if: steps.status.outputs.pending == 'false' && vars.DEPLOY_VIA_CI == 'true'
         run: node scripts/timed.mjs gate-typecheck --warm-if=tsconfig.tsbuildinfo -- pnpm typecheck
+        # The same heap as static's type check: a cold one needs more than 7 GB (docs/build-memory.md).
+        env:
+          NODE_OPTIONS: --max-old-space-size=12288
       - name: "Quick gate: money, cart, checkout and VAT tests"
         if: steps.status.outputs.pending == 'false' && vars.DEPLOY_VIA_CI == 'true'
         run: node scripts/timed.mjs gate-smoke -- pnpm test:smoke

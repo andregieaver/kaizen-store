@@ -141,3 +141,19 @@ at the same time, and is not the figure. No build was killed.
 gained 0.8 to 1.0 GB over (a) alone and 0.4 to 0.6 GB with the other switch, more than 0.3 GB each time, so it stays in `next.config.ts` for Vercel only; CI's and local builds
 keep their source maps. The name `turbopackSourceMaps` (already off since D709) is the Turbopack one in this Next version's config type, `serverSourceMaps` is the
 generic one beside it.
+
+## The type check in CI, 26 November 2026
+
+CI's type check (`static` and the quick gate) ran with the workflow's 7 GB heap. While `tsconfig.tsbuildinfo` from an earlier run is restored it
+checks only what changed; run 2041 started before run 2040 had saved that file, checked the whole program and ran out of heap after 290 s
+("Ineffective mark-compacts near heap limit", exit 134). Measured here with `tsc --noEmit --extendedDiagnostics`, no build info:
+
+| Commit | Types | Instantiations | Memory used | Check time |
+| --- | --- | --- | --- | --- |
+| `64fc197` (the last green run, 2030), 9 GB heap | 2,710,593 | 6,980,540 | 7.62 GB | 256 s |
+| `27c9180` (run 2041), 7 GB heap | 2,718,225 | 6,994,312 | 7.38 GB (peak resident 7.70 GB) | 273 s |
+
+No commit made a jump (0.3% more types between the two): a cold check of the whole program had grown to the limit, and the warm runs hid
+it. The two type check steps now set a 12 GB heap of their own; GitHub's standard runner for a public repository has 16 GB. The builds keep
+7 GB (`scripts/next-build.mjs`), and Vercel's build runs no type check (above). If a cold check nears 12 GB, the program's types are the
+thing to cut, not the heap.
