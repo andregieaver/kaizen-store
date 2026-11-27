@@ -175,3 +175,31 @@ describe("a cookie scan whose page stops answering", () => {
     expect(closed).toBe(true);
   });
 });
+
+/**
+ * Incident 0837a4c2: on Vercel Chromium runs as a single process, and a context opened after another was closed dies at `newPage`, so
+ * every scan failed at its second visit (the one with consent). Each visit now has a browser of its own.
+ */
+describe("a cookie scan's visits", () => {
+  it("each run in a browser of their own, the first closed before the second opens", async () => {
+    const events: string[] = [];
+    let launched = 0;
+    const launch = async () => {
+      const n = ++launched;
+      events.push(`launch ${n}`);
+      let contexts = 0;
+      const page = { goto: async () => ({ status: () => 200 }), waitForLoadState: async () => {}, $$eval: async () => [], frames: () => [] };
+      return {
+        newContext: async () => {
+          // A second context in one browser is what dies on Vercel.
+          if (++contexts > 1) throw new Error("browserContext.newPage: Target page, context or browser has been closed");
+          return { addCookies: async () => {}, newPage: async () => page, cookies: async () => [], close: async () => {} };
+        },
+        close: async () => void events.push(`close ${n}`),
+      } as never;
+    };
+    const target: ScanTarget = { origin: "https://shop.example", starts: ["/"], within: () => true, consent: { name: "consent", value: "all" }, maxPages: 3 };
+    await expect(scanWithin(launch, target, 5000)).resolves.toEqual({ pages: ["/"], items: [] });
+    expect(events).toEqual(["launch 1", "close 1", "launch 2", "close 2"]);
+  });
+});
