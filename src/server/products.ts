@@ -52,6 +52,7 @@ import { storedFileInfo, uploadsEnabled } from "./media";
 import { refreshBuyFacts } from "./buy-facts";
 import { auditProductSave, productSnapshot } from "./product-audit";
 import { checkLimit } from "./limits";
+import { log } from "./log";
 import { listLayoutChoices } from "./product-layouts";
 import { listVatCategories, ratesNow } from "./vat-categories";
 import type { Store } from "./stores";
@@ -950,7 +951,10 @@ export async function saveProduct(
     return { ok: true, productId: id };
   } catch (error) {
     if (error instanceof FieldProblems) return { ok: false, problems: error.problems };
-    return { ok: false, problems: [saveProblem(error, input)] };
+    const problem = saveProblem(error, input);
+    // A failure no rule above names is logged, so its cause can be read in the logs rather than guessed (the owner, 27 November 2026).
+    if (problem === UNNAMED_SAVE_PROBLEM) log("error", "product.save_failed", { storeId: store.id, productId, kind: input.kind, status: input.status }, error);
+    return { ok: false, problems: [problem] };
   }
 }
 
@@ -1695,8 +1699,10 @@ function saveProblem(error: unknown, input: ProductInput): string {
   if (text.includes("without a title")) return "Give the product a title.";
   if (text.includes("unknown product")) return "This product no longer exists.";
   if (text.includes("foreign file")) return "A file could not be found. Upload it again.";
-  return "The product could not be saved. Nothing was changed; try again.";
+  return UNNAMED_SAVE_PROBLEM;
 }
+
+const UNNAMED_SAVE_PROBLEM = "The product could not be saved. Nothing was changed; try again.";
 
 /** Takes a product off sale and out of the list (it is kept, not deleted). */
 export async function setArchived(store: Store, productId: string, archived: boolean, actor?: { id: string }): Promise<boolean> {
