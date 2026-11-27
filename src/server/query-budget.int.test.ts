@@ -39,6 +39,12 @@ vi.mock("./replicate-fetch", async (importOriginal) => ({
     return { ok: false as const, problem: "query budget: no network" };
   },
 }));
+// No browser here: the due cookie scan finds nothing and ends done, since a scan that fails counts as a failed run of the job and would
+// add the failing job's alert and incident to the figures (incident 74c699bf, ci-red #72). Its own statements are the same either way.
+vi.mock("@/lib/cookie-scan", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/cookie-scan")>()),
+  scanWithin: async () => ({ pages: [], items: [] }),
+}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
 vi.mock("next/server", () => ({
   connection: async () => {},
