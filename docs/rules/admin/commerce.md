@@ -1163,6 +1163,17 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   migration for production's template and by `supabase/seed.sql`, a picture
   in `public/demo/`, and `clone_store()` copying its new tables and columns.
 
+## Purchase options for one variant (D911, `selling_plans.variant_id`, `plansFor()`/`lowestPlanPrice()` in `src/lib/subscriptions.ts`)
+
+- **Purchase options for one variant (D911)**: an option is for every variant (`variant_id` null) or for one of its own product's variants
+  (`selling_plans_variant_of_product()`), so monthly and yearly are variants with their own prices, each with its own option. A price never
+  lives on an option: prices change only through `commerce.set_price`, and the option keeps only its discount, trial, fee and commitment.
+  Every reader that pairs an option with a variant applies the same test, `variant_id is null or variant_id = v.id`: adding to the cart,
+  the cart's and checkout's joins (a line whose option is not for its variant is not `plan_ok`) and `swapChoices()`; the product page
+  offers `plansFor()` the chosen variant (`PurchaseOptions` inside `VariantChoice`). Never widen an option to every variant when its variant
+  is gone: the editor names it by SKU and the save throws on an unknown one. A new copy of a store's rows that copies `selling_plans`
+  maps `variant_id` the way it maps the variant (`clone_store()`/`duplicate_store()` wrap their `_rows` originals for this).
+
 ## Subscription boxes (D102, named so in every text shoppers and staff read; `src/lib/standing-orders.ts`, `src/server/standing-orders.ts`,…
 
 - Subscription boxes (D102, named so in every text shoppers and staff read; `src/lib/standing-orders.ts`, `src/server/standing-orders.ts`,

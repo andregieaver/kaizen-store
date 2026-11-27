@@ -697,7 +697,9 @@ describe("what the migration and the registries say", () => {
       expect(/\bdrop\b|truncate/i.test(src), name).toBe(false);
     }
     expect(await scalar<boolean>(db, "select position('issue_order_invoice' in prosrc) > 0 from pg_proc where proname = 'complete_order_payment'")).toBe(true);
-    expect(await scalar<boolean>(db, "select position('commerce.invoice_settings' in prosrc) > 0 from pg_proc where proname = 'duplicate_store'")).toBe(true);
+    // The copy itself is duplicate_store_rows(), which duplicate_store() wraps (D911).
+    expect(await scalar<boolean>(db, "select position('commerce.invoice_settings' in prosrc) > 0 from pg_proc where proname = 'duplicate_store_rows'")).toBe(true);
+    expect(await scalar<boolean>(db, "select position('commerce.duplicate_store_rows' in prosrc) > 0 from pg_proc where proname = 'duplicate_store'")).toBe(true);
   });
 
   it("sets a fixed search path on every function, and row-level security on every table", async () => {

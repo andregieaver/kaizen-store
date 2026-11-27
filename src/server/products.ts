@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { sortedAttributes, standardProblems, type StandardAttributes } from "@/lib/product-taxonomy";
@@ -59,6 +60,7 @@ import { listTerms, scopedTermIds } from "./taxonomy";
 import { categoryMarks } from "./unit-price-gaps";
 import { standardShownOf, taxonomy } from "./product-taxonomy";
 import { deriveForProducts, marketPriceRules } from "./market-prices";
+import { col, typedRows } from "./typed-rows";
 
 type Row = Record<string, unknown>;
 type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
@@ -358,9 +360,11 @@ export async function getProductForEdit(
       order by f.position, f.created_at
     `),
     db().execute<Row>(sql`
-      select id, interval, interval_count, discount_percent, trial_days, signup_fee, min_cycles from commerce.selling_plans
-      where store_id = ${store.id}::uuid and product_id = ${productId}::uuid and active
-      order by position, created_at
+      select sp.id, v.sku as variant_sku, sp.interval, sp.interval_count, sp.discount_percent, sp.trial_days, sp.signup_fee, sp.min_cycles
+      from commerce.selling_plans sp
+      left join commerce.product_variants v on v.store_id = sp.store_id and v.id = sp.variant_id
+      where sp.store_id = ${store.id}::uuid and sp.product_id = ${productId}::uuid and sp.active
+      order by sp.position, sp.created_at
     `),
     db().execute<Row>(sql`
       select t.id, t.kind from commerce.product_terms pt
@@ -513,6 +517,7 @@ export async function getProductForEdit(
     downloadDays: product.download_days !== null ? Number(product.download_days) : sold ? null : 30,
     plans: plans.map((p) => ({
       id: String(p.id),
+      variantSku: p.variant_sku ? String(p.variant_sku) : null,
       interval: p.interval as PlanInterval,
       intervalCount: Number(p.interval_count),
       discountPercent: Number(p.discount_percent),
@@ -1538,6 +1543,9 @@ async function saveVariants(
   `);
 }
 
+/** A variant of the product being saved, by its SKU (D911: what a purchase option for one variant names). */
+const PLAN_VARIANT_ROW = z.object({ id: col.uuid, sku: col.text });
+
 /**
  * Saves the purchase options (D25). An option left out is switched off, not
  * deleted: carts, orders and subscriptions keep pointing at it.
@@ -1550,8 +1558,21 @@ async function savePlans(
   markets: EditorContext["markets"],
   audience: StoreAudience,
 ) {
+  // An option for one variant (D911) names it by SKU in the editor; the variants are saved first.
+  const variants = await typedRows(
+    PLAN_VARIANT_ROW,
+    sql`
+    select id, sku from commerce.product_variants
+    where store_id = ${storeId}::uuid and product_id = ${productId}::uuid
+  `,
+    tx,
+  );
+  const variantBySku = new Map(variants.map((v) => [v.sku, v.id]));
   const kept: string[] = [];
   for (const [position, plan] of input.plans.entries()) {
+    const variantId = plan.variantSku === null ? null : variantBySku.get(plan.variantSku);
+    // Never widened to every variant: a yearly option on the monthly variant would charge the monthly price once a year.
+    if (variantId === undefined) throw new Error("unknown variant for a purchase option");
     // Sign-up fees in minor units per market; empty or zero means none (D29).
     const fees: Record<string, number> = {};
     for (const market of markets) {
@@ -1561,7 +1582,7 @@ async function savePlans(
     const [row] = plan.id
       ? await tx.execute<Row>(sql`
           update commerce.selling_plans set
-            interval = ${plan.interval}, interval_count = ${plan.intervalCount},
+            variant_id = ${variantId}::uuid, interval = ${plan.interval}, interval_count = ${plan.intervalCount},
             discount_percent = ${plan.discountPercent}, trial_days = ${plan.trialDays},
             signup_fee = (coalesce(signup_fee, '{}'::jsonb) - ${marketCodes(markets)}) || ${JSON.stringify(fees)}::jsonb, min_cycles = ${plan.minCycles},
             position = ${position}, active = true
@@ -1570,9 +1591,9 @@ async function savePlans(
         `)
       : await tx.execute<Row>(sql`
           insert into commerce.selling_plans (
-            store_id, product_id, interval, interval_count, discount_percent, trial_days, signup_fee, min_cycles, position
+            store_id, product_id, variant_id, interval, interval_count, discount_percent, trial_days, signup_fee, min_cycles, position
           ) values (
-            ${storeId}::uuid, ${productId}::uuid, ${plan.interval}, ${plan.intervalCount}, ${plan.discountPercent},
+            ${storeId}::uuid, ${productId}::uuid, ${variantId}::uuid, ${plan.interval}, ${plan.intervalCount}, ${plan.discountPercent},
             ${plan.trialDays}, ${JSON.stringify(fees)}::jsonb, ${plan.minCycles}, ${position}
           )
           returning id

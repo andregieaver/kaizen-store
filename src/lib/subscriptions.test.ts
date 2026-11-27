@@ -4,12 +4,15 @@ import {
   addPeriods,
   basketShipping,
   commitmentEnd,
+  lowestPlanPrice,
   nextCharge,
   pauseEnd,
   planPrice,
+  plansFor,
   planSummary,
   reminderDue,
   renewalState,
+  rhythmIn,
   sameRhythm,
   subscriptionStatusFor,
 } from "./subscriptions";
@@ -21,6 +24,50 @@ describe("planPrice", () => {
     expect(planPrice(24900, 10)).toBe(22410);
     expect(planPrice(12900, 15)).toBe(10965);
     expect(planPrice(999, 0)).toBe(999);
+  });
+});
+
+describe("purchase options for one variant (D911)", () => {
+  const monthly = { id: "m", amountMinor: 19900 };
+  const yearly = { id: "y", amountMinor: 199000 };
+  const plans = [
+    { id: "every-month", variantId: "m", discountPercent: 0 },
+    { id: "every-year", variantId: "y", discountPercent: 0 },
+  ];
+
+  it("offers a variant only the options for every variant and its own", () => {
+    expect(plansFor(plans, "m").map((p) => p.id)).toEqual(["every-month"]);
+    expect(plansFor(plans, "y").map((p) => p.id)).toEqual(["every-year"]);
+    const everyone = { id: "save", variantId: null, discountPercent: 10 };
+    expect(plansFor([...plans, everyone], "m").map((p) => p.id)).toEqual(["every-month", "save"]);
+    expect(plansFor(plans, "other")).toEqual([]);
+  });
+
+  it("shows the lowest price a subscriber can pay, never a discount the cheapest variant cannot have", () => {
+    expect(lowestPlanPrice([monthly, yearly], plans)).toEqual({ variant: monthly, amountMinor: 19900 });
+    // A deep discount only for the dearer variant does not lower the cheaper one.
+    const deep = [
+      { variantId: "m", discountPercent: 0 },
+      { variantId: "y", discountPercent: 90 },
+    ];
+    expect(lowestPlanPrice([monthly, yearly], deep)).toEqual({ variant: monthly, amountMinor: 19900 });
+    const deeper = [
+      { variantId: "m", discountPercent: 0 },
+      { variantId: "y", discountPercent: 95 },
+    ];
+    expect(lowestPlanPrice([monthly, yearly], deeper)?.variant).toBe(yearly);
+    // Options for every variant reach them all; a variant with no option is left out; none at all is null.
+    expect(lowestPlanPrice([monthly, yearly], [{ variantId: null, discountPercent: 10 }])).toEqual({ variant: monthly, amountMinor: 17910 });
+    expect(lowestPlanPrice([monthly, yearly], [{ variantId: "y", discountPercent: 0 }])).toEqual({ variant: yearly, amountMinor: 199000 });
+    expect(lowestPlanPrice([monthly], [])).toBeNull();
+  });
+
+  it("reads the rhythm a billing variant's name says, in the stores' languages", () => {
+    expect(["Monthly", "Månedlig", "Månadsvis", "Monatlich", "1 month"].map(rhythmIn)).toEqual(["month", "month", "month", "month", "month"]);
+    expect(["Yearly", "Årlig", "Annual", "Jährlich", "Every year"].map(rhythmIn)).toEqual(["year", "year", "year", "year", "year"]);
+    expect(["Weekly", "Ukentlig", "Veckovis"].map(rhythmIn)).toEqual(["week", "week", "week"]);
+    // A size, a colour or a word that only contains one is none.
+    expect(["Large", "Blue", "Monday", "Garden", "Yearbook"].map(rhythmIn)).toEqual([null, null, null, null, null]);
   });
 });
 

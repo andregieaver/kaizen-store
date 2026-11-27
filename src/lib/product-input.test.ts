@@ -237,8 +237,9 @@ describe("productProblems", () => {
   });
 
   describe("purchase options", () => {
-    const plan = (interval: "week" | "month" | "year", intervalCount: number) => ({
+    const plan = (interval: "week" | "month" | "year", intervalCount: number, variantSku: string | null = null) => ({
       id: null,
+      variantSku,
       interval,
       intervalCount,
       discountPercent: 10,
@@ -261,6 +262,51 @@ describe("productProblems", () => {
       expect(productProblems({ ...base, subscriptionOnly: true }, context)).toEqual([
         "Add a purchase option, or let shoppers also buy the product once.",
       ]);
+    });
+
+    describe("for one variant (D911)", () => {
+      // Monthly and yearly as variants with their own prices, as Kaizena Life's Plus.
+      const billing: ProductInput = {
+        ...base,
+        options: [{ name: "Billing", values: ["Monthly", "Yearly"] }],
+        variants: [
+          { ...base.variants[0], options: { Billing: "Monthly" }, sku: "PLUS-M", prices: { NO: "199", SE: "" } },
+          { ...base.variants[0], options: { Billing: "Yearly" }, sku: "PLUS-Y", prices: { NO: "1990", SE: "" } },
+        ],
+      };
+      const monthly = { ...plan("month", 1, "PLUS-M"), discountPercent: 0 };
+      const yearly = { ...plan("year", 1, "PLUS-Y"), discountPercent: 0 };
+
+      it("accepts monthly and yearly each with its own option, sold only by subscription", () => {
+        expect(productProblems({ ...billing, plans: [monthly, yearly], subscriptionOnly: true }, context)).toEqual([]);
+      });
+
+      it("lets two variants renew alike, but never one variant twice on one schedule", () => {
+        const monthlyToo = { ...plan("month", 1, "PLUS-Y"), discountPercent: 0 };
+        expect(productProblems({ ...billing, plans: [monthly, monthlyToo] }, context)).toEqual([]);
+        expect(productProblems({ ...billing, plans: [monthly, { ...monthly }] }, context)).toContain("Two purchase options renew every month.");
+        // An option for every variant overlaps each variant's own.
+        expect(productProblems({ ...billing, plans: [monthly, plan("month", 1)] }, context)).toContain("Two purchase options renew every month.");
+      });
+
+      it("refuses an option for a variant the product does not have on", () => {
+        const gone = plan("year", 1, "PLUS-OLD");
+        expect(productProblems({ ...billing, plans: [monthly, gone] }, context)).toContain(
+          "Every year, 10% off: it is for a variant this product does not have (on). Choose which variant it is for.",
+        );
+        const off = { ...billing, variants: [billing.variants[0], { ...billing.variants[1], active: false }] };
+        expect(productProblems({ ...off, plans: [monthly, yearly] }, context)).toContain(
+          "Every year: it is for a variant this product does not have (on). Choose which variant it is for.",
+        );
+      });
+
+      it("refuses a product sold only by subscription with a variant that has no option", () => {
+        expect(productProblems({ ...billing, plans: [monthly], subscriptionOnly: true }, context)).toContain(
+          "Yearly has no purchase option: give it one, or let shoppers also buy the product once.",
+        );
+        // Sold once too, the yearly variant is simply bought once.
+        expect(productProblems({ ...billing, plans: [monthly] }, context)).toEqual([]);
+      });
     });
   });
 

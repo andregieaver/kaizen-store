@@ -93,6 +93,8 @@ export type ProductVariant = {
 /** A purchase option for subscribing (D25). */
 export type SellingPlan = {
   id: string;
+  /** The one variant it is for, null for every variant (D911). */
+  variantId: string | null;
   interval: PlanInterval;
   intervalCount: number;
   discountPercent: number;
@@ -228,6 +230,7 @@ const VARIANT_ROW = z.looseObject({
 
 const SELLING_PLAN_ROW = z.object({
   id: col.uuid,
+  variant_id: col.uuid.nullable(),
   interval: col.text,
   interval_count: col.int,
   discount_percent: col.int,
@@ -297,8 +300,11 @@ const cardColumns = (locale: string, marketCode: string) => sql`
       pr.max_amount,
       pr.currency,
       pr.prior_30d, pr.measure_amount, pr.measure_unit, pr.measure_base, pr.preorder_until::text as preorder_until,
+      -- Options for every variant reach the cheapest, so their best discount is real; options each for one variant (D911) are
+      -- counted at their smallest discount, so the price shown is never below what a subscriber can pay.
       case when p.subscription_only then (
-        select max(sp.discount_percent) from commerce.selling_plans sp where sp.product_id = p.id and sp.active
+        select coalesce(max(sp.discount_percent) filter (where sp.variant_id is null), min(sp.discount_percent))
+        from commerce.selling_plans sp where sp.product_id = p.id and sp.active
       ) end as subscriber_discount,
       p.audience, p.price_words, p.price_on_request,
       ${STORE_AUDIENCE} as store_audience,
@@ -466,7 +472,7 @@ export async function getProduct(storeId: string, market: Market, handle: string
     typedRows(
       SELLING_PLAN_ROW,
       sql`
-      select id, interval, interval_count, discount_percent, trial_days, min_cycles,
+      select id, variant_id, interval, interval_count, discount_percent, trial_days, min_cycles,
         coalesce((signup_fee ->> ${marketCode})::bigint, 0) as signup_fee
       from commerce.selling_plans sp
       -- Purchase options are offered while Subscriptions is on (D178); the product is then sold once only.
@@ -532,8 +538,12 @@ export async function getProduct(storeId: string, market: Market, handle: string
       rule: ruleForKind(product.kind, v),
     })),
     // Subscriptions are in the country's own currency only (D109): they renew at a price kept in it.
-    plans: (isNative(market) ? plans : []).map((plan) => ({
+    // An option for one variant (D911) is offered while that variant is on sale.
+    plans: (isNative(market) ? plans : [])
+      .filter((plan) => plan.variant_id === null || variants.some((v) => str(v.id) === plan.variant_id))
+      .map((plan) => ({
       id: str(plan.id),
+      variantId: plan.variant_id,
       interval: plan.interval as PlanInterval,
       intervalCount: num(plan.interval_count),
       discountPercent: num(plan.discount_percent),

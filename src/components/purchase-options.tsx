@@ -5,21 +5,25 @@ import { createContext, useContext, useId, useState, type ReactNode } from "reac
 import type { PriceDecimals } from "@/lib/money";
 import type { PriceWords } from "@/lib/price-words";
 import type { PriceVat } from "@/lib/pricing";
-import { planPrice } from "@/lib/subscriptions";
+import { planPrice, plansFor } from "@/lib/subscriptions";
 import type { ShownMeasure } from "@/lib/unit-price";
 import type { UnitLabels } from "@/lib/unit-price-text";
 
 import { UnitLine, VatAmount, type VatLabels } from "./price";
+import { useVariantChoice } from "./variant-chosen";
 
-/** A purchase option as the product page shows it, with its text in the shopper's language. */
-export type PlanChoice = { id: string; discountPercent: number; label: string; note: string };
+/** A purchase option as the product page shows it, with its text in the shopper's language; `variantId` when it is for one variant (D911). */
+export type PlanChoice = { id: string; variantId: string | null; discountPercent: number; label: string; note: string };
 
 const Chosen = createContext<PlanChoice | null>(null);
 
 /**
  * The product page's choice between buying once and subscribing (D25), as
- * Shopify's purchase options: one choice for the whole product, which the
- * prices and the add-to-cart buttons below follow.
+ * Shopify's purchase options: one choice, which the prices and the
+ * add-to-cart buttons below follow. It offers only the options the chosen
+ * variant can be bought with (D911): monthly and yearly as variants with their
+ * own prices each have their own option, so the two are never mixed. Inside
+ * the page's `VariantChoice`.
  */
 export function PurchaseOptions({
   plans,
@@ -32,9 +36,14 @@ export function PurchaseOptions({
   labels: { legend: string; oneTime: string };
   children: ReactNode;
 }) {
-  const [chosen, setChosen] = useState<PlanChoice | null>(subscriptionOnly ? plans[0] : null);
+  const [variantId] = useVariantChoice("");
+  const offered = plansFor(plans, variantId);
+  const [picked, setPicked] = useState<string | null>(subscriptionOnly ? (offered[0]?.id ?? null) : null);
+  // Another variant chosen keeps the option picked where it applies; otherwise its first option, or buying once.
+  const chosen = offered.find((plan) => plan.id === picked) ?? (subscriptionOnly ? (offered[0] ?? null) : null);
+  const setChosen = (plan: PlanChoice | null) => setPicked(plan?.id ?? null);
   const name = useId();
-  if (plans.length === 0) return children;
+  if (offered.length === 0) return children;
   const option = (plan: PlanChoice | null, label: string, note: string) => (
     <label
       key={plan?.id ?? "once"}
@@ -58,7 +67,7 @@ export function PurchaseOptions({
       <fieldset className="mb-4 flex flex-col gap-2">
         <legend className="mb-2 text-sm font-medium">{labels.legend}</legend>
         {!subscriptionOnly && option(null, labels.oneTime, "")}
-        {plans.map((plan) => option(plan, plan.label, plan.note))}
+        {offered.map((plan) => option(plan, plan.label, plan.note))}
       </fieldset>
       {children}
     </Chosen.Provider>

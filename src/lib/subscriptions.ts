@@ -27,6 +27,45 @@ export function planPrice(unitMinor: number, discountPercent: number): number {
 }
 
 /**
+ * The purchase options a variant can be bought with (D911): the options for every variant (no `variantId`) and the ones for it.
+ * Monthly and yearly are then two variants with their own prices, each with its own option, and never mixed.
+ */
+export function plansFor<T extends { variantId?: string | null }>(plans: readonly T[], variantId: string): T[] {
+  return plans.filter((plan) => !plan.variantId || plan.variantId === variantId);
+}
+
+/**
+ * The rhythm a variant's name says (D911): "Monthly", "Yearly", "Årlig", "Månedlig", "Wöchentlich"…, so adding a purchase option
+ * to a product whose variants are billing periods suggests the right one. Null when the name says none.
+ */
+export function rhythmIn(name: string): PlanInterval | null {
+  const text = ` ${name.toLowerCase()} `;
+  const said = (words: string) => new RegExp(`[^a-zæøåäöüé](${words})[^a-zæøåäöüé]`).test(text);
+  if (said("year|years|yearly|annual|annually|år|årlig|årleg|årligen|jahr|jahre|jährlich|anual|annuel")) return "year";
+  if (said("month|months|monthly|måned|måneder|månedlig|månad|månader|månadsvis|monat|monate|monatlich|mes|meses|mensual|mois|mensuel")) return "month";
+  if (said("week|weeks|weekly|uke|uker|ukentlig|vecka|veckor|veckovis|woche|wochen|wöchentlich|semana|semanas|semanal|semaine|hebdomadaire")) return "week";
+  return null;
+}
+
+/**
+ * The lowest price a subscriber pays (D911): each variant at the best discount among the options it can be bought with, the
+ * cheapest of them; null when no variant has an option. What a product sold only by subscription shows beside its title.
+ */
+export function lowestPlanPrice<V extends { id: string; amountMinor: number }>(
+  variants: readonly V[],
+  plans: readonly { variantId: string | null; discountPercent: number }[],
+): { variant: V; amountMinor: number } | null {
+  let lowest: { variant: V; amountMinor: number } | null = null;
+  for (const variant of variants) {
+    const offered = plansFor(plans, variant.id);
+    if (offered.length === 0) continue;
+    const amountMinor = planPrice(variant.amountMinor, Math.max(...offered.map((plan) => plan.discountPercent)));
+    if (!lowest || amountMinor < lowest.amountMinor) lowest = { variant, amountMinor };
+  }
+  return lowest;
+}
+
+/**
  * Two purchase options can be in one subscription when they renew on the
  * same schedule and start their free trial alike.
  */

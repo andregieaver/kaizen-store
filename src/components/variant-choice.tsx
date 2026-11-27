@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import type { QuantityRule } from "@/lib/quantity-rules";
 import { trackShop } from "@/lib/shop-events";
@@ -17,11 +17,7 @@ import { ExpressArea, type ExpressSetup } from "./express-area";
 import { KlarnaMessage, type KlarnaSetup } from "./klarna-message";
 import { showVariantPicture, type VariantPicture } from "./variant-picture";
 import { announceVariant } from "./variant-selected";
-
-type Choice = [string, (id: string) => void];
-
-const ChosenVariant = createContext<Choice | null>(null);
-
+import { ChosenVariant, useVariantChoice } from "./variant-chosen";
 
 /**
  * The variant chosen on a product page, shared by its picker and the phone's
@@ -64,13 +60,6 @@ export function VariantChoice({
       </ChosenVariant.Provider>
     </TrackContext.Provider>
   );
-}
-
-/** The page's chosen variant, or one of the component's own outside a `VariantChoice`. */
-export function useVariantChoice(fallback: string): Choice {
-  const shared = useContext(ChosenVariant);
-  const own = useState(fallback);
-  return shared ?? own;
 }
 
 /** A variant as the product page offers it, with its price drawn by the server (the store's VAT display, plans). */

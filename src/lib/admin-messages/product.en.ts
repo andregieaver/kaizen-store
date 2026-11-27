@@ -361,6 +361,10 @@ export const productEn = {
     title: "Subscriptions",
     intro:
       "Let shoppers subscribe and get the product regularly. Stripe charges each renewal automatically, and shoppers can cancel any time from their order page.",
+    forVariant: "For",
+    forWhich: "Purchase option {n}: for which variant",
+    everyVariant: "Every variant",
+    addSkuFirst: " (add a SKU first)",
     renewsEvery: "Renews every",
     howMany: "Purchase option {n}: how many",
     whichInterval: "Purchase option {n}: weeks, months or years",

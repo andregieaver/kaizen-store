@@ -4006,6 +4006,12 @@ export const sellingPlans = commerce.table(
     id: uuid("id").primaryKey().defaultRandom(),
     storeId: storeId(),
     productId: uuid("product_id").notNull(),
+    /**
+     * The one variant this option is for, null for every variant of the product (D911): monthly and yearly are then two variants
+     * with their own prices (set through `commerce.set_price` like any price), each with its own option. Always one of the
+     * product's own variants (`selling_plans_variant_of_product()`).
+     */
+    variantId: uuid("variant_id"),
     interval: planInterval("interval").notNull(),
     intervalCount: integer("interval_count").notNull().default(1),
     /** Whole percent off the one-time price, 0 for none. */
@@ -4023,7 +4029,9 @@ export const sellingPlans = commerce.table(
   (t) => [
     unique("selling_plans_store_id_key").on(t.storeId, t.id),
     productRef("selling_plans_product_fk", t),
+    variantRef("selling_plans_variant_fk", t),
     index("selling_plans_product_idx").on(t.storeId, t.productId, t.position),
+    index("selling_plans_variant_idx").on(t.storeId, t.variantId).where(sql`${t.variantId} is not null`),
     // Stripe renews at most every three years.
     check(
       "selling_plans_interval_count",

@@ -186,7 +186,7 @@ describe("updating a product", () => {
   });
 
   it("changes nothing the file does not carry: subscriptions, files, bookings and the manufacturer stay", () => {
-    const withPlans = boot(ctx, { plans: [{ id: "dddddddd-0000-4000-8000-000000000001", interval: "month", intervalCount: 1, discountPercent: 5, trialDays: 0, signupFee: {}, minCycles: 0 }], withdrawalExclusion: "perishable", schemes: ["batteries"] });
+    const withPlans = boot(ctx, { plans: [{ id: "dddddddd-0000-4000-8000-000000000001", variantSku: null, interval: "month", intervalCount: 1, discountPercent: 5, trialDays: 0, signupFee: {}, minCycles: 0 }], withdrawalExclusion: "perishable", schemes: ["batteries"] });
     const p = plan([["handle", "title"], ["winter-boot", "T"]], { stored: [withPlans] }).products[0];
     expect(p.input?.plans).toEqual(withPlans.plans);
     expect(p.input?.withdrawalExclusion).toBe("perishable");

@@ -161,7 +161,7 @@ describe("a line's unit price (cart, checkout, order)", () => {
 });
 
 describe("the purchase option's price (D25)", () => {
-  const plans = [{ id: "p1", discountPercent: 10, label: "Every month", note: "" }];
+  const plans = [{ id: "p1", variantId: null, discountPercent: 10, label: "Every month", note: "" }];
   const choose = (props: { subscriptionOnly: boolean; measure: ShownMeasure | null }) =>
     renderToString(
       createElement(

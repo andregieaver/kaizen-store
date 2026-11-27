@@ -279,7 +279,23 @@ export function productProblems(input: ProductInput, context: PublishContext): s
     }
   }
 
-  const rhythms = new Set<string>();
+  // An option for one variant (D911) names one of the product's variants that are on; two options renew alike only for
+  // different variants, and a product sold only by subscription has an option for every variant on.
+  const activeSkus = new Set(input.variants.filter((v) => v.active && v.sku).map((v) => v.sku));
+  for (const plan of input.plans) {
+    if (plan.variantSku !== null && !activeSkus.has(plan.variantSku)) {
+      problems.push(`${planSummary(plan)}: it is for a variant this product does not have (on). Choose which variant it is for.`);
+    }
+  }
+  if (input.subscriptionOnly && input.plans.length > 0) {
+    for (const variant of input.variants.filter((v) => v.active)) {
+      if (!input.plans.some((plan) => plan.variantSku === null || plan.variantSku === variant.sku)) {
+        problems.push(`${variantLabel(variant.options)} has no purchase option: give it one, or let shoppers also buy the product once.`);
+      }
+    }
+  }
+
+  const rhythms: { rhythm: string; variantSku: string | null }[] = [];
   for (const plan of input.plans) {
     if (plan.intervalCount > MAX_INTERVAL_COUNT[plan.interval]) {
       problems.push(`${planSummary(plan)}: subscriptions renew at least every three years.`);
@@ -291,8 +307,11 @@ export function productProblems(input: ProductInput, context: PublishContext): s
       }
     }
     const rhythm = `${plan.interval}:${plan.intervalCount}`;
-    if (rhythms.has(rhythm)) problems.push(`Two purchase options renew ${planSummary(plan).toLowerCase().split(",")[0]}.`);
-    rhythms.add(rhythm);
+    const overlaps = rhythms.some(
+      (r) => r.rhythm === rhythm && (r.variantSku === null || plan.variantSku === null || r.variantSku === plan.variantSku),
+    );
+    if (overlaps) problems.push(`Two purchase options renew ${planSummary(plan).toLowerCase().split(",")[0]}.`);
+    rhythms.push({ rhythm, variantSku: plan.variantSku });
   }
   if (input.subscriptionOnly && input.plans.length === 0) {
     problems.push("Add a purchase option, or let shoppers also buy the product once.");

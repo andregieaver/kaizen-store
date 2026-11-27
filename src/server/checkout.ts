@@ -324,6 +324,8 @@ function orderLineRows(
       left join lateral commerce.quantity_rule(cl.store_id, ${customerId}::uuid, v.id) qr on true
       left join commerce.selling_plans sp
         on sp.store_id = cl.store_id and sp.id = cl.selling_plan_id and sp.product_id = p.id
+          -- An option for one variant (D911) is bought with that variant only; any other line's option is not ok.
+          and (sp.variant_id is null or sp.variant_id = v.id)
       left join commerce.appointment_settings aps on aps.store_id = p.store_id and aps.product_id = p.id
       where ${where}
       order by p.handle, v.sku, cl.selling_plan_id nulls first, cl.starts_at

@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/admin/ui/field";
 import { AdminLink as Link } from "@/components/admin/ui/link";
 import { useRouter } from "next/navigation";
 import {
@@ -75,6 +76,7 @@ import {
   MAX_PLANS,
   MAX_TRIAL_DAYS,
   type PlanInterval,
+  rhythmIn,
 } from "@/lib/subscriptions";
 import { slugify } from "@/lib/slug";
 import { uploadToSignedUrl } from "@/lib/supabase/signed-upload";
@@ -1297,7 +1299,12 @@ function VariantsSection({
         if (change.delivery === "physical") return { ...f, variantSku: null };
         return change.sku !== undefined ? { ...f, variantSku: change.sku } : f;
       });
-      return { ...p, variants, files };
+      // A purchase option for one variant (D911) follows it when its SKU changes.
+      const plans =
+        change.sku !== undefined && before.sku
+          ? p.plans.map((plan) => (plan.variantSku === before.sku ? { ...plan, variantSku: change.sku ?? null } : plan))
+          : p.plans;
+      return { ...p, variants, files, plans };
     });
 
   const setDelivery = (delivery: Delivery) =>
@@ -2708,13 +2715,33 @@ function SubscriptionSection({
   markets,
   netPrices,
 }: SectionProps & { markets: EditorContext["markets"]; netPrices: boolean }) {
-  const w = useAdminText("product").subscriptions;
+  const all = useAdminText("product");
+  const w = all.subscriptions;
+  // Monthly and yearly as variants with their own prices (D911): each option can be for one of them.
+  const choosable = product.variants.filter((v) => v.active);
+  const several = choosable.length > 1;
+  const nameOf = (variant: (typeof choosable)[number]) =>
+    Object.keys(variant.options).length > 0 ? variantLabel(variant.options) : all.variants.defaultName;
   const setPlan = (index: number, change: Partial<ProductInput["plans"][number]>) =>
     update((p) => ({ ...p, plans: p.plans.map((plan, i) => (i === index ? { ...plan, ...change } : plan)) }));
   const count = (text: string, interval: PlanInterval) =>
     Math.min(MAX_INTERVAL_COUNT[interval], Math.max(1, Math.floor(Number(text) || 1)));
   const addPlan = () =>
     update((p) => {
+      // A product whose variants are billing periods ("Monthly", "Yearly"): the next variant without an option of its own, at the
+      // rhythm its name says and its own price (no discount).
+      const open = p.variants.filter((v) => v.active && v.sku && !p.plans.some((plan) => plan.variantSku === v.sku));
+      const billing = p.variants.filter((v) => v.active).length > 1 ? open.find((v) => rhythmIn(variantLabel(v.options)) !== null) : undefined;
+      if (billing) {
+        const interval = rhythmIn(variantLabel(billing.options)) as PlanInterval;
+        return {
+          ...p,
+          plans: [
+            ...p.plans,
+            { id: null, variantSku: billing.sku, interval, intervalCount: 1, discountPercent: 0, trialDays: 0, signupFee: {}, minCycles: 0 },
+          ],
+        };
+      }
       // Suggest the next usual rhythm that is not taken yet.
       const taken = new Set(p.plans.map((plan) => `${plan.interval}:${plan.intervalCount}`));
       const next =
@@ -2731,7 +2758,7 @@ function SubscriptionSection({
         ...p,
         plans: [
           ...p.plans,
-          { id: null, interval: next[0], intervalCount: next[1], discountPercent: 10, trialDays: 0, signupFee: {}, minCycles: 0 },
+          { id: null, variantSku: null, interval: next[0], intervalCount: next[1], discountPercent: 10, trialDays: 0, signupFee: {}, minCycles: 0 },
         ],
       };
     });
@@ -2748,6 +2775,26 @@ function SubscriptionSection({
           {product.plans.map((plan, index) => {
             return (
               <li key={plan.id ?? `new-${index}`} className="flex flex-wrap items-end gap-3 p-3">
+                {(several || plan.variantSku !== null) && (
+                  <label className="flex flex-col gap-1 text-xs font-medium">
+                    {w.forVariant}
+                    <Select
+                      dense
+                      value={plan.variantSku ?? ""}
+                      onChange={(e) => setPlan(index, { variantSku: e.target.value || null })}
+                      aria-label={fillWords(w.forWhich, { n: index + 1 })}
+                      className="w-44"
+                    >
+                      <option value="">{w.everyVariant}</option>
+                      {choosable.map((v) => (
+                        <option key={v.sku || nameOf(v)} value={v.sku} disabled={!v.sku}>
+                          {nameOf(v)}
+                          {v.sku ? "" : w.addSkuFirst}
+                        </option>
+                      ))}
+                    </Select>
+                  </label>
+                )}
                 <fieldset>
                   <legend className="mb-1 text-xs font-medium">{w.renewsEvery}</legend>
                   <div className="flex gap-2">

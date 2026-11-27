@@ -549,8 +549,8 @@ describe("digital products (D24)", () => {
 describe("purchase options (D25)", () => {
   it("saves options, and switches off the ones taken away instead of deleting them", async () => {
     const plans = [
-      { id: null, interval: "month" as const, intervalCount: 1, discountPercent: 10, trialDays: 14, signupFee: { NO: "49" }, minCycles: 3 },
-      { id: null, interval: "week" as const, intervalCount: 2, discountPercent: 0, trialDays: 0, signupFee: {} as Record<string, string>, minCycles: 0 },
+      { id: null, variantSku: null, interval: "month" as const, intervalCount: 1, discountPercent: 10, trialDays: 14, signupFee: { NO: "49" }, minCycles: 3 },
+      { id: null, variantSku: null, interval: "week" as const, intervalCount: 2, discountPercent: 0, trialDays: 0, signupFee: {} as Record<string, string>, minCycles: 0 },
     ];
     const result = await saveProduct(
       store,

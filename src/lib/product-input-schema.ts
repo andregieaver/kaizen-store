@@ -348,6 +348,8 @@ export const productInput = z.object({
     .array(
       z.object({
         id: z.uuid().nullable(),
+        /** The SKU of the one variant it is for, null for every variant (D911): monthly and yearly as variants with their own prices. */
+        variantSku: z.string().max(64).nullable().default(null),
         interval: z.enum(PLAN_INTERVALS),
         intervalCount: z.number().int().min(1, "Renew at least every 1 week, month or year."),
         discountPercent: z

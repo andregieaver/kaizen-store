@@ -52,7 +52,7 @@ import { marketPath, marketUrl, storeSiteUrl } from "@/lib/paths";
 import type { VariantStock } from "@/lib/stock-availability";
 import { canOffer, stockNote } from "@/lib/stock-words";
 import { productJsonLd } from "@/lib/structured-data";
-import { planPrice } from "@/lib/subscriptions";
+import { lowestPlanPrice } from "@/lib/subscriptions";
 import { unitLabelsOf } from "@/lib/unit-price-text";
 import { db } from "@/db/client";
 import { memberDiscountFor } from "@/server/customer-tiers";
@@ -714,8 +714,13 @@ export async function ProductJsonLdSection({ store, market, product, reviews }: 
 export function headlinePrice(product: ProductDetail) {
   const cheapest = product.variants[0].price;
   if (!product.subscriptionOnly) return cheapest;
-  const best = Math.max(...product.plans.map((plan) => plan.discountPercent));
-  return { ...cheapest, amountMinor: planPrice(cheapest.amountMinor, best), referenceMinor: null };
+  // Each variant at the best option it can be bought with (D911): monthly and yearly each at their own price.
+  const lowest = lowestPlanPrice(
+    product.variants.map((v) => ({ id: v.id, amountMinor: v.price.amountMinor, price: v.price })),
+    product.plans,
+  );
+  if (!lowest) return cheapest;
+  return { ...lowest.variant.price, amountMinor: lowest.amountMinor, referenceMinor: null };
 }
 
 function Operator({ label, operator }: { label: string; operator: EconomicOperator }) {
@@ -1064,6 +1069,7 @@ async function VariantsWithStock({
 
   const plans = product.plans.map((plan) => ({
     id: plan.id,
+    variantId: plan.variantId,
     discountPercent: plan.discountPercent,
     label: m.planEvery(plan.interval, plan.intervalCount),
     note: [
@@ -1139,16 +1145,17 @@ async function VariantsWithStock({
   })();
 
   return (
-    <PurchaseOptions
-      plans={plans}
-      subscriptionOnly={product.subscriptionOnly}
-      labels={{ legend: m.purchaseOptions, oneTime: m.oneTimePurchase }}
+    // The variant chosen holds the purchase options, which follow it (D911: an option can be for one variant).
+    <VariantChoice
+      initial={(product.variants.find(available) ?? product.variants[0]).id}
+      productId={product.id}
+      pictures={Object.fromEntries(product.variants.map((variant) => [variant.id, variant.image]))}
+      track={shopTrack(store, product)}
     >
-      <VariantChoice
-        initial={(product.variants.find(available) ?? product.variants[0]).id}
-        productId={product.id}
-        pictures={Object.fromEntries(product.variants.map((variant) => [variant.id, variant.image]))}
-        track={shopTrack(store, product)}
+      <PurchaseOptions
+        plans={plans}
+        subscriptionOnly={product.subscriptionOnly}
+        labels={{ legend: m.purchaseOptions, oneTime: m.oneTimePurchase }}
       >
         <VariantPurchase
           store={store.slug}
@@ -1257,8 +1264,8 @@ async function VariantsWithStock({
           goCart: m.goCart,
         }}
       />
-      </VariantChoice>
-    </PurchaseOptions>
+      </PurchaseOptions>
+    </VariantChoice>
   );
 }
 

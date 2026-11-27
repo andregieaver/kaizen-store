@@ -590,7 +590,9 @@ export async function swapChoices(storeId: string, subscriptionId: string): Prom
     join commerce.product_variants v
       on v.store_id = l.store_id and v.product_id = lv.product_id and v.active and v.delivery = l.delivery
     join commerce.products p on p.store_id = v.store_id and p.id = v.product_id and p.status = 'active'
+    -- Another variant only where the line's option is for it too (D911: monthly is never swapped onto the yearly price).
     join commerce.selling_plans sp on sp.store_id = l.store_id and sp.id = l.selling_plan_id
+      and (sp.variant_id is null or sp.variant_id = v.id)
     join commerce.current_prices cp on cp.variant_id = v.id and cp.market_code = s.market_code
     left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = s.locale
     left join lateral (

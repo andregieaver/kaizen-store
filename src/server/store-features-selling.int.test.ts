@@ -180,7 +180,7 @@ describe("the cart and the editor refuse what is off (D178)", () => {
 describe("subscriptions (D178)", () => {
   const plans = async () =>
     Number((await db().execute<Row>(sql`select count(*)::int as n from commerce.selling_plans where product_id = ${product["demo-keramikkopp"]}::uuid and active`))[0].n);
-  const PLAN = { id: null, interval: "month" as const, intervalCount: 1, discountPercent: 10, trialDays: 0, signupFee: {}, minCycles: 0 };
+  const PLAN = { id: null, variantSku: null, interval: "month" as const, intervalCount: 1, discountPercent: 10, trialDays: 0, signupFee: {}, minCycles: 0 };
 
   it("keeps a product's purchase options as they are while Subscriptions is off, and saves them once it is on", async () => {
     let s = await fresh();

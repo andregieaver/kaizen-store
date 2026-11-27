@@ -19,7 +19,7 @@ import { useOpenCartAfterAdd } from "./cart-drawer";
 import { useChosenPlan } from "./purchase-options";
 import { Dropdown } from "./dropdown";
 import { HidingBottomBar } from "./store-chrome";
-import { useVariantChoice } from "./variant-choice";
+import { useVariantChoice } from "./variant-chosen";
 import { useKeepFocus } from "./keep-focus";
 import { useQuantityChoice } from "./quantity-choice";
 import { QuantityStepper, type QuantityStepperLabels } from "./quantity-stepper";
@@ -107,7 +107,9 @@ export function ProductBar({
   // The variant's rule where the shopper chooses how many (D430).
   const counted = quantity && variant.rule ? { rule: variant.rule, offer: quantity } : null;
   const money = (v: BarVariant) => {
-    const amount = plan ? planPrice(v.amountMinor, plan.discountPercent) : v.amountMinor;
+    // An option for one variant (D911) prices only that variant.
+    const fits = plan && (!plan.variantId || plan.variantId === v.id);
+    const amount = fits ? planPrice(v.amountMinor, plan.discountPercent) : v.amountMinor;
     return withWords(formatMoney(vat.shown !== "incl" && buyer === "business" ? withoutVat(amount, vat.rate) : amount, currency, locale, { decimals }), words);
   };
   const message =

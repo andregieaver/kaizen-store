@@ -298,6 +298,7 @@ export async function getCart(
     join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
     left join commerce.selling_plans sp
       on sp.store_id = cl.store_id and sp.id = cl.selling_plan_id and sp.product_id = p.id
+        and (sp.variant_id is null or sp.variant_id = v.id)
     left join commerce.appointment_settings aps on aps.store_id = p.store_id and aps.product_id = p.id
     left join commerce.booking_resources br on br.store_id = cl.store_id and br.id = cl.resource_id
     left join commerce.product_translations tl
@@ -640,6 +641,8 @@ export async function sellableQuantity(
           ? sql`exists (
               select 1 from commerce.selling_plans sp
               where sp.store_id = v.store_id and sp.id = ${sellingPlanId}::uuid and sp.product_id = p.id and sp.active
+                -- An option for one variant (D911) is bought with that variant only.
+                and (sp.variant_id is null or sp.variant_id = v.id)
                 and ${plansOffered(sql`sp.store_id`)}
             )`
           : sql`not p.subscription_only`

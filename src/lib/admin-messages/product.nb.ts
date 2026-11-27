@@ -357,6 +357,10 @@ export const productNb: ProductMessages = {
     title: "Abonnementer",
     intro:
       "La kundene abonnere og få produktet jevnlig. Stripe belaster hver fornyelse automatisk, og kundene kan si opp når som helst fra bestillingssiden sin.",
+    forVariant: "Gjelder",
+    forWhich: "Kjøpsvalg {n}: for hvilken variant",
+    everyVariant: "Alle varianter",
+    addSkuFirst: " (legg inn et varenummer først)",
     renewsEvery: "Fornyes hver",
     howMany: "Kjøpsvalg {n}: hvor mange",
     whichInterval: "Kjøpsvalg {n}: uker, måneder eller år",
