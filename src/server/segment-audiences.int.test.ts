@@ -156,8 +156,11 @@ describe("one buyer in a segment, and what a segment holds (D380)", () => {
   });
 
   it("a store's copy switches off a code and a campaign limited to a segment (segments are never copied)", async () => {
-    const [def] = await db().execute<Row>(sql`select pg_get_functiondef('commerce.duplicate_store(uuid, text, text, uuid, uuid[], uuid[], uuid[])'::regprocedure) as def`);
+    // The copy itself is duplicate_store_rows(), which duplicate_store() wraps (D911).
+    const [def] = await db().execute<Row>(sql`select pg_get_functiondef('commerce.duplicate_store_rows(uuid, text, text, uuid, uuid[], uuid[], uuid[])'::regprocedure) as def`);
     expect(String(def.def)).toContain("t.segment_id IS NOT NULL");
+    const [wrapper] = await db().execute<Row>(sql`select pg_get_functiondef('commerce.duplicate_store(uuid, text, text, uuid, uuid[], uuid[], uuid[])'::regprocedure) as def`);
+    expect(String(wrapper.def)).toContain("commerce.duplicate_store_rows(");
   });
 });
 
