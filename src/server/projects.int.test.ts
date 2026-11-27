@@ -748,7 +748,13 @@ describe("reminders (D903 P4.3)", () => {
     const { id: done } = ok(await items.addItem(store.member, list, { title: "Count the till" }));
     ok(await reminders.addReminder(store.member, { itemId: task, offsetMinutes: 30, channels: ["email", "push"] }));
     ok(await reminders.addReminder(store.member, { itemId: done, remindAt: new Date(now + 60_000).toISOString(), channels: ["email"] }));
-    const daily = ok(await reminders.addReminder(store.member, { checklistId: list, recurrence: { freq: "daily", times: ["09:00"] }, channels: ["email"] }));
+    // The daily one's time is twelve hours from now on the store's clock, so it never comes again within the forty minutes below (a fixed
+    // 09:00 did, for a run in the forty minutes before nine there: run 2044, 07:46 UTC).
+    const [{ zone }] = await db().execute<{ zone: string }>(sql`select time_zone as zone from commerce.stores where id = ${store.storeId}::uuid`);
+    const hourThere = Number(new Intl.DateTimeFormat("en-GB", { timeZone: zone, hour: "2-digit", hourCycle: "h23" }).format(now));
+    const daily = ok(
+      await reminders.addReminder(store.member, { checklistId: list, recurrence: { freq: "daily", times: [`${String((hourThere + 12) % 24).padStart(2, "0")}:00`] }, channels: ["email"] }),
+    );
     ok(await items.setItemDone(store.member, done, true));
     // Its time come: the daily one is due now.
     await db().execute(sql`update commerce.checklist_reminders set next_at = now() - interval '1 minute' where id = ${daily.id}::uuid`);
