@@ -1384,7 +1384,7 @@ export const blocksEn = {
     rowTone: "Row {n}'s dot",
     alt: "Describe the picture",
     altHint: "Read out by screen readers instead of every word in it, such as \"The app's Today screen with tasks and a cash-flow chart\".",
-    empty: "A line left empty is drawn as a soft grey bar.",
+    blankHint: "A line left empty is drawn as a soft grey bar.",
   },
   beforeAfter: {
     before: "Before picture",

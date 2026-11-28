@@ -1378,7 +1378,7 @@ export const blocksNb: BlocksMessages = {
     rowTone: "Prikken på rad {n}",
     alt: "Beskriv bildet",
     altHint: "Leses opp av skjermlesere i stedet for hvert ord i det, som «Appens I dag-skjerm med oppgaver og et kontantstrømdiagram».",
-    empty: "En linje som står tom, tegnes som en myk grå strek.",
+    blankHint: "En linje som står tom, tegnes som en myk grå strek.",
   },
   beforeAfter: {
     before: "Før-bilde",

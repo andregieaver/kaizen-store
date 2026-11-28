@@ -386,7 +386,7 @@ export function AppPreviewFields({ block, onChange }: BlockEditorProps<AppPrevie
           </>
         )}
       </ItemsEditor>
-      <p className="text-xs text-muted">{w.empty}</p>
+      <p className="text-xs text-muted">{w.blankHint}</p>
       <TextField label={w.alt} hint={w.altHint} multiline value={block.alt} max={300} onChange={(alt) => onChange({ alt })} />
     </>
   );
