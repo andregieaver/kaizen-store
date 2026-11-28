@@ -29,8 +29,10 @@ function signatureOf(pdf: Uint8Array) {
   if (!range) throw new Error("no /ByteRange");
   const [a, b, c, d] = range.slice(1).map(Number);
   const signed = Buffer.concat([Buffer.from(pdf.subarray(a, a + b)), Buffer.from(pdf.subarray(c, c + d))]);
-  const hex = text.slice(a + b + 1, c - 1).replace(/0+$/, "");
-  const p7 = forge.pkcs7.messageFromAsn1(forge.asn1.fromDer(forge.util.hexToBytes(hex.length % 2 ? `${hex}0` : hex))) as forge.pkcs7.PkcsSignedData & {
+  // The signature is DER in a placeholder padded with zeros: read it by its own length, never by stripping zeros, which would cut a
+  // signature that happens to end in a zero digit (one run in sixteen, as the seal's key is new each run).
+  const hex = text.slice(a + b + 1, c - 1);
+  const p7 = forge.pkcs7.messageFromAsn1(forge.asn1.fromDer(forge.util.hexToBytes(hex), { parseAllBytes: false })) as forge.pkcs7.PkcsSignedData & {
     rawCapture: { authenticatedAttributes: forge.asn1.Asn1[] };
   };
   const digestAttr = p7.rawCapture.authenticatedAttributes.find((attr) => forge.asn1.derToOid((attr.value as forge.asn1.Asn1[])[0].value as string) === forge.pki.oids.messageDigest);

@@ -1571,9 +1571,9 @@ export const PREVIEW_PART_KINDS = {
   rows: "Status rows",
 } as const;
 export type PreviewPartKind = keyof typeof PREVIEW_PART_KINDS;
-/** A note's or a row's colour: the theme's muted or accent, or the usual signal colours. */
-export const PREVIEW_TONES = { muted: "Muted", accent: "Accent", success: "Green", warning: "Orange" } as const;
-export type PreviewTone = keyof typeof PREVIEW_TONES;
+/** A note's or a row's colour: the theme's muted text or accent, or the usual signal colours, named as a card's badge tones are. */
+export const PREVIEW_TONES = CARD_BADGE_TONES;
+export type PreviewTone = CardBadgeTone;
 /** How a checklist marks its lines: a round dot, a box, or a tick in a circle. */
 export const PREVIEW_MARKS = { circle: "Circles", box: "Boxes", tick: "Ticks" } as const;
 export type PreviewMark = keyof typeof PREVIEW_MARKS;
@@ -3676,7 +3676,7 @@ const previewPart = z.discriminatedUnion("kind", [
       .max(4, "A board has at most 4 columns.")
       .refine(uniqueIds, "Two columns have the same id. Reload the page and try again."),
   }),
-  z.object({ ...previewBase, kind: z.literal("rows"), icon: previewIcon, title: previewText(PREVIEW_SHORT_MAX, "title"), items: previewLines({ tone: previewTone.unwrap().default("muted") }) }),
+  z.object({ ...previewBase, kind: z.literal("rows"), icon: previewIcon, title: previewText(PREVIEW_SHORT_MAX, "title"), items: previewLines({ tone: previewTone.unwrap().default("neutral") }) }),
 ]);
 const appPreviewBlock = z.object({
   id: itemId,

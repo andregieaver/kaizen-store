@@ -9,7 +9,7 @@ const ACCENT = "color-mix(in srgb, var(--accent) 72%, transparent)";
 const ACCENT_SOFT = "color-mix(in srgb, var(--accent) 38%, transparent)";
 const ACCENT_TINT = "color-mix(in srgb, var(--accent) 16%, transparent)";
 const FILL = "color-mix(in srgb, var(--muted) 20%, transparent)";
-const TONE_COLOURS: Record<PreviewTone, string> = { muted: "var(--muted)", accent: "var(--accent)", success: "#22a04b", warning: "#e07b00" };
+const TONE_COLOURS: Record<PreviewTone, string> = { neutral: "var(--muted)", accent: "var(--accent)", success: "#22a04b", warning: "#e07b00" };
 /** A window's three dots, as an app's title bar has them. */
 const DOTS = ["#ff5f57", "#febc2e", "#28c840"];
 
@@ -34,7 +34,7 @@ function Label({ text }: { text: string }) {
 }
 
 /** A note beside a title: plain words in their colour, or a pill on a tint of it. */
-function Aside({ text, tone = "muted", pill = false }: { text: string; tone?: PreviewTone; pill?: boolean }) {
+function Aside({ text, tone = "neutral", pill = false }: { text: string; tone?: PreviewTone; pill?: boolean }) {
   if (!text.trim()) return null;
   const colour = TONE_COLOURS[tone];
   return (

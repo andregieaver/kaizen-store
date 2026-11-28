@@ -91,17 +91,19 @@ function asKind(part: PreviewPart, kind: PreviewPartKind): PreviewPart {
     case "kanban":
       return { ...base, kind, columns: [2, 1, 1].map((n) => ({ id: id(), cards: Array.from({ length: n }, () => ({ id: id(), text: "" })) })) };
     case "rows":
-      return { ...base, kind, title, items: (["success", "warning", "muted"] as const).map((tone) => ({ id: id(), text: "", tone })) };
+      return { ...base, kind, title, items: (["success", "warning", "neutral"] as const).map((tone) => ({ id: id(), text: "", tone })) };
   }
 }
 
 /** A note on the right and its colour, as a title and a bar chart have. */
 function AsideFields({ w, aside, tone, onChange }: { w: Words; aside: string; tone?: keyof typeof PREVIEW_TONES; onChange: (patch: { aside?: string; asideTone?: keyof typeof PREVIEW_TONES }) => void }) {
+  // The colours are named as a card's badge colours are.
+  const tones = useAdminText("blocks").cards.tones;
   return (
     <>
       <TextField label={w.aside} value={aside} max={PREVIEW_SHORT_MAX} onChange={(next) => onChange({ aside: next })} />
       {aside.trim() && (
-        <Choices legend={w.tone} options={optionsOf(PREVIEW_TONES, w.tones)} value={tone ?? "muted"} onChange={(next) => onChange({ asideTone: next === "muted" ? undefined : next })} />
+        <Choices legend={w.tone} options={optionsOf(PREVIEW_TONES, tones)} value={tone ?? "neutral"} onChange={(next) => onChange({ asideTone: next === "neutral" ? undefined : next })} />
       )}
     </>
   );
@@ -119,6 +121,7 @@ function IconChoice({ w, icon, onChange }: { w: Words; icon: IconName | undefine
 
 /** One part's own fields, by its kind. */
 function PartFields({ w, part, change }: { w: Words; part: PreviewPart; change: Change }) {
+  const tones = useAdminText("blocks").cards.tones;
   switch (part.kind) {
     case "title":
       return (
@@ -322,13 +325,13 @@ function PartFields({ w, part, change }: { w: Words; part: PreviewPart; change: 
             multiline
             value={part.items.map((item) => item.text).join("\n")}
             max={PREVIEW_TEXT_MAX * PREVIEW_LINES_MAX}
-            onChange={(text) => change({ items: linesOf(part.items, text, (line, index) => ({ ...line, tone: part.items[index]?.tone ?? "muted" })) })}
+            onChange={(text) => change({ items: linesOf(part.items, text, (line, index) => ({ ...line, tone: part.items[index]?.tone ?? "neutral" })) })}
           />
           {part.items.map((item, index) => (
             <Choices
               key={item.id}
               legend={fillWords(w.rowTone, { n: index + 1 })}
-              options={optionsOf(PREVIEW_TONES, w.tones)}
+              options={optionsOf(PREVIEW_TONES, tones)}
               value={item.tone}
               onChange={(tone) => change({ items: part.items.map((other) => (other.id === item.id ? { ...other, tone } : other)) })}
             />
