@@ -46,10 +46,11 @@ Not moved, decided one by one: the sales agent's video avatar (the app's API; Fl
    eyebrow, title, text, a points list (ticks or dots), a badge with a tone, and a link; columns per screen size, the card's look, and
    optional filter chips by an item's group. It holds Life's feature cards, pains, numbered steps, use-case cards, the integrations
    explorer, the roadmap, the add-on card, the team, and the questions on `/plans` (every answer shown, as Life shows them). Done 28
-   November 2026.
-3. **App preview** (next): Life's illustrations are HTML mockups of the app (a window with dots and an address, a sidebar, a briefing
-   card, checklists, bar charts, a chat, progress rings, a calendar heatmap, a kanban, invoice rows), full of words in three languages.
-   A block draws them from editable parts, translated with the page, in the theme's colours, instead of a picture per language.
+   November 2026 (a078bf0e).
+3. **App preview** (`appPreview`): Life's illustrations are HTML mockups of the app (a window with dots and an address, a sidebar, a
+   briefing card, checklists, bar charts, a chat, progress rings, a calendar heatmap, a kanban, invoice rows), full of words in three
+   languages. The block draws them from eleven kinds of editable part, translated with the page, in the theme's colours, instead of a
+   picture per language. Done 28 November 2026.
 
 Made with what the builder has: the hero's badge is an icon list of one line inside a pill (the block's border, corners and padding);
 the glow behind heroes and call-outs is a row's radial blur (`GRADIENT_STYLES.radial`, focus at the top centre, the accent's tint on

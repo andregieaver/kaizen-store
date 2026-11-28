@@ -1024,12 +1024,30 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 - **Cards (D916)**: a grid of cards alike, each led by the block's `marker` (an icon in a soft circle of its colour, its number on the
   accent, letters on their own colour, a round picture, or nothing), then a small line, a title with an optional badge (neutral,
   accent, green or orange), words, points (each `{id, text}`, ticks or dots in the accent or `pointColor`) and a link with its words.
-  `columns` on wide screens, at most two on a tablet and one on a phone; boxed in the theme's surface, border and card corners, or
+  `columns` on wide screens, at most two on a tablet and one on a phone (written as the grid classes the stylesheet already holds); boxed in the theme's surface, border and card corners, or
   plain; `centred` for a team or steps. Drawn on the server (`CardsView`); with `filters` and more than one group, chips (`CardsFilter`,
   the only script) hide the other groups' cards, and all show without script; the first chip's words are the owner's (`allLabel`), so
   they translate with the page. A card with no title, words or points is left out (`cardShows()`). Texts are translated as
   `block.{id}.{card}.eyebrow`/`title`/`text`/`badge`/`group`/`linkLabel`/`alt` and `block.{id}.{card}.{point}`. One block of N cards
   in place of N styled columns keeps a page well under its hundred components. Tests: `src/components/cards-view.test.ts`.
+
+## App preview (D916, `src/components/app-preview-view.tsx`, `AppPreviewBlock` in `src/lib/page-content.ts`)
+
+- **App preview (D916)**: a picture of an app drawn from parts in the theme's colours (its accent, muted text, border and surface, and
+  the usual green and orange), so its words are the page's own and translate with it instead of a screenshot per language. A `window`
+  (three dots and a bar holding an address, or the screen's name with `barTitle`) or a plain `card`; a sidebar (`sideTitle` and `side`,
+  the first item drawn as chosen) from a medium screen up when it has items; then its `parts` in a grid of two, a `half` part beside the
+  next half part from a small screen up, each `boxed` or not. A part is one of eleven kinds: `title` (with a note, plain or a pill, in a
+  tone), `briefing` (an icon, a title, 0 to 3 grey lines, dots), `checklist` (lines ticked off from the top, as circles, boxes or ticks),
+  `progress`, `bars` (heights 0 to 100, the last `soft` ones lighter as a forecast, captions), `pairs`, `chat` (yours first, then the
+  reply, in turn), `rings`, `heatmap` (4 or 5 weeks, days marked), `kanban` (1 to 4 columns of cards) and `rows` (each with a toned dot).
+  Every figure is the owner's, drawn as typed: an illustration, never data read from anywhere. A line with no words is drawn as a soft grey
+  bar, so a new block (`newBlock()`: a title, a briefing, a checklist and a chart) looks like an app before it is written. `alt` is what a
+  screen reader is told it shows (`role="img"`); without it the words are read as they are. Texts are translated as `block.{id}.bar`,
+  `sideTitle`, `side.{item}`, `alt`, `block.{id}.{part}.title`/`aside`/`captionStart`/`captionEnd`/`legendFirst`/`legendSecond`/`caption`,
+  `block.{id}.{part}.{line}` and a board's `block.{id}.{part}.{column}.{card}`. The view uses only classes the stylesheet already holds and
+  inline styles for its colours (the stylesheet budget, `e2e/performance.spec.ts`); its fields are their own module, loaded when the
+  settings open (`lazy/builder-fields.tsx`). Tests: `src/components/app-preview-view.test.ts`.
 
 ## Icon list descriptions (D414, `IconListItem.description`)
 

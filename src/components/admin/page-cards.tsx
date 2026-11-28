@@ -83,7 +83,7 @@ export function PageCards({
     )}
     <ul
       aria-label={label ?? c.label}
-      className="grid grid-cols-[repeat(auto-fill,minmax(min(250px,100%),1fr))] gap-4 max-sm:gap-0 max-sm:overflow-hidden max-sm:rounded-card max-sm:bg-card"
+      className="grid grid-cols-[repeat(auto-fill,minmax(min(16rem,100%),1fr))] gap-4 max-sm:gap-0 max-sm:overflow-hidden max-sm:rounded-card max-sm:bg-card"
     >
       {shown.map((page, n) => {
         const title = page.title || list.untitled;

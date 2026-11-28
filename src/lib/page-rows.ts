@@ -94,6 +94,23 @@ export function newBlock(type: BlockType, id: NewId, part: ProductPart | SitePar
         columns: 3,
         items: (["sparkles", "zap", "shieldCheck"] as const).map((icon) => ({ id: id(), icon, eyebrow: "", title: "", text: "", points: [], badge: "", group: "", linkLabel: "", href: "" })),
       };
+    case "appPreview":
+      // A window with a title, a briefing, a checklist and a chart to write in (D916); a line without words is drawn as a soft bar.
+      return {
+        id: id(),
+        type,
+        frame: "window",
+        bar: "",
+        sideTitle: "",
+        side: [],
+        alt: "",
+        parts: [
+          { id: id(), kind: "title", title: "", aside: "" },
+          { id: id(), kind: "briefing", icon: "sparkles", title: "", lines: 3, boxed: true },
+          { id: id(), kind: "checklist", title: "", mark: "tick", half: true, boxed: true, items: [true, false, false].map((done) => ({ id: id(), text: "", done })) },
+          { id: id(), kind: "bars", icon: "wallet", title: "", aside: "", values: [55, 80, 40, 95, 65], soft: 0, captionStart: "", captionEnd: "", half: true, boxed: true },
+        ],
+      };
     case "timeline":
       // Three events to write in, as a story starts, goes on and gets here (D414).
       return { id: id(), type, items: [0, 1, 2].map(() => ({ id: id(), date: "", title: "", text: "" })) };

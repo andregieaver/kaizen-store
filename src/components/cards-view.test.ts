@@ -35,7 +35,7 @@ describe("cards on the site (D916)", () => {
         items: [card({ icon: "bot", eyebrow: "Assistant", title: "An assistant that acts", text: "It does things.", points: [{ id: "p1", text: "Triage email" }] })],
       }),
     );
-    expect(html).toContain("--card-cols:3");
+    expect(html).toContain("md:grid-cols-2 lg:grid-cols-3");
     expect(html).toContain("Assistant");
     expect(html).toContain("An assistant that acts");
     expect(html).toContain("It does things.");

@@ -23,6 +23,8 @@ export function BlockIcon({ type }: { type: BlockType }) {
       return <TimelineIcon />;
     case "cards":
       return <GridIcon />;
+    case "appPreview":
+      return <AppPreviewIcon />;
     case "heading":
       return <LetterIcon letter="H" bold />;
     case "button":
@@ -299,6 +301,25 @@ function GridIcon() {
         {Array.from({ length: 6 }, (_, i) => (
           <span key={i} className="size-2 rounded-[2px] bg-current" />
         ))}
+      </span>
+    </span>
+  );
+}
+
+/** A small app window: three dots over a sidebar and a panel. */
+function AppPreviewIcon() {
+  return (
+    <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">
+      <span className="flex w-9 flex-col gap-0.5 rounded-[3px] border border-current p-0.5">
+        <span className="flex gap-0.5">
+          {[0, 1, 2].map((i) => (
+            <span key={i} className="size-1 rounded-full bg-current" />
+          ))}
+        </span>
+        <span className="flex gap-0.5">
+          <span className="h-3 w-2 rounded-[1px] bg-current opacity-60" />
+          <span className="h-3 flex-1 rounded-[1px] bg-current" />
+        </span>
       </span>
     </span>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { MarkupInput, RichTextEditor } from "./lazy/editors";
+import { AppPreviewFields } from "./lazy/builder-fields";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -268,6 +269,11 @@ export const BLOCK_EDITORS: Editors = {
     font: { label: "Font", fallback: "The site's body font" },
     General: CardsFields,
     Style: CardsStyleFields,
+  },
+  appPreview: {
+    title: "App preview",
+    font: { label: "Font", fallback: "The site's body font" },
+    General: AppPreviewFields,
   },
   animation: { title: "Animation", General: AnimationBlockFields, Style: AnimationStyleFields },
   beforeAfter: {
@@ -863,7 +869,7 @@ function SortableItem({ id, name, body, children }: { id: string; name: string; 
 // ---------------------------------------------------------------------------
 
 /** Options for `Choices` from a record of labels. */
-const optionsOf = <T extends string>(labels: Record<T, string>, own?: Partial<Record<T, string>>) =>
+export const optionsOf = <T extends string>(labels: Record<T, string>, own?: Partial<Record<T, string>>) =>
   (Object.entries(labels) as [T, string][]).map(([value, label]) => ({ value, label: own?.[value] ?? label }));
 
 /** A separator line (D91): its style, thickness, colour, width and place. */
@@ -1189,7 +1195,7 @@ function DualStackField({ block, onChange }: { block: DualButtonBlock; onChange:
 }
 
 /** A new item's id, as the builder makes ids. */
-const newItemId = () =>
+export const newItemId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `id${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
 
 /** Titled pieces of rich text (D91): an accordion's sections, or tabs. */
@@ -2269,7 +2275,7 @@ function SocialLinksStyleFields({ block, onChange }: BlockEditorProps<SocialLink
 }
 
 /** Chooses one of the icon list's icons (D91). */
-function IconPicker({ value, onChange }: { value: IconName; onChange: (icon: IconName) => void }) {
+export function IconPicker({ value, onChange }: { value: IconName; onChange: (icon: IconName) => void }) {
   const w = useAdminText("blocks").icons;
   return (
     <fieldset className="flex flex-col gap-2">

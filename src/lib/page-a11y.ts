@@ -28,7 +28,7 @@ import { blend } from "./colour";
 import { classColours, classNames, colourOfClasses, type ClassColour } from "./css-class-colours";
 import { inlinePlain, parseInline, type InlineNode as InlineMarkup } from "./inline-text";
 import { contrastRatio } from "./theme";
-import { galleryItemShows, isDualHeading, withChildren, type PageBlock, type PageColumn, type PageContent, type PageRow, type RichTextDoc, type BlockNode, type InlineNode } from "./page-content";
+import { appPreviewWords, galleryItemShows, isDualHeading, withChildren, type PageBlock, type PageColumn, type PageContent, type PageRow, type RichTextDoc, type BlockNode, type InlineNode } from "./page-content";
 import { footerHasWithdrawal, footerRequired, siteBlocks } from "./site-layout";
 import { localizePage } from "./page-translation";
 import { valueAt } from "./responsive";
@@ -670,6 +670,8 @@ function blockWords(block: PageBlock): string[] {
       return block.items.flatMap((item) => [item.text, item.description ?? ""]);
     case "timeline":
       return block.items.flatMap((item) => [item.date, item.title, item.text]);
+    case "appPreview":
+      return [block.alt, ...appPreviewWords(block)];
     case "cards":
       return block.items.flatMap((item) => [item.eyebrow, item.title, item.text, ...item.points.map((point) => point.text), item.badge, item.linkLabel]);
     case "table":

@@ -314,6 +314,8 @@ export function textRoles(part: TypedPart): RoleDef[] {
       return [TEXT, role("meta", "Dates", marked("meta")), role("title", "Titles", marked("title")), role("body", "Texts", marked("body"))];
     case "cards":
       return [TEXT, role("meta", "Small lines", marked("meta")), role("title", "Titles", marked("title")), role("body", "Texts", marked("body"))];
+    case "appPreview":
+      return [TEXT, role("meta", "Small lines", marked("meta")), role("title", "Titles", marked("title"))];
     case "gallery":
       return [TEXT, role("caption", "Captions", marked("caption"))];
     case "socialLinks":
@@ -416,6 +418,20 @@ export const TEXT_FIELDS: Record<string, Record<string, TextRole>> = {
   iconList: { "*.text": "text", "*.description": "body" },
   timeline: { "*.date": "meta", "*.title": "title", "*.text": "body" },
   cards: { "*.eyebrow": "meta", "*.title": "title", "*.text": "body", "*.badge": "meta", "*.group": "meta", "*.linkLabel": "text", allLabel: "meta" },
+  appPreview: {
+    bar: "meta",
+    sideTitle: "title",
+    "side.*": "text",
+    "*.title": "title",
+    "*.aside": "meta",
+    "*.captionStart": "meta",
+    "*.captionEnd": "meta",
+    "*.legendFirst": "meta",
+    "*.legendSecond": "meta",
+    "*.caption": "meta",
+    "*.*": "text",
+    "*.*.*": "text",
+  },
   brands: { "*.name": "name" },
   gallery: { "*.caption": "caption" },
   table: { caption: "text", "r*": "text", "s*": "text" },
@@ -459,6 +475,7 @@ export const UNDRAWN_TEXTS: Record<string, readonly string[]> = {
   animation: ["alt"],
   contentGrid: ["*.alt"],
   cards: ["*.alt"],
+  appPreview: ["alt"],
   video: ["title"],
   html: ["title"],
   emailForm: ["subject"],

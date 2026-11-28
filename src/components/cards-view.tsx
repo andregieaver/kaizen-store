@@ -5,6 +5,9 @@ import { cardShows, type CardBadgeTone, type CardItem, type CardsBlock } from "@
 import { CardsFilter } from "./lazy/blocks";
 import { ListIcon } from "./list-icon";
 
+/** The grid's columns: one on a phone, at most two on a tablet, the block's own on a wide screen; written out, as the stylesheet holds them already. */
+const COLUMNS: Record<CardsBlock["columns"], string> = { 1: "", 2: "md:grid-cols-2", 3: "md:grid-cols-2 lg:grid-cols-3", 4: "md:grid-cols-2 lg:grid-cols-4" };
+
 /** A badge's colours: the theme's for neutral and accent, the usual signal colours for green and orange, each on a soft tint of itself. */
 const TONES: Record<CardBadgeTone, CSSProperties> = {
   neutral: { color: "var(--muted)", boxShadow: "inset 0 0 0 1px var(--border)" },
@@ -86,12 +89,7 @@ export function CardsView({ block }: { block: CardsBlock }) {
           groups={groups.map((name) => ({ name, count: items.filter((item) => item.group.trim() === name).length }))}
         />
       )}
-      <ul
-        id={listId}
-        className="grid grid-cols-[repeat(var(--cols),minmax(0,1fr))] gap-4 [--cols:1] md:[--cols:min(2,var(--card-cols))] lg:[--cols:var(--card-cols)]"
-        style={{ "--card-cols": block.columns } as CSSProperties}
-        data-cards=""
-      >
+      <ul id={listId} className={`grid gap-4 ${COLUMNS[block.columns]}`} data-cards="">
         {items.map((item, index) => (
           <li
             key={item.id}
@@ -100,7 +98,7 @@ export function CardsView({ block }: { block: CardsBlock }) {
           >
             <Marker block={block} item={item} index={index} />
             {item.eyebrow.trim() && (
-              <p data-kz-text="meta" className="text-xs font-semibold tracking-[0.16em] text-accent uppercase">
+              <p data-kz-text="meta" className="text-xs font-semibold tracking-widest text-accent uppercase">
                 {item.eyebrow}
               </p>
             )}

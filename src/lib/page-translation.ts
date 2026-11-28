@@ -163,6 +163,57 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
     case "brands":
       // A brand's name is its own in every language; only the logos' alternative texts could differ, and they are the names.
       return b;
+    case "appPreview": {
+      // An app preview's words (D916): its bar, menu and description, and each part's words by the part's id and a line's own.
+      const lines = <T extends { id: string; text: string }>(part: string, list: T[], what: string) =>
+        list.map((line, at) => ({ ...line, text: str(`${part}.${line.id}`, line.text, 200, `${what} ${at + 1}`) }));
+      const parts = b.parts.map((part, index) => {
+        const name = `Picture part ${index + 1}`;
+        const text = (field: string, value: string, max: number, what: string) => str(`${part.id}.${field}`, value, max, `${name}: ${what}`);
+        switch (part.kind) {
+          case "title":
+            return { ...part, title: text("title", part.title, 200, "title"), aside: text("aside", part.aside, 60, "note") };
+          case "briefing":
+            return { ...part, title: text("title", part.title, 200, "title") };
+          case "checklist":
+            return { ...part, title: text("title", part.title, 60, "title"), items: lines(part.id, part.items, `${name}: line`) };
+          case "bars":
+            return {
+              ...part,
+              title: text("title", part.title, 60, "title"),
+              aside: text("aside", part.aside, 60, "note"),
+              captionStart: text("captionStart", part.captionStart, 60, "caption on the left"),
+              captionEnd: text("captionEnd", part.captionEnd, 60, "caption on the right"),
+            };
+          case "pairs":
+            return {
+              ...part,
+              title: text("title", part.title, 60, "title"),
+              legendFirst: text("legendFirst", part.legendFirst, 60, "first bar's name"),
+              legendSecond: text("legendSecond", part.legendSecond, 60, "second bar's name"),
+              caption: text("caption", part.caption, 200, "caption"),
+            };
+          case "chat":
+            return { ...part, title: text("title", part.title, 60, "title"), messages: lines(part.id, part.messages, `${name}: message`) };
+          case "rings":
+            return { ...part, items: lines(part.id, part.items, `${name}: ring`) };
+          case "kanban":
+            return { ...part, columns: part.columns.map((column, c) => ({ ...column, cards: lines(`${part.id}.${column.id}`, column.cards, `${name}: column ${c + 1}, card`) })) };
+          case "rows":
+            return { ...part, title: text("title", part.title, 60, "title"), items: lines(part.id, part.items, `${name}: row`) };
+          default:
+            return part;
+        }
+      });
+      return {
+        ...b,
+        bar: str("bar", b.bar, 60, "Picture: the window's bar"),
+        sideTitle: str("sideTitle", b.sideTitle, 60, "Picture: the app's name"),
+        side: b.side.map((item, at) => ({ ...item, text: str(`side.${item.id}`, item.text, 60, `Picture: menu item ${at + 1}`) })),
+        alt: str("alt", b.alt, 300, "Picture: description for screen readers"),
+        parts,
+      };
+    }
     case "cards":
       return {
         ...b,

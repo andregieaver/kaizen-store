@@ -41,6 +41,7 @@ import { blockBox } from "./page-parts";
 import { IconListView } from "./icon-list-view";
 import { TimelineView } from "./timeline-view";
 import { CardsView } from "./cards-view";
+import { AppPreviewView } from "./app-preview-view";
 import { TableView } from "./table-view";
 import { BrandsView } from "./brands-view";
 import { GalleryView } from "./gallery-view";
@@ -153,6 +154,8 @@ export function PageBlockView({
       return <TimelineView block={block} />;
     case "cards":
       return <CardsView block={block} />;
+    case "appPreview":
+      return <AppPreviewView block={block} />;
     case "table":
       return <TableView block={block} />;
     case "brands":

@@ -129,7 +129,7 @@ export default async function AutomationsPage({ params }: PageProps<"/admin/[sto
               key={kind}
               title={words.title}
               compact
-              className={first ? "ring-[1.5px] ring-brand" : undefined}
+              className={first ? "ring-2 ring-brand" : undefined}
               aside={
                 first ? (
                   <Chip signal="positive">{wa.startHere}</Chip>

@@ -148,7 +148,7 @@ export default async function StoreWebsitePage({ params }: PageProps<"/admin/[st
         <h2 id="parts" className="text-title text-ink">
           {w.parts}
         </h2>
-        <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(16rem,100%),1fr))] gap-3">
+        <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(260px,100%),1fr))] gap-3">
           {parts.map((item) => {
             const state = stateOf(item);
             return (

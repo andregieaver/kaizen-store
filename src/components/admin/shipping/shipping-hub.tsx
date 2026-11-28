@@ -121,7 +121,7 @@ export function ShippingHubView({
         <h2 id="shipping-ways" className="text-body-strong text-ink">
           {w.waysTitle} <span className="text-sm font-normal text-muted">{w.waysSub}</span>
         </h2>
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(250px,100%),1fr))] gap-3">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(260px,100%),1fr))] gap-3">
           <Way title={w.carriers.title} text={w.carriers.text} state={carriers === 0 ? w.carriers.none : countWords(carriers, w.carriers.some)} on={carriers > 0} href={integrations} action={carriers === 0 ? w.carriers.action : w.carriers.manage} />
           <Way
             title={w.own.title}

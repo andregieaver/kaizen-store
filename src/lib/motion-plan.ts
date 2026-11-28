@@ -120,6 +120,7 @@ const ENTER_BLOCKS: ReadonlySet<BlockType> = new Set<BlockType>([
   "iconList",
   "timeline",
   "cards",
+  "appPreview",
   "brands",
   "gallery",
   "socialLinks",

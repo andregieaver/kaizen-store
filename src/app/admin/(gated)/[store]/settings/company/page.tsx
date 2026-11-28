@@ -118,7 +118,7 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
       />
 
       {missing.length > 0 && (
-        <section aria-labelledby="business" className={`${CARD_CLASS} px-5 py-5 ring-[1.5px] ring-warning-line sm:px-6`}>
+        <section aria-labelledby="business" className={`${CARD_CLASS} px-5 py-5 ring-2 ring-warning-line sm:px-6`}>
           <h2 id="business" className="mb-1 text-title text-ink">{w.fillIn}</h2>
           <p className="mb-4 text-sm text-muted">{fillWords(w.missingList, { list: missing.map((key) => w.fields[key]).join(", ") })}</p>
           {missingForm}

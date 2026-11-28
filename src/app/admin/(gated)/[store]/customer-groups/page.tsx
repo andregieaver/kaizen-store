@@ -96,7 +96,7 @@ export default async function CustomerGroupsPage({ params, searchParams }: PageP
           <h2 id="ready-groups" className="text-title text-ink">
             {words.readyTitle}
           </h2>
-          <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(15rem,100%),1fr))] gap-3">
+          <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(16rem,100%),1fr))] gap-3">
             {ready.map((r, i) => (
               <li key={r.key} className={`flex flex-col gap-2 p-5 ${CARD_CLASS}`}>
                 <span aria-hidden className="text-2xl tracking-tight text-ink">{r.percent} %</span>

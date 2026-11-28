@@ -19,7 +19,7 @@ export function CardsFilter({ list, all, total, groups }: { list: string; all: s
       type="button"
       aria-pressed={shown === name}
       onClick={() => setShown(name)}
-      className={`min-h-9 rounded-full px-3.5 text-sm font-medium ${shown === name ? "bg-accent text-accent-foreground" : "text-muted shadow-[inset_0_0_0_1px_var(--border)] hover:text-current"}`}
+      className={`min-h-9 rounded-full border px-3.5 text-sm font-medium ${shown === name ? "border-transparent bg-accent text-accent-foreground" : "border-border text-muted hover:text-current"}`}
     >
       {label} <span className="opacity-70">{count}</span>
     </button>

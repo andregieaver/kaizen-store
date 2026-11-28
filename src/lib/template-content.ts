@@ -62,6 +62,7 @@ export const BLOCK_WORDS: Record<BlockType, string> = {
   iconList: "icon list",
   timeline: "timeline",
   cards: "cards",
+  appPreview: "app preview",
   table: "table",
   brands: "brands",
   gallery: "gallery",

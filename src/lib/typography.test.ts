@@ -75,6 +75,8 @@ const pattern = (key: string, block: PageBlock) =>
     .replace(`block.${block.id}.`, "")
     // A list made by `newBlock()` (animated stats, D561) names its items by the test's own ids.
     .replace(/^(i1|p1|t1|l1|f1|x\d+)\./, "*.")
+    // An app preview's lines (D916) sit inside its parts, and a board's cards inside its columns: every id made by `newBlock()` is `*`.
+    .replace(/(^|\.)x\d+(?=\.|$)/g, "$1*")
     .replace(/detail-d1\./, "detail-*.")
     .replace(/option\d+$/, "option*")
     .replace(/^r\d+c\d+$/, "r*");

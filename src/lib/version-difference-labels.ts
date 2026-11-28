@@ -39,6 +39,7 @@ export const BLOCK_NAMES_EN = {
   animation: "Animation",
   timeline: "Timeline",
   cards: "Cards",
+  appPreview: "App preview",
   button: "Button",
   contentGrid: "Content grid",
   product: "Product",

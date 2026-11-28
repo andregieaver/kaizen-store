@@ -88,7 +88,7 @@ export function SettingsHub({
         <section key={group.heading || "all"} aria-label={group.heading || title} className="flex flex-col gap-2.5">
           {group.heading && <h2 className="text-title text-ink max-sm:px-1 max-sm:text-body-strong max-sm:text-ink-2">{group.heading}</h2>}
           {/* Round 23 (D688): on a phone a group is one card of rows, not a card each; from 640 px the tiles are as before. */}
-          <ul className={`grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr))] max-sm:gap-0 max-sm:divide-y max-sm:divide-line max-sm:px-4 ${PHONE_CARD}`}>
+          <ul className={`grid gap-3 grid-cols-[repeat(auto-fit,minmax(min(260px,100%),1fr))] max-sm:gap-0 max-sm:divide-y max-sm:divide-line max-sm:px-4 ${PHONE_CARD}`}>
             {group.items.map((card) => {
               const warn = card.state?.tone === "warning";
               return (

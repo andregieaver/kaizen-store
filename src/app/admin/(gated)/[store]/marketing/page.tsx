@@ -124,7 +124,7 @@ export default async function MarketingPage({ params }: PageProps<"/admin/[store
             {w.plays} <span className="text-caption font-normal text-muted max-sm:hidden">{w.playsSub}</span>
           </h2>
           {/* On a phone each play is a row of one card: its icon, name, a short line and Set it up (round 38, D728). */}
-          <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(17rem,100%),1fr))] gap-3 max-sm:gap-0 max-sm:overflow-hidden max-sm:rounded-panel max-sm:border max-sm:border-line max-sm:bg-card">
+          <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(260px,100%),1fr))] gap-3 max-sm:gap-0 max-sm:overflow-hidden max-sm:rounded-panel max-sm:border max-sm:border-line max-sm:bg-card">
             {plays.map((play, i) => (
               <li key={play.key} className={`flex flex-col gap-3 p-5.5 ${CARD_CLASS} max-sm:flex-row max-sm:items-center max-sm:rounded-none max-sm:border-0 max-sm:border-b max-sm:border-line max-sm:px-4 max-sm:py-3 max-sm:shadow-none max-sm:last:border-b-0`}>
                 <span aria-hidden className={`flex size-11 shrink-0 items-center justify-center rounded-card ${play.tone} max-sm:size-9`}>

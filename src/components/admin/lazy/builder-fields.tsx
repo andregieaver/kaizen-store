@@ -44,6 +44,9 @@ export const ColumnsFields = lazyView(
   dynamic(() => import("../page-builder-fields").then((m) => m.ColumnsFields)),
 ) as typeof import("../page-builder-fields").ColumnsFields;
 
+/** An app preview's fields (D916): their own module, so the builder's first scripts do not carry them; drawn when its settings open. */
+export const AppPreviewFields = lazyView(dynamic(() => import("../app-preview-fields").then((m) => m.AppPreviewFields)));
+
 export const TermPicker = lazyView(dynamic(() => import("../terms").then((m) => m.TermPicker)));
 export const EntityFields = lazyView(dynamic(() => import("../entity-fields").then((m) => m.EntityFields)));
 export const ThemeSectionsList = lazyView(dynamic(() => import("../theme-sections-list").then((m) => m.ThemeSectionsList)));

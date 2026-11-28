@@ -1550,6 +1550,108 @@ export type CardsBlock = PartBase & {
 /** A card that shows: a title, words or points. */
 export const cardShows = (item: CardItem) => item.title.trim() !== "" || item.text.trim() !== "" || item.points.some((point) => point.text.trim() !== "");
 
+export const PREVIEW_PARTS_MAX = 12;
+export const PREVIEW_LINES_MAX = 8;
+export const PREVIEW_VALUES_MAX = 12;
+export const PREVIEW_TEXT_MAX = 200;
+export const PREVIEW_SHORT_MAX = 60;
+export const PREVIEW_WEEKS = [4, 5] as const;
+/** The kinds of part an app preview is drawn from (D916), as Kaizena Life's illustrations of its app are. */
+export const PREVIEW_PART_KINDS = {
+  title: "Title",
+  briefing: "Briefing",
+  checklist: "Checklist",
+  progress: "Progress bar",
+  bars: "Bar chart",
+  pairs: "Paired bars",
+  chat: "Chat",
+  rings: "Rings",
+  heatmap: "Calendar",
+  kanban: "Board",
+  rows: "Status rows",
+} as const;
+export type PreviewPartKind = keyof typeof PREVIEW_PART_KINDS;
+/** A note's or a row's colour: the theme's muted or accent, or the usual signal colours. */
+export const PREVIEW_TONES = { muted: "Muted", accent: "Accent", success: "Green", warning: "Orange" } as const;
+export type PreviewTone = keyof typeof PREVIEW_TONES;
+/** How a checklist marks its lines: a round dot, a box, or a tick in a circle. */
+export const PREVIEW_MARKS = { circle: "Circles", box: "Boxes", tick: "Ticks" } as const;
+export type PreviewMark = keyof typeof PREVIEW_MARKS;
+export const PREVIEW_FRAMES = { window: "Window", card: "Card" } as const;
+export type PreviewFrame = keyof typeof PREVIEW_FRAMES;
+
+/** A line of a part (a task, a message, a ring's name, a board's card), with the id its translations are kept by. */
+export type PreviewLine = { id: string; text: string };
+/** What every part has: `half` sits beside the next half part on wider screens; `boxed` draws it in a box of its own. */
+type PreviewBase = { id: string; half?: boolean; boxed?: boolean };
+/**
+ * One part of an app preview (D916). Its figures (bars, rings, the calendar's days) are the owner's, from 0 to 100, and drawn as they are:
+ * an illustration, never data read from anywhere.
+ */
+export type PreviewPart = PreviewBase &
+  (
+    | { kind: "title"; title: string; aside: string; asideTone?: PreviewTone; asidePill?: boolean }
+    | { kind: "briefing"; icon?: IconName; title: string; lines: number; dots?: boolean }
+    | { kind: "checklist"; title: string; items: (PreviewLine & { done: boolean })[]; mark?: PreviewMark; divided?: boolean }
+    | { kind: "progress"; value: number }
+    | { kind: "bars"; icon?: IconName; title: string; aside: string; asideTone?: PreviewTone; values: number[]; soft: number; tall?: boolean; captionStart: string; captionEnd: string }
+    | { kind: "pairs"; title: string; legendFirst: string; legendSecond: string; values: [number, number][]; caption: string }
+    | { kind: "chat"; title: string; messages: (PreviewLine & { mine: boolean })[] }
+    | { kind: "rings"; items: (PreviewLine & { value: number })[] }
+    | { kind: "heatmap"; weeks: (typeof PREVIEW_WEEKS)[number]; on: number[] }
+    | { kind: "kanban"; columns: { id: string; cards: PreviewLine[] }[] }
+    | { kind: "rows"; icon?: IconName; title: string; items: (PreviewLine & { tone: PreviewTone })[] }
+  );
+
+/**
+ * An app preview (D916, Kaizena Life's pages): a picture of an app drawn from parts, in the theme's colours, so its words are the page's
+ * own and translated with it instead of a screenshot per language. A window (three dots and a bar with an address or a title) or a plain
+ * card; a sidebar (the app's name and its menu, the first item chosen) on wide screens when it has items; and its parts, one under the
+ * other, two half parts side by side. `alt` is what a screen reader is told it shows; the drawing itself is not read out.
+ */
+export type AppPreviewBlock = PartBase & {
+  id: string;
+  type: "appPreview";
+  frame: PreviewFrame;
+  bar: string;
+  /** The bar's words as a title, else as an address. */
+  barTitle?: boolean;
+  sideTitle: string;
+  side: PreviewLine[];
+  parts: PreviewPart[];
+  alt: string;
+};
+
+/** A part's words, in the order they are drawn. */
+export function previewPartWords(part: PreviewPart): string[] {
+  switch (part.kind) {
+    case "title":
+      return [part.title, part.aside];
+    case "briefing":
+      return [part.title];
+    case "checklist":
+      return [part.title, ...part.items.map((item) => item.text)];
+    case "bars":
+      return [part.title, part.aside, part.captionStart, part.captionEnd];
+    case "pairs":
+      return [part.title, part.legendFirst, part.legendSecond, part.caption];
+    case "chat":
+      return [part.title, ...part.messages.map((message) => message.text)];
+    case "rings":
+      return part.items.map((item) => item.text);
+    case "kanban":
+      return part.columns.flatMap((column) => column.cards.map((card) => card.text));
+    case "rows":
+      return [part.title, ...part.items.map((item) => item.text)];
+    default:
+      return [];
+  }
+}
+
+/** Every word an app preview draws: its bar, sidebar and parts. */
+export const appPreviewWords = (block: AppPreviewBlock): string[] =>
+  [block.bar, block.sideTitle, ...block.side.map((item) => item.text), ...block.parts.flatMap(previewPartWords)].map((t) => t.trim()).filter(Boolean);
+
 export const TABLE_ROWS_MAX = 60;
 export const TABLE_COLUMNS_MAX = 12;
 export const TABLE_CELL_MAX = 500;
@@ -1982,6 +2084,7 @@ export type PageBlock =
   | IconListBlock
   | TimelineBlock
   | CardsBlock
+  | AppPreviewBlock
   | TableBlock
   | BrandsBlock
   | GalleryBlock
@@ -2212,6 +2315,8 @@ export function blockOwnContent(block: PageBlock): boolean {
       return block.items.some(timelineItemShows);
     case "cards":
       return block.items.some(cardShows);
+    case "appPreview":
+      return block.parts.length > 0;
     case "table":
       return tableShows(block);
     case "brands":
@@ -2272,6 +2377,8 @@ export function blockText(block: PageBlock): string {
         .filter(timelineItemShows)
         .map((item) => [item.date, item.title, item.text].map((t) => t.trim()).filter(Boolean).join(" "))
         .join(" ");
+    case "appPreview":
+      return appPreviewWords(block).join(" ");
     case "cards":
       return block.items
         .filter(cardShows)
@@ -3502,6 +3609,95 @@ const cardsBlock = z.object({
   ...partBase,
 });
 
+const previewText = (max: number, what: string) => z.string().trim().max(max, `Keep an app preview's ${what} under ${max} characters.`).default("");
+const previewFigure = z.number().min(0, "An app preview's figures are from 0 to 100.").max(100, "An app preview's figures are from 0 to 100.");
+const uniqueIds = (list: readonly { id?: unknown }[]) => new Set(list.map((entry) => entry.id)).size === list.length;
+const previewLines = <T extends z.ZodRawShape>(extra: T) =>
+  z
+    .array(z.object({ id: itemId, text: previewText(PREVIEW_TEXT_MAX, "line"), ...extra }))
+    .max(PREVIEW_LINES_MAX, `A part of an app preview has at most ${PREVIEW_LINES_MAX} lines.`)
+    .refine(uniqueIds, "Two lines have the same id. Reload the page and try again.")
+    .default([]);
+const previewIcon = z.enum(Object.keys(ICONS) as [IconName, ...IconName[]]).optional();
+const previewTone = z.enum(Object.keys(PREVIEW_TONES) as [PreviewTone, ...PreviewTone[]]).optional();
+const previewBase = { id: itemId, half: z.boolean().optional(), boxed: z.boolean().optional() };
+const previewPart = z.discriminatedUnion("kind", [
+  z.object({ ...previewBase, kind: z.literal("title"), title: previewText(PREVIEW_TEXT_MAX, "title"), aside: previewText(PREVIEW_SHORT_MAX, "note"), asideTone: previewTone, asidePill: z.boolean().optional() }),
+  z.object({ ...previewBase, kind: z.literal("briefing"), icon: previewIcon, title: previewText(PREVIEW_TEXT_MAX, "title"), lines: z.number().int().min(0).max(3).default(2), dots: z.boolean().optional() }),
+  z.object({
+    ...previewBase,
+    kind: z.literal("checklist"),
+    title: previewText(PREVIEW_SHORT_MAX, "title"),
+    items: previewLines({ done: z.boolean().default(false) }),
+    mark: z.enum(Object.keys(PREVIEW_MARKS) as [PreviewMark, ...PreviewMark[]]).optional(),
+    divided: z.boolean().optional(),
+  }),
+  z.object({ ...previewBase, kind: z.literal("progress"), value: previewFigure }),
+  z.object({
+    ...previewBase,
+    kind: z.literal("bars"),
+    icon: previewIcon,
+    title: previewText(PREVIEW_SHORT_MAX, "title"),
+    aside: previewText(PREVIEW_SHORT_MAX, "note"),
+    asideTone: previewTone,
+    values: z.array(previewFigure).min(1, "A bar chart has at least one bar.").max(PREVIEW_VALUES_MAX, `A bar chart has at most ${PREVIEW_VALUES_MAX} bars.`),
+    soft: z.number().int().min(0).max(PREVIEW_VALUES_MAX).default(0),
+    tall: z.boolean().optional(),
+    captionStart: previewText(PREVIEW_SHORT_MAX, "caption"),
+    captionEnd: previewText(PREVIEW_SHORT_MAX, "caption"),
+  }),
+  z.object({
+    ...previewBase,
+    kind: z.literal("pairs"),
+    title: previewText(PREVIEW_SHORT_MAX, "title"),
+    legendFirst: previewText(PREVIEW_SHORT_MAX, "legend"),
+    legendSecond: previewText(PREVIEW_SHORT_MAX, "legend"),
+    values: z.array(z.tuple([previewFigure, previewFigure])).min(1, "Paired bars have at least one pair.").max(PREVIEW_VALUES_MAX, `Paired bars have at most ${PREVIEW_VALUES_MAX} pairs.`),
+    caption: previewText(PREVIEW_TEXT_MAX, "caption"),
+  }),
+  z.object({ ...previewBase, kind: z.literal("chat"), title: previewText(PREVIEW_SHORT_MAX, "title"), messages: previewLines({ mine: z.boolean().default(false) }) }),
+  z.object({ ...previewBase, kind: z.literal("rings"), items: previewLines({ value: previewFigure.default(0) }) }),
+  z.object({
+    ...previewBase,
+    kind: z.literal("heatmap"),
+    weeks: z
+      .number()
+      .int()
+      .refine((value) => (PREVIEW_WEEKS as readonly number[]).includes(value), "A calendar shows 4 or 5 weeks.")
+      .transform((value) => value as (typeof PREVIEW_WEEKS)[number]),
+    on: z.array(z.number().int().min(0).max(34)).max(35).default([]),
+  }),
+  z.object({
+    ...previewBase,
+    kind: z.literal("kanban"),
+    columns: z
+      .array(z.object({ id: itemId, cards: previewLines({}) }))
+      .min(1, "A board has at least one column.")
+      .max(4, "A board has at most 4 columns.")
+      .refine(uniqueIds, "Two columns have the same id. Reload the page and try again."),
+  }),
+  z.object({ ...previewBase, kind: z.literal("rows"), icon: previewIcon, title: previewText(PREVIEW_SHORT_MAX, "title"), items: previewLines({ tone: previewTone.unwrap().default("muted") }) }),
+]);
+const appPreviewBlock = z.object({
+  id: itemId,
+  type: z.literal("appPreview"),
+  frame: z.enum(Object.keys(PREVIEW_FRAMES) as [PreviewFrame, ...PreviewFrame[]]),
+  bar: previewText(PREVIEW_SHORT_MAX, "bar"),
+  barTitle: z.boolean().optional(),
+  sideTitle: previewText(PREVIEW_SHORT_MAX, "app name"),
+  side: z
+    .array(z.object({ id: itemId, text: previewText(PREVIEW_SHORT_MAX, "menu item") }))
+    .max(PREVIEW_LINES_MAX, `An app preview's menu has at most ${PREVIEW_LINES_MAX} items.`)
+    .refine(uniqueIds, "Two menu items have the same id. Reload the page and try again.")
+    .default([]),
+  parts: z
+    .array(previewPart)
+    .max(PREVIEW_PARTS_MAX, `An app preview has at most ${PREVIEW_PARTS_MAX} parts.`)
+    .refine(uniqueIds, "Two parts have the same id. Reload the page and try again."),
+  alt: previewText(300, "description"),
+  ...partBase,
+});
+
 const tableColour = z.string().regex(/^#[0-9a-fA-F]{6}$/, "A colour is written as # and six hex digits, like #1f2937.").transform((v) => v.toLowerCase()).optional();
 
 const galleryPicture = z
@@ -3782,6 +3978,7 @@ const BLOCK_KINDS = [
   iconListBlock,
   timelineBlock,
   cardsBlock,
+  appPreviewBlock,
   tableBlock,
   brandsBlock,
   galleryBlock,

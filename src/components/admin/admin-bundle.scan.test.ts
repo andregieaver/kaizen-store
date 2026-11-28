@@ -93,6 +93,7 @@ const zodReach = () => clientsReaching("zod");
 const ZOD_ALLOWED: Record<string, string> = {
   "components/admin/affiliate-settings-form.tsx": "readAffiliateForm: runs affiliateSettingsInput on the referral settings form",
   "components/admin/animation-fields.tsx": "page-content.ts: the page model's schemas; page-model work, code review 3.1",
+  "components/admin/app-preview-fields.tsx": "page-content.ts: the page model's schemas; page-model work, code review 3.1",
   "components/admin/automation/rule-editor.tsx": "orderRuleInput: checks an order rule before the save",
   "components/admin/backdrop-fields.tsx": "page-content.ts: the page model's schemas; page-model work, code review 3.1",
   "components/admin/block-fields.tsx": "page-content.ts: the page model's schemas; page-model work, code review 3.1",
