@@ -1,0 +1,23 @@
+#!/usr/bin/env node
+/**
+ * Runs the Kaizena Life site importer (`import.ts`, D916, `docs/life-site-move.md`) with the tsx that vitest brings along, so the importer
+ * builds pages with the page builder's own model, translations and checks. Run from the repository's root:
+ *
+ *   node scripts/life-site/run.mjs --life ../lifesaver-app --base http://127.0.0.1:3000 --host kaizena-life.localhost:3000 --token-file PATH
+ *   node scripts/life-site/run.mjs --life ../lifesaver-app --base https://kaizena-life.kaizenstore.site
+ *
+ * `--dry DIR` writes each page's JSON there and saves nothing; `--only front,features` builds those pages alone.
+ */
+import { readdirSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { join } from "node:path";
+
+const store = join("node_modules", ".pnpm");
+const tsx = readdirSync(store).find((name) => name.startsWith("tsx@"));
+if (!tsx) {
+  console.error("tsx is not in node_modules/.pnpm: run pnpm install first.");
+  process.exit(1);
+}
+const cli = join(store, tsx, "node_modules", "tsx", "dist", "cli.mjs");
+const result = spawnSync(process.execPath, [cli, "--tsconfig", "tsconfig.json", "scripts/life-site/import.ts", ...process.argv.slice(2)], { stdio: "inherit" });
+process.exit(result.status ?? 1);

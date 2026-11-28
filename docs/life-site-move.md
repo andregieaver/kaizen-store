@@ -67,9 +67,15 @@ the background); checked rows are an icon list.
    cards medium (8 px, Life's 9 px), fields small, content 1152 px wide. Tried on a local copy of the store 28 November 2026 with the
    Cards and App preview pages. On the real store it is set in Design settings (the Admin API has no write for a theme); header and
    footer pages come with the import.
-4. The importer (`scripts/life-site/`): builds each page's content from the message files and Life's rows, checks it with `pageInput`
-   and `pageIssues()`, and saves it as a draft through the Admin API (an owner token for the store, `content:write` and
-   `products:manage`); pictures through the media endpoints. Run first against a local copy of the store for screenshots.
+4. The importer (`scripts/life-site/`, run with `node scripts/life-site/run.mjs`, its header has the arguments): builds each page once
+   per language from the message files with the same ids, keeps English and makes Norwegian and Swedish translations with the builder's
+   `translationOf()`, checks it as the editor's save does (`pageInput`, `pageIssues()`, `cleanTranslations()`; a search engine's text
+   over its length is cut at a word), and saves it as a draft through the Admin API (`POST /pages`, `PATCH` for a page of the same
+   address made before); pictures through the media endpoints. The front page is done and checked on a local copy of the store beside
+   kaizenalife.com, 28 November 2026; the other pages follow in it. The token is the owner's (`content:read`, `content:write`,
+   `products:manage`), a network secret of the session for `kaizena-life.kaizenstore.site` (kaizenaflow.com's `Authorization` holds the
+   incident log's). Before the real import the owner makes English the store's main language with Norwegian and Swedish offered
+   (Settings, Languages and currencies; Norway shows Norwegian, Sweden Swedish) and switches on Languages (Settings, Features).
 5. Checks: every page in each language beside the old one (desktop and phone screenshots), the copy compared word for word, links,
    titles, descriptions, language links and the sitemap; redirects for addresses that change.
 6. The switch: kaizenalife.com to the store, the app to app.kaizenalife.com, only with the owner's go-ahead.
