@@ -60,9 +60,13 @@ the background); checked rows are an icon list.
 
 1. Inventory and this plan. Done 28 November 2026.
 2. The parts above, each with its rules, words and tests, usable by every store and Kaizena Flow's own site.
-3. The Life store's theme: dark palette from Life's `globals.css` (background `#000000`, surface `#1c1c1e`, text `#ffffff`, muted
-   `rgba(235,235,245,.72)`, border `rgba(84,84,88,.6)`, accent `#0975e2` with white), Geist for headings and text at weight 700 for
-   headings, pill buttons, cards at 9 px, content 1152 px wide; header and footer pages.
+3. The Life store's theme, from Life's `globals.css`, as Design settings take it (hex only, so Life's translucent text and lines are
+   given as they look on black): always dark; dark palette background `#000000`, surface `#1c1c1e`, text `#ffffff`, secondary text
+   `#a9a9b0`, lines `#38383a`, accent `#0975e2`, text on accent `#ffffff`; light palette (unused while always dark) `#f4f5f8`,
+   `#ffffff`, `#0b0d12`, `#59595f`, `#ebecf0`, `#0068da`, `#ffffff`; Geist for headings and text, headings bold, filled pill buttons,
+   cards medium (8 px, Life's 9 px), fields small, content 1152 px wide. Tried on a local copy of the store 28 November 2026 with the
+   Cards and App preview pages. On the real store it is set in Design settings (the Admin API has no write for a theme); header and
+   footer pages come with the import.
 4. The importer (`scripts/life-site/`): builds each page's content from the message files and Life's rows, checks it with `pageInput`
    and `pageIssues()`, and saves it as a draft through the Admin API (an owner token for the store, `content:write` and
    `products:manage`); pictures through the media endpoints. Run first against a local copy of the store for screenshots.
