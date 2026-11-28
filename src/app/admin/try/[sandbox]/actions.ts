@@ -48,7 +48,6 @@ import { addressOf } from "@/server/analytics-visits";
 import { applyDesignPreset, designTags } from "@/server/design-presets";
 import { createAccessRequest } from "@/server/platform";
 import { endSandbox, holdSandbox, noteSandboxChange, passCookie, sandboxAi, sandboxFor, startSandbox, type Sandbox } from "@/server/sandbox";
-import { selfServeOn, startSelfSignup } from "@/server/self-signup";
 import { createSavedPart, deleteSavedPart, updateSavedPart, type SavedResult } from "@/server/saved-parts";
 import { saveSiteCss } from "@/server/site-css";
 import { storeTag } from "@/server/stores";
@@ -455,7 +454,10 @@ export async function keepSandboxAction(sandboxId: string, _state: FormState, fo
   if (!sandbox) return { status: "error", messages: [await gone()] };
   const lang = await actionAdminLang();
   const w = SANDBOX_WORDS[lang].keep;
-  const selfServe = await selfServeOn();
+  // Self sign-up loads only when a sandbox is kept (import()): its modules reach most of the admin's words, which the editor never shows
+  // (the admin words budget, D916).
+  const signup = await import("@/server/self-signup");
+  const selfServe = await signup.selfServeOn();
   const sent = selfServe ? w.sent : w.sentWaiting;
   // A field people never see; bots fill it in.
   if (String(formData.get("website") ?? "") !== "") return { status: "ok", messages: [sent] };
@@ -470,7 +472,7 @@ export async function keepSandboxAction(sandboxId: string, _state: FormState, fo
   // Sent under the sentence that links the terms and the privacy notice (PSI REG-02), as the sign-up page's form is.
   const input = { ...parsed.data, message: "", lang, termsAccepted: true, sandboxId: sandbox.id };
   try {
-    if (selfServe) await startSelfSignup(input, addressOf(await headers()) || null);
+    if (selfServe) await signup.startSelfSignup(input, addressOf(await headers()) || null);
     else await createAccessRequest(input);
     await holdSandbox(sandbox.id);
   } catch {

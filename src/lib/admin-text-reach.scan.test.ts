@@ -214,8 +214,9 @@ const ADMIN = join(SRC, "app/admin");
 const ADMIN_REACH = {
   medianAreas: 4,
   medianBytes: 213_137,
-  // 1,640,958 until D881 made the pages' Norwegian titles the menu's words (23 November 2026).
-  largest: { entry: "src/app/admin/try/[sandbox]/[kind]/[pageId]/page.tsx", areas: 26, bytes: 1_640_835 },
+  // 1,640,958 until D881 made the pages' Norwegian titles the menu's words (23 November 2026); the sandbox's editor (1,640,835) until
+  // D916 loaded self sign-up only when a sandbox is kept (28 November 2026): the largest is now an order's page.
+  largest: { entry: "src/app/admin/(gated)/[store]/orders/[orderId]/page.tsx", areas: 24, bytes: 1_563_459 },
   platformHome: { areas: 18, bytes: 1_126_541 },
 };
 const AREAS_ROOM = 2;
@@ -229,9 +230,10 @@ const MEDIAN_BYTES_MAX = 900_000;
  * page editors stopped reaching the platform's actions for their two uploads (`platform/upload-actions.ts`), and with them self sign-up and
  * the AI manager's words: the article editor fell from 1.85 MB and 24 areas to 1.14 MB and 15, which meets step 2.50's 1.66 MB. The largest
  * is now the sandbox's editor (try/[sandbox]), 1.64 MB in 26 areas (its count unchanged, held by MOST_AREAS_MAX as before): its actions reach
- * self sign-up the same way.
+ * self sign-up the same way. On 28 November (D916) they load self sign-up only when a sandbox is kept (import()): the sandbox's editor fell to
+ * 0.83 MB in 15 areas, and the largest is an order's page, 1.56 MB in 24.
  */
-const LARGEST_MAX = { areas: 26, bytes: 1_641_000 };
+const LARGEST_MAX = { areas: 24, bytes: 1_563_459 };
 /** The most areas any entry reaches (26 on 20 November, under step 2.50's line of 28); it only falls. */
 const MOST_AREAS_MAX = 26;
 

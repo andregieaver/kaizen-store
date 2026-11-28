@@ -3,6 +3,7 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { t } from "@/lib/i18n";
+import { iconWords } from "@/lib/icon-words";
 import { ICONS } from "@/lib/icons";
 import type { TableBlock } from "@/lib/page-content";
 
@@ -109,7 +110,7 @@ describe("icons in a table's cells (D201)", () => {
     const html = renderToString(
       createElement(TableView, {
         block: block({ rows: [["Feature", "Free"], ["Search", "{{check}}"], ["Chat", "{{x}} No"]], sections: [null, null, ""] }),
-        words: { icons: m.icons, section: m.tableSection },
+        words: { icons: iconWords("nb"), section: m.tableSection },
       }),
     );
     expect(html).toContain('<span class="sr-only">Hake</span>');
@@ -117,13 +118,14 @@ describe("icons in a table's cells (D201)", () => {
     expect(html).not.toContain(">Tick<");
   });
 
-  it("has every icon's name in every hand-written language", () => {
+  it("has every icon's name in every hand-written language, English for the others", () => {
     for (const lang of ["en", "nb", "sv", "da"]) {
-      const names = t(lang).icons;
+      const names = iconWords(lang);
       expect(Object.keys(names).sort(), lang).toEqual(Object.keys(ICONS).sort());
       for (const name of Object.values(names)) expect(name.trim().length, lang).toBeGreaterThan(0);
     }
-    expect(t("en").icons).toEqual(ICONS);
+    expect(iconWords("en")).toEqual(ICONS);
+    expect(iconWords("fi")).toEqual(ICONS);
   });
 });
 

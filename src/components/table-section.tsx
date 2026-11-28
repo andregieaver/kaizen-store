@@ -10,6 +10,9 @@ import { TableView } from "./table-view";
  * language of the place (`placeLang()`: a store's market, or the language of Kaizena Flow's own page).
  */
 export async function TableSection({ block, place }: { block: TableBlock; place: GridPlace }) {
-  const m = t(await placeLang(place));
-  return <TableView block={block} words={{ icons: m.icons, section: m.tableSection }} />;
+  const lang = await placeLang(place);
+  const m = t(lang);
+  // The icons' names load only where a table is drawn (the storefront messages budget).
+  const { iconWords } = await import("@/lib/icon-words");
+  return <TableView block={block} words={{ icons: iconWords(lang), section: m.tableSection }} />;
 }
