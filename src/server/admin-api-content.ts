@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { PAGE_DEFAULT, PAGE_MAX } from "@/lib/admin-api";
-import { CONTENT_API } from "@/lib/admin-api-content";
+import { CONTENT_API, SITE_PAGE_TYPES_API } from "@/lib/admin-api-content";
 import type { AdminAnswer, ApiRoute } from "@/lib/admin-api-routes";
 import { entryStatus, type Entry } from "@/lib/content-types";
 import { moneyCurrencies } from "@/lib/field-money";
@@ -31,7 +31,7 @@ import {
   startImportCheck,
   startImportUpload,
 } from "./data-jobs";
-import { listStoreMenus } from "./menus";
+import { listStoreMenus, saveStoreMenu } from "./menus";
 import { getPageForEdit, listPages, savePage } from "./pages";
 import { readPriceDisplay } from "./price-display";
 import { EXPERIMENTS_WORDS } from "@/lib/admin-words/experiments";
@@ -41,7 +41,7 @@ import { listedTests } from "./experiment-list";
 import { experimentResults } from "./experiment-results";
 import { runReport } from "./report-query";
 import { getSavedReport, listSavedReports } from "./saved-reports";
-import { col, typedRows } from "./typed-rows";
+import { col, typedRow, typedRows } from "./typed-rows";
 import { addEndpoint, listEndpointDeliveries, listEndpoints, removeEndpoint, resendDelivery, switchEndpoint, updateEndpoint, type EndpointProblem } from "./webhook-endpoints";
 
 /**
@@ -62,19 +62,73 @@ export type ContentRoute = Extract<ApiRoute, { name: ContentName }>;
 // ---------------------------------------------------------------------------
 
 type ApiPage = AdminAnswer<"pages.get">["data"];
+type ApiPageType = ApiPage["type"];
 
-async function pageById(caller: ApiCaller, id: string, type: PageType): Promise<ApiPage> {
-  const page = await getPageForEdit(caller.member.store.id, id, type);
-  if (!page) return fail("not_found", `No such ${type === "article" ? "article" : "page"} in this store.`);
+const NO_PAGE = "No such page, header or footer in this store.";
+
+/** What a row under `/pages` is (D917): one of the store's pages, headers or footers; `not_found` for anything else. */
+async function siteTypeOf(storeId: string, id: string): Promise<ApiPageType> {
+  const row = await typedRow(
+    z.object({ type: z.enum(SITE_PAGE_TYPES_API) }),
+    sql`select type from commerce.pages where id = ${id}::uuid and store_id = ${storeId}::uuid and type in ('page', 'header', 'footer')`,
+  );
+  return row?.type ?? fail("not_found", NO_PAGE);
+}
+
+async function pageById(caller: ApiCaller, id: string, type: ApiPageType): Promise<ApiPage> {
+  const storeId = caller.member.store.id;
+  const [page, dated] = await Promise.all([
+    getPageForEdit(storeId, id, type),
+    typedRow(z.object({ first_published_at: col.timestampOrNull }), sql`select first_published_at from commerce.pages where id = ${id}::uuid and store_id = ${storeId}::uuid`),
+  ]);
+  if (!page) return fail("not_found", type === "article" ? "No such article in this store." : NO_PAGE);
   return {
     id: page.id,
+    type,
     title: page.draft.title,
     slug: page.slug,
     state: page.state,
     published_at: page.publishedAt,
+    first_published_at: dated?.first_published_at ?? null,
     updated_at: page.updatedAt,
     draft: page.draft as unknown as Record<string, unknown>,
   };
+}
+
+/**
+ * An article's first date (D917): when it first appeared, for one brought from another site, kept when it is published (`savePage()` keeps a
+ * first date it finds). Not in the future; an article on the site keeps one, and changing it there changes what visitors see, which takes
+ * `content:publish`. Checked before anything is saved; answers whether the article is on the site.
+ */
+async function dateRefusal(caller: ApiCaller, id: string | null, at: string | null): Promise<boolean> {
+  if (at !== null && new Date(at).getTime() > Date.now()) return fail("invalid", "first_published_at: a time not in the future.");
+  if (id === null) return false;
+  const row = await typedRow(
+    z.object({ live: col.bool }),
+    sql`select published_at is not null as live from commerce.pages where id = ${id}::uuid and store_id = ${caller.member.store.id}::uuid and type = 'article'`,
+  );
+  if (!row) return fail("not_found", "No such article in this store.");
+  if (row.live && at === null) return fail("invalid", "first_published_at: an article on the site keeps a date. Give one.");
+  if (row.live && !holds(caller, "content:publish")) return fail("gated", "This article is on the site, and its date shows there at once: that takes a token with content:publish.");
+  return row.live;
+}
+
+/**
+ * What the site shows of a page after a publish over the API, refreshed as the page builder's publish refreshes it (`tagsAfterPublish()`:
+ * the page's own tag, and the store's pages when what other pages show of it changed).
+ */
+async function refreshPublished(storeId: string, id: string, scope: "page" | "site" | undefined): Promise<void> {
+  const [{ refreshTag }, { tagsAfterPublish }] = await Promise.all([import("./refresh"), import("./page-refresh")]);
+  for (const tag of tagsAfterPublish(storeId, id, scope)) refreshTag(tag);
+}
+
+/** Writes an article's first date checked by `dateRefusal()`; on a live article the blog's order and dates change, so the site is refreshed. */
+async function dateArticle(storeId: string, id: string, at: string | null, live: boolean): Promise<void> {
+  await typedRows(
+    z.object({ id: col.uuid }),
+    sql`update commerce.pages set first_published_at = ${at}::timestamptz where id = ${id}::uuid and store_id = ${storeId}::uuid and type = 'article' returning id`,
+  );
+  if (live) await refreshPublished(storeId, id, "site");
 }
 
 /**
@@ -119,6 +173,56 @@ function pageRefusal(result: { problems: string[]; code?: string; issues?: PageI
   }
   return fail("invalid", result.problems.join(" "));
 }
+
+// ---------------------------------------------------------------------------
+// Looks and menus (D917)
+// ---------------------------------------------------------------------------
+
+async function lookById(storeId: string, id: string): Promise<AdminAnswer<"themes.get">["data"]> {
+  const [{ installLook }, { lookForApi }] = await Promise.all([import("./theme-installs"), import("./theme-look-api")]);
+  const install = await installLook(storeId, id);
+  return install ? lookForApi(install) : fail("not_found", "No such theme in this store's theme library.");
+}
+
+/** A refusal of the theme library's writers: a full library, a store not open or the live look are a 409, the rest a 422. */
+async function lookRefusal(problems: string[]): Promise<never> {
+  const { INSTALLS_FULL, LIVE_LOOK } = await import("./theme-installs");
+  const conflict = problems.some((p) => p === INSTALLS_FULL || p === LIVE_LOOK || p.startsWith("The store is not open") || p.startsWith("This store is kept"));
+  return fail(conflict ? "conflict" : "invalid", problems.join(" "));
+}
+
+/** What visitors do not see yet of a look made live: its header or footer not published, so the standard one shows. */
+async function liveLookNotes(storeId: string): Promise<string[]> {
+  const row = await typedRow(
+    z.object({ header: z.boolean().nullable(), footer: z.boolean().nullable() }),
+    sql`
+      select (select p.published_at is null from commerce.pages p where p.id = s.header_id) as header,
+        (select p.published_at is null from commerce.pages p where p.id = s.footer_id) as footer
+      from commerce.stores s where s.id = ${storeId}::uuid
+    `,
+  );
+  return (["header", "footer"] as const).flatMap((type) => (row?.[type] ? [`The look's ${type} is not published: the site shows the standard ${type} until it is.`] : []));
+}
+
+async function menuById(storeId: string, id: string): Promise<AdminAnswer<"menus.get">["data"]> {
+  const menu = (await listStoreMenus(storeId)).find((m) => m.id === id);
+  return menu ? { id: menu.id, name: menu.name, items: menu.items as unknown[] } : fail("not_found", "No such menu in this store.");
+}
+
+/** Whether visitors see a menu (D917): the standard header's or footer's, or named in a published page, header or footer. */
+async function menuOnSite(storeId: string, id: string): Promise<boolean> {
+  const row = await typedRow(
+    z.object({ shown: col.bool }),
+    sql`
+      select exists (select 1 from commerce.stores s where s.id = ${storeId}::uuid and ${id}::uuid in (s.header_menu_id, s.footer_menu_id))
+        or exists (select 1 from commerce.pages p where p.store_id = ${storeId}::uuid and p.published::text like ${`%"${id}"%`}) as shown
+    `,
+  );
+  return row?.shown === true;
+}
+
+/** A refusal of the menu editor's save: a name another menu has is a 409, the rest a 422. */
+const menuRefusal = (problems: string[]): never => fail(problems.some((p) => p.startsWith("There is already a menu")) ? "conflict" : "invalid", problems.join(" "));
 
 // ---------------------------------------------------------------------------
 // Content entries
@@ -251,24 +355,33 @@ export async function answerContent(caller: ApiCaller, route: ContentRoute, requ
   const storeId = store.id;
   const account = caller.member.account;
   const params = new URL(request.url).searchParams;
-  const pageType = (name: string): PageType => (name.startsWith("articles.") ? "article" : "page");
+  // What a route's page is: an article under /articles; a page, header or footer under /pages, as its row says (D917).
+  const typeOf = async (name: string, id: string): Promise<ApiPageType> => (name.startsWith("articles.") ? "article" : siteTypeOf(storeId, id));
   switch (route.name) {
     case "pages.list":
     case "articles.list": {
       const since = params.get("updated_after");
       if (since) sinceWhere(params, sql`now()`);
-      const pages = await listPages(storeId, pageType(route.name), { since: since ? new Date(since).toISOString() : undefined });
-      return ok(route.name, { data: pages.map((p) => ({ id: p.id, title: p.title, slug: p.slug, state: p.state, published_at: p.publishedAt, updated_at: p.updatedAt })) });
+      const asked = params.get("type");
+      const type: ApiPageType = route.name === "articles.list" ? "article" : asked === "header" || asked === "footer" ? asked : "page";
+      const pages = await listPages(storeId, type, { since: since ? new Date(since).toISOString() : undefined });
+      return ok(route.name, { data: pages.map((p) => ({ id: p.id, type, title: p.title, slug: p.slug, state: p.state, published_at: p.publishedAt, updated_at: p.updatedAt })) });
     }
     case "pages.get":
     case "articles.get":
-      return ok(route.name, { data: await pageById(caller, route.id, pageType(route.name)) });
+      return ok(route.name, { data: await pageById(caller, route.id, await typeOf(route.name, route.id)) });
     case "pages.create":
     case "articles.create": {
-      const type = pageType(route.name);
-      const { draft } = route.name === "pages.create" ? await readBody("pages.create", request) : await readBody("articles.create", request);
-      const saved = await savePage(account, storeId, null, draftOf(draft), { publish: false, type });
+      const input =
+        route.name === "pages.create"
+          ? { ...(await readBody("pages.create", request)), first_published_at: undefined }
+          : { ...(await readBody("articles.create", request)), type: "article" as const };
+      const type: ApiPageType = input.type ?? "page";
+      const date = input.first_published_at;
+      if (date !== undefined) await dateRefusal(caller, null, date);
+      const saved = await savePage(account, storeId, null, draftOf(input.draft), { publish: false, type });
       if (!saved.ok) return pageRefusal(saved);
+      if (date !== undefined) await dateArticle(storeId, saved.id, date, false);
       await record(caller, `${type}_created`, {}, { type, id: saved.id });
       return ok(route.name, { data: await pageById(caller, saved.id, type) }, 201);
     }
@@ -303,26 +416,81 @@ export async function answerContent(caller: ApiCaller, route: ContentRoute, requ
       const try_url = `${siteUrl()}/admin/${store.slug}/settings/design/themes/${made.id}`;
       return ok(route.name, { data: { id: made.id, title: made.title, created: made.created, try_url, summary: made.summary, notes: made.notes } }, 201);
     }
+    case "themes.create": {
+      // A look of the store's own from theme settings (D917): never live; its header, footer and CSS as given, else the live look's.
+      const input = await readBody("themes.create", request);
+      const { addOwnLook } = await import("./theme-installs");
+      const made = await addOwnLook(storeId, account.id, input.title, input.theme, { css: input.css, headerId: input.header, footerId: input.footer });
+      if (!made.ok) return lookRefusal(made.problems);
+      await record(caller, "theme_created", { source: "settings" }, { type: "theme_install", id: made.id });
+      return ok(route.name, { data: await lookById(storeId, made.id) }, 201);
+    }
+    case "themes.update": {
+      const input = await readBody("themes.update", request);
+      await lookById(storeId, route.id);
+      const { saveInstallLook } = await import("./theme-installs");
+      const saved = await saveInstallLook(storeId, route.id, account.id, { title: input.title, theme: input.theme, css: input.css, headerId: input.header, footerId: input.footer });
+      if (!saved.ok) return lookRefusal(saved.problems);
+      await record(caller, "theme_updated", { source: "settings" }, { type: "theme_install", id: route.id });
+      return ok(route.name, { data: await lookById(storeId, route.id) });
+    }
+    case "themes.live": {
+      // Design settings' own switch (D241): the live look put away as it is, this one's settings, CSS, header and footer the store's.
+      await lookById(storeId, route.id);
+      const [{ switchToInstall }, { designTags }, { refreshTag }] = await Promise.all([import("./theme-installs"), import("./design-presets"), import("./refresh")]);
+      const done = await switchToInstall(storeId, route.id, account.id);
+      if (!done.ok) return fail(done.problems.some((p) => p.startsWith("That theme is not installed")) ? "not_found" : "conflict", done.problems.join(" "));
+      for (const tag of designTags(store)) refreshTag(tag);
+      await record(caller, "theme_switched", {}, { type: "theme_install", id: route.id });
+      return ok(route.name, { data: { id: route.id, title: done.title, put_away: done.from, notes: [...done.notes, ...(await liveLookNotes(storeId))] } });
+    }
+    case "menus.create": {
+      // The menu editor's own save (D85): links checked, texts kept for the store's languages.
+      const input = await readBody("menus.create", request);
+      const saved = await saveStoreMenu(caller.member, null, input);
+      if (!saved.ok) return menuRefusal(saved.problems);
+      await record(caller, "menu_created", {}, { type: "menu", id: saved.id });
+      return ok(route.name, { data: await menuById(storeId, saved.id) }, 201);
+    }
+    case "menus.update": {
+      const input = await readBody("menus.update", request);
+      await menuById(storeId, route.id);
+      // A menu is not drafted: one visitors see changes for them at once (D917).
+      if (!holds(caller, "content:publish") && (await menuOnSite(storeId, route.id))) {
+        return fail("gated", "Visitors see this menu, and a change shows there at once: that takes a token with content:publish.");
+      }
+      const saved = await saveStoreMenu(caller.member, route.id, input);
+      if (!saved.ok) return menuRefusal(saved.problems);
+      const [{ refreshTag }, { storeTag }] = await Promise.all([import("./refresh"), import("@/lib/cache-tags")]);
+      refreshTag(storeTag(store.slug));
+      await record(caller, "menu_updated", {}, { type: "menu", id: route.id });
+      return ok(route.name, { data: await menuById(storeId, route.id) });
+    }
     case "pages.update":
     case "articles.update": {
-      const type = pageType(route.name);
+      const type = await typeOf(route.name, route.id);
       await pageById(caller, route.id, type);
-      const { draft } = route.name === "pages.update" ? await readBody("pages.update", request) : await readBody("articles.update", request);
-      const own = draftOf(draft);
+      const input = route.name === "pages.update" ? { ...(await readBody("pages.update", request)), first_published_at: undefined } : await readBody("articles.update", request);
+      const own = draftOf(input.draft);
       await moveRefusal(caller, route.id, type, own);
+      const date = input.first_published_at;
+      // The date's refusals (in the future, gated on a live article) come before anything is saved.
+      const live = date === undefined ? false : await dateRefusal(caller, route.id, date);
       // The draft only: what the site shows stays as published until it is published again.
       const saved = await savePage(account, storeId, route.id, own, { publish: false, type });
       if (!saved.ok) return pageRefusal(saved);
+      if (date !== undefined) await dateArticle(storeId, route.id, date, live);
       await record(caller, `${type}_draft_saved`, {}, { type, id: route.id });
       return ok(route.name, { data: await pageById(caller, route.id, type) });
     }
     case "pages.publish":
     case "articles.publish": {
-      const type = pageType(route.name);
+      const type = await typeOf(route.name, route.id);
       const page = await pageById(caller, route.id, type);
       const input = route.name === "pages.publish" ? await readBody("pages.publish", request) : await readBody("articles.publish", request);
       const saved = await savePage(account, storeId, route.id, page.draft, { publish: true, type, acknowledgedIssues: input.acknowledged_issues });
       if (!saved.ok) return pageRefusal(saved);
+      await refreshPublished(storeId, route.id, saved.scope);
       await record(caller, `${type}_published`, {}, { type, id: route.id });
       return ok(route.name, { data: await pageById(caller, route.id, type) });
     }

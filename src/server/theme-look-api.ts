@@ -6,9 +6,13 @@ import { parseStoreTheme } from "@/lib/theme-schema";
 
 import type { InstallWithLook } from "./theme-installs";
 
-/** A look of the theme library as `GET /themes/{id}` answers it: its palettes, typefaces, the elements' typography and its saved colours. */
+/**
+ * A look of the theme library as `GET /themes/{id}` answers it: its palettes, typefaces, the elements' typography and its saved colours, and
+ * (D917) its header, footer and theme settings whole, as `POST /themes` and `PATCH` take them.
+ */
 export function lookForApi(install: InstallWithLook) {
-  const settings = parseStoreTheme(install.look.theme).settings;
+  const theme = parseStoreTheme(install.look.theme);
+  const settings = theme.settings;
   const css = (measure?: { value: number; unit: string }) => (measure ? `${measure.value}${measure.unit}` : null);
   const palette = (p: Palette) => ({ background: p.background, surface: p.surface, text: p.text, muted: p.muted, border: p.border, accent: p.accent, accent_text: p.accentText });
   return {
@@ -29,5 +33,8 @@ export function lookForApi(install: InstallWithLook) {
         : [];
     }),
     saved_colours: (settings.library?.colours ?? []).map((c) => ({ name: c.name, color: c.color })),
+    header: install.look.headerId,
+    footer: install.look.footerId,
+    theme: Object.fromEntries(Object.entries(theme)),
   };
 }

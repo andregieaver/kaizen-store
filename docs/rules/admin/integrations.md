@@ -171,6 +171,22 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   contract test fails until all of it is done, and fails a removed path or field within the major version.
 
 
+## Headers, footers, menus and looks over the Admin API (D917, `src/server/admin-api-content.ts`, `src/server/theme-installs.ts`)
+
+- `/pages` holds a store's pages, headers and footers: `type` on create and list, and get, update and publish find a row's own type
+  (`siteTypeOf()`). Each saves through `savePage()` with its type, so a header holds the site's parts as the builder offers them and a page
+  none. A publish over the API refreshes what the builder's does (`tagsAfterPublish()`).
+- A menu is written only through `saveStoreMenu()`. It is not drafted: a change to one visitors see (the standard header's or footer's, or
+  named in a published page, header or footer, `menuOnSite()`) takes `content:publish`, else `gated`.
+- A look is made only by `addOwnLook()` from theme settings checked by `checkStoreTheme()`, with its own CSS, header and footer
+  (`LookParts`: only the store's own headers and footers, published or not; the live look's where none is given). It is changed only by
+  `saveInstallLook()` while it is not live (the live one is a `conflict`: it changes in Design settings), and made live only by
+  `switchToInstall()` with `content:publish`, the power `make_theme_live` asks the owner's yes for. A premium theme not bought is refused,
+  `designTags()` are refreshed, and the answer names a header or footer of the look that is not published.
+- An article's `first_published_at` is checked before the draft is saved (`dateRefusal()`: not in the future; an article on the site
+  keeps one, and changing it there takes `content:publish`). It is written after the save, and publishing keeps it.
+- Store-only: Kaizena Flow's own API is read-only (D518), and its site is written in its admin.
+
 ## Kaizena Flow's own API (D518, `src/lib/platform-api.ts`, `src/server/platform-api-tokens.ts`, `src/server/platform-api.ts`)
 
 - **Kaizena Flow's own API (D518, `src/lib/platform-api.ts`, `src/server/platform-api-tokens.ts`, `src/server/platform-api.ts`)**: the

@@ -8,13 +8,22 @@ areas: [api, webhooks, mcp]
 features: []
 plans: []
 order: 1000
-checked: 2026-11-17
-sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695, D705, D712, D713, D715, D718, D730, D732, D757, D785, D810, D852, D855, D865, D868, D870, D882, D898, D900, D901, D902, D903, D904, D905, D912]
+checked: 2026-11-28
+sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695, D705, D712, D713, D715, D718, D730, D732, D757, D785, D810, D852, D855, D865, D868, D870, D882, D898, D900, D901, D902, D903, D904, D905, D912, D917]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
+
+## 1.74 — 2026-11-28
+
+The Admin API makes what a site is built from (D917). `/pages` holds headers and footers too: `type` (page, header or footer) on
+`POST /pages` and `GET /pages`, and every page answer carries its `type` and `first_published_at`. Menus are written with `POST /menus` and
+`PATCH /menus/{id}`: a menu visitors see changes only with `content:publish`. Looks are made from theme settings with `POST /themes`, with
+their own CSS, header and footer, changed with `PATCH /themes/{id}` while they are not live, and made live with `POST /themes/{id}/live`
+(`content:publish`). `GET /themes/{id}` also answers a look's `header`, `footer` and `theme`. An article takes `first_published_at` on create
+and update, for one brought from another site: publishing keeps it.
 
 ## 1.73 — 2026-11-27
 

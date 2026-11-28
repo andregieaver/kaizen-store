@@ -3,10 +3,12 @@ import { z } from "zod";
 import { all, byId, currency, deleted, id, marketCode, minor, nothing, one, op, paging, since, when } from "./admin-api-shapes";
 import { JOB_STATUSES } from "./data-job";
 import { EVENTS, type IntegrationEvent } from "./integrations";
+import { MENU_MAX_ITEMS, MENU_NAME_MAX } from "./navigation";
 
 /**
- * The Admin API's content, the store and its operations (wave 14 unit C4, D440, `docs/wave-14-developer-platform.md` C4): pages, blog
- * articles and content entries read, written as drafts and published with the power scope `content:publish` (D42, D326); menus read (D85);
+ * The Admin API's content, the store and its operations (wave 14 unit C4, D440, `docs/wave-14-developer-platform.md` C4): pages, headers,
+ * footers (D917), blog articles and content entries read, written as drafts and published with the power scope `content:publish` (D42,
+ * D326); menus read and written (D85, D917); looks of the theme library made from theme settings, live only with `content:publish` (D917);
  * the store's settings read (markets, currencies, languages, shipping, tax profile, price display); saved reports run (D345); the owner's
  * webhook endpoints and their deliveries with the power scope `webhooks:write` (D354); and the product file of the D165 pipeline exported and
  * imported as jobs. Entries of `ADMIN_API`; their handlers are `src/server/admin-api-content.ts`. Pure.
@@ -15,9 +17,12 @@ import { EVENTS, type IntegrationEvent } from "./integrations";
 // Pages and articles (D42, D57) -------------------------------------------------------------
 
 export const PAGE_STATES_API = ["draft", "published", "changed"] as const;
+/** What `/pages` holds (D917): pages, and the headers and footers of D80; `/articles` holds articles. */
+export const SITE_PAGE_TYPES_API = ["page", "header", "footer"] as const;
 
 export const apiPageSummary = z.object({
   id,
+  type: z.enum([...SITE_PAGE_TYPES_API, "article"]).describe("page, header or footer under /pages (D917); article under /articles."),
   title: z.string(),
   slug: z.string().describe("Its address on the site, after the store's (a page) or blog/ (an article)."),
   state: z.enum(PAGE_STATES_API).describe("draft: never published. published: the site shows the draft as it is. changed: the draft has changes not published."),
@@ -26,6 +31,7 @@ export const apiPageSummary = z.object({
 });
 
 export const apiPage = apiPageSummary.extend({
+  first_published_at: when.nullable().describe("When it first appeared on the site: an article is dated by it and the blog ordered by it."),
   draft: z.record(z.string(), z.unknown()).describe("The page as the editor keeps it (its words, rows and blocks, search texts, categories): what `PATCH` takes back whole."),
 });
 
@@ -33,6 +39,22 @@ export const pageDraftBody = z.object({
   draft: z
     .record(z.string(), z.unknown())
     .describe("The page as the editor keeps it, whole (read one with GET first); the editor's own checks run on it. It is saved as the draft; the site keeps what was published."),
+});
+/** A page, header or footer made over `/pages` (D917). */
+export const pageCreateBody = pageDraftBody.extend({
+  type: z
+    .enum(SITE_PAGE_TYPES_API)
+    .optional()
+    .describe("page (when left out), or a header or footer (D80): the site shows one once it is published and a look that is live has it (`POST /themes`)."),
+});
+/** An article's draft, with the date it first appeared elsewhere (D917). */
+export const articleDraftBody = pageDraftBody.extend({
+  first_published_at: when
+    .nullable()
+    .optional()
+    .describe(
+      "When the article first appeared, for one brought from another site: a time not in the future, kept when it is published, so the site dates it and orders the blog by it. null, for an article not on the site: the day it is published. On an article already on the site this changes what visitors see, so it takes the power `content:publish` too (else `gated`).",
+    ),
 });
 export const pagePublishBody = z.object({
   acknowledged_issues: z
@@ -107,6 +129,29 @@ export const apiLook = apiTheme.omit({ installed_at: true }).extend({
     )
     .describe("The typography the theme gives each element on computers (the page builder's Theme tab)."),
   saved_colours: z.array(z.object({ name: z.string(), color: z.string() })).describe("Offered in every colour field of the page builder."),
+  header: id.nullable().describe("The store's header (`/pages?type=header`) the look shows; null: the standard header."),
+  footer: id.nullable().describe("The store's footer the look shows; null: the standard footer."),
+  theme: z.record(z.string(), z.unknown()).describe("The theme settings as Design settings keep them: what `POST /themes` and `PATCH` take."),
+});
+
+/** A look of the store's own made from theme settings (D917), as Design settings keep them. */
+export const themeBody = z.object({
+  title: z.string().trim().min(1).max(80).describe("The look's name in the theme library."),
+  theme: z
+    .record(z.string(), z.unknown())
+    .describe(
+      "The theme settings as Design settings keep them (read a look's `theme` with GET first): `base`, a theme of the theme store's bases such as minimal, and `settings` (mode, the light and dark palettes, fonts, headings, buttons, corners, layout). Checked as Design settings check them.",
+    ),
+  css: z.string().max(200_000).optional().describe("The look's own CSS, checked as Design settings check it; the live look's when left out."),
+  header: id.nullable().optional().describe("One of the store's headers the look shows; null: the standard header; the live look's when left out."),
+  footer: id.nullable().optional().describe("One of the store's footers the look shows; null: the standard footer; the live look's when left out."),
+});
+
+export const apiThemeLive = z.object({
+  id,
+  title: z.string(),
+  put_away: z.string().describe("The look that was live, kept in the theme library as it was."),
+  notes: z.array(z.string()).describe("What visitors do not see yet, such as a header or footer of the look that is not published."),
 });
 
 /** A look from a design file (D898 F3): the colours and text styles the Kaizena Flow plugin read. */
@@ -168,6 +213,16 @@ export const entryBody = z.object({
 // Menus (D85) -----------------------------------------------------------------------------------------
 
 export const apiMenu = z.object({ id, name: z.string(), items: z.array(z.unknown()).describe("The menu's links as the menu editor keeps them, nested.") });
+/** A menu as the menu editor saves it (D85, D917). */
+export const menuBody = z.object({
+  name: z.string().trim().min(1).max(MENU_NAME_MAX).describe("The menu's name, one of a kind in the store."),
+  items: z
+    .array(z.record(z.string(), z.unknown()))
+    .max(MENU_MAX_ITEMS)
+    .describe(
+      "The links in order, as GET answers them: each `label` (its text by locale, such as en-US: a page's, article's or product's own title when left out), `link` (`kind` page, article, category, tag or blogCategory with its `slug`, product with its `handle`, url with its `url`, or home, products, account, cart or blog), `depth` (0 at the top, else at most one deeper than the link before) and `newTab`. Checked as the menu editor checks them: a page, article or product linked must be the store's own.",
+    ),
+});
 
 // The store's settings ----------------------------------------------------------------------------------
 
@@ -340,7 +395,12 @@ const exportAnswer = one(
 // The operations
 // ---------------------------------------------------------------------------
 
-const pageOps = <const P extends "pages" | "articles">(plural: P, kind: string, tag: string) =>
+const pageOps = <const P extends "pages" | "articles", Q extends z.ZodObject, C extends z.ZodObject, U extends z.ZodObject>(
+  plural: P,
+  kind: string,
+  tag: string,
+  bodies: { query: Q; create: C; update: U },
+) =>
   [
     op({
       name: `${plural}.list` as const,
@@ -350,8 +410,8 @@ const pageOps = <const P extends "pages" | "articles">(plural: P, kind: string, 
       permission: "website:read",
       tag,
       summary: `List ${kind}s`,
-      description: `The store's ${kind}s, the most recently changed first, each with whether its draft is published.`,
-      query: z.object(since),
+      description: `The store's ${kind}s, the most recently changed first, each with whether its draft is published.${plural === "pages" ? " With `type`, its headers or footers (D917)." : ""}`,
+      query: bodies.query,
       response: all(apiPageSummary),
       status: 200,
       errors: ["invalid"],
@@ -364,7 +424,7 @@ const pageOps = <const P extends "pages" | "articles">(plural: P, kind: string, 
       permission: "website:read",
       tag,
       summary: `Get a ${kind}`,
-      description: `One ${kind} with its draft as the editor keeps it.`,
+      description: `One ${kind}${plural === "pages" ? ", header or footer" : ""} with its draft as the editor keeps it.`,
       params: byId,
       response: one(apiPage),
       status: 200,
@@ -378,8 +438,8 @@ const pageOps = <const P extends "pages" | "articles">(plural: P, kind: string, 
       permission: "website:write",
       tag,
       summary: `Create a draft ${kind}`,
-      description: `Makes a ${kind} as a draft through the editor's own save and its checks; nothing is on the site until it is published. A draft that carries \`globalEdits\` is refused: global parts change in the admin.`,
-      body: pageDraftBody,
+      description: `Makes a ${kind} as a draft through the editor's own save and its checks; nothing is on the site until it is published. A draft that carries \`globalEdits\` is refused: global parts change in the admin.${plural === "pages" ? " With `type`, a header or footer (D917), holding the site's own parts (logo, menus, languages, cart) as the builder offers them." : " With `first_published_at`, the date it first appeared elsewhere (D917)."}`,
+      body: bodies.create,
       response: one(apiPage),
       status: 201,
       errors: ["invalid", "conflict"],
@@ -394,7 +454,7 @@ const pageOps = <const P extends "pages" | "articles">(plural: P, kind: string, 
       summary: `Save a ${kind}'s draft`,
       description: `Saves the ${kind}'s draft whole through the editor's save; what the site shows stays as published until it is published again. A draft that carries \`globalEdits\` is refused: global parts, and the pages using them, change in the admin.${kind === "page" ? " A new address for a page never published also moves the pages under it at once: when one of them is published, that takes the power \`content:publish\` too (else \`gated\`)." : ""}`,
       params: byId,
-      body: pageDraftBody,
+      body: bodies.update,
       response: one(apiPage),
       status: 200,
       errors: ["not_found", "invalid", "gated"],
@@ -407,7 +467,7 @@ const pageOps = <const P extends "pages" | "articles">(plural: P, kind: string, 
       permission: "website:write",
       tag,
       summary: `Publish a ${kind}`,
-      description: `Publishes the ${kind}'s draft through the editor's own publish: its checks run, and a blocking issue not acknowledged is refused as \`conflict\` naming it.`,
+      description: `Publishes the ${kind}'s draft through the editor's own publish: its checks run, and a blocking issue not acknowledged is refused as \`conflict\` naming it.${plural === "pages" ? " A header or footer shows on the site once it is published and the live look has it." : ""}`,
       params: byId,
       body: pagePublishBody,
       response: one(apiPage),
@@ -417,7 +477,11 @@ const pageOps = <const P extends "pages" | "articles">(plural: P, kind: string, 
   ] as const;
 
 export const CONTENT_API = [
-  ...pageOps("pages", "page", "Pages"),
+  ...pageOps("pages", "page", "Pages", {
+    query: z.object({ ...since, type: z.enum(SITE_PAGE_TYPES_API).optional().describe("page (when left out), header or footer.") }),
+    create: pageCreateBody,
+    update: pageDraftBody,
+  }),
   op({
     name: "pages.import",
     method: "POST",
@@ -433,7 +497,7 @@ export const CONTENT_API = [
     status: 201,
     errors: ["invalid", "conflict"],
   }),
-  ...pageOps("articles", "blog article", "Blog"),
+  ...pageOps("articles", "blog article", "Blog", { query: z.object(since), create: articleDraftBody, update: articleDraftBody }),
   op({
     name: "themes.list",
     method: "GET",
@@ -475,6 +539,53 @@ export const CONTENT_API = [
     response: one(apiThemeImport),
     status: 201,
     errors: ["invalid", "conflict"],
+  }),
+  op({
+    name: "themes.create",
+    method: "POST",
+    path: "/themes",
+    scope: "content:write",
+    permission: "website:write",
+    tag: "Themes",
+    summary: "Make a look from theme settings",
+    description:
+      "Makes a look of the store's own in the theme library (D917) from theme settings as Design settings keep them, checked as Design settings check them, with the header, footer and CSS given (the live look's where left out). Never live: making it live is `POST /themes/{id}/live`, or the owner's in Design settings. At most 20 looks; a store not open is refused.",
+    body: themeBody,
+    response: one(apiLook),
+    status: 201,
+    errors: ["invalid", "conflict"],
+  }),
+  op({
+    name: "themes.update",
+    method: "PATCH",
+    path: "/themes/{id}",
+    scope: "content:write",
+    permission: "website:write",
+    tag: "Themes",
+    summary: "Change a look that is not live",
+    description:
+      "Changes what a look that is not live keeps (D917): its name, theme settings, CSS, header or footer, each checked as Design settings check it. Visitors see nothing of it until it is made live. The live look is refused as `conflict`: it changes in Design settings, where changes reach visitors at once.",
+    params: byId,
+    body: themeBody.partial(),
+    response: one(apiLook),
+    status: 200,
+    errors: ["not_found", "invalid", "conflict"],
+  }),
+  op({
+    name: "themes.live",
+    method: "POST",
+    path: "/themes/{id}/live",
+    scope: "content:publish",
+    permission: "website:write",
+    tag: "Themes",
+    summary: "Make a look live",
+    description:
+      "Makes a look of the theme library the one visitors see (D917), as switching in Design settings does: the live look is put away with every change made to it kept, and the chosen one's settings, CSS, header and footer become the store's. Words, pictures, pages, products and menus are not touched. A premium theme the store has not bought is refused: it is bought in the theme store.",
+    params: byId,
+    body: nothing,
+    response: one(apiThemeLive),
+    status: 200,
+    errors: ["not_found", "invalid", "conflict"],
   }),
   // Content types and entries (D326)
   op({
@@ -593,6 +704,37 @@ export const CONTENT_API = [
     response: one(apiMenu),
     status: 200,
     errors: ["not_found"],
+  }),
+  op({
+    name: "menus.create",
+    method: "POST",
+    path: "/menus",
+    scope: "content:write",
+    permission: "website:write",
+    tag: "Menus",
+    summary: "Create a menu",
+    description:
+      "Makes a menu through the menu editor's own save (D917): its links checked as the editor checks them, a link's texts kept for the store's languages. It shows where a header, footer or page names it in a menu component.",
+    body: menuBody,
+    response: one(apiMenu),
+    status: 201,
+    errors: ["invalid", "conflict"],
+  }),
+  op({
+    name: "menus.update",
+    method: "PATCH",
+    path: "/menus/{id}",
+    scope: "content:write",
+    permission: "website:write",
+    tag: "Menus",
+    summary: "Save a menu",
+    description:
+      "Saves a menu whole through the menu editor's save (D917). A menu is not drafted: one the site shows (the standard header's or footer's, or named in a published page, header or footer) changes for visitors at once, so it takes the power `content:publish` too (else `gated`).",
+    params: byId,
+    body: menuBody,
+    response: one(apiMenu),
+    status: 200,
+    errors: ["not_found", "invalid", "conflict", "gated"],
   }),
   // The store's settings
   op({

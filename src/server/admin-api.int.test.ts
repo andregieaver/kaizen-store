@@ -1120,6 +1120,112 @@ describe("content, the store and operations (D440 C4)", () => {
     expect((await call("GET", "settings", full)).status).toBe(403);
   });
 
+  it("makes menus, headers, footers and a look with them over the API, makes the look live only with content:publish (D917)", async () => {
+    const [{ newPageContent }, { defaultFooter, defaultHeader }, { parseStoreTheme }] = await Promise.all([
+      import("@/lib/page-content"),
+      import("@/lib/site-layout"),
+      import("@/lib/theme-schema"),
+    ]);
+    const writer = await makeApiToken(store.member, { name: "Site writer", scopes: ["content:write"] });
+    if (!writer.ok) throw new Error(writer.problem);
+    // A menu through the menu editor's save: a page it links must be the store's own, and its name one of a kind.
+    const linked = await call("POST", "pages", writer.token, { draft: { ...newPageContent(), title: "Linked", slug: `api-linked-${run}`, rows: [] } });
+    expect(linked.body.data.type).toBe("page");
+    const locale = (await call("GET", "settings", editor)).body.data.languages[0] as string;
+    const items = [{ label: { [locale]: "Linked" }, link: { kind: "page", slug: `api-linked-${run}` }, depth: 0 }];
+    const menu = await call("POST", "menus", writer.token, { name: `Site ${run}`, items });
+    expect(menu.status, JSON.stringify(menu.body)).toBe(201);
+    expect(menu.body.data).toMatchObject({ name: `Site ${run}`, items: [expect.objectContaining({ link: { kind: "page", slug: `api-linked-${run}` } })] });
+    const menuId = menu.body.data.id as string;
+    expect((await call("POST", "menus", writer.token, { name: `Site ${run}`, items: [] })).status).toBe(409);
+    expect((await call("POST", "menus", writer.token, { name: `Gone ${run}`, items: [{ label: {}, link: { kind: "page", slug: "no-such-page" }, depth: 0 }] })).status).toBe(422);
+    // Nobody sees it yet: content:write changes it.
+    expect((await call("PATCH", `menus/${menuId}`, writer.token, { name: `Site ${run}`, items: [...items, { label: { [locale]: "Home" }, link: { kind: "home" }, depth: 0 }] })).body.data.items).toHaveLength(2);
+
+    // A header naming the menu and a footer, made over /pages with their type, listed apart from the pages.
+    const header = await call("POST", "pages", writer.token, { type: "header", draft: { ...defaultHeader(store.storeId, { header: menuId, footer: null }), title: `Header ${run}`, slug: `header-${run}` } });
+    expect(header.status, JSON.stringify(header.body)).toBe(201);
+    expect(header.body.data).toMatchObject({ type: "header", state: "draft" });
+    const headerId = header.body.data.id as string;
+    const footer = await call("POST", "pages", writer.token, { type: "footer", draft: { ...defaultFooter(store.storeId), title: `Footer ${run}`, slug: `footer-${run}` } });
+    expect(footer.status, JSON.stringify(footer.body)).toBe(201);
+    const footerId = footer.body.data.id as string;
+    expect((await call("GET", "pages?type=header", writer.token)).body.data.map((p: Answer) => p.id)).toEqual([headerId]);
+    expect((await call("GET", "pages", writer.token)).body.data.map((p: Answer) => p.id)).not.toContain(headerId);
+    const kept = (await call("GET", `pages/${headerId}`, writer.token)).body.data;
+    expect(kept).toMatchObject({ type: "header", first_published_at: null });
+    expect((await call("PATCH", `pages/${headerId}`, writer.token, { draft: { ...kept.draft, title: `Header ${run}, changed` } })).body.data).toMatchObject({ type: "header", title: `Header ${run}, changed` });
+    // The site's own parts belong in headers and footers, not in a page.
+    expect((await call("POST", "pages", writer.token, { draft: { ...kept.draft, slug: `not-a-header-${run}` } })).status).toBe(422);
+    expect((await call("GET", `articles/${headerId}`, writer.token)).status).toBe(404);
+
+    // A look from theme settings with them: never live, its settings as Design settings keep them, changed while it is not live.
+    const base = parseStoreTheme(null);
+    const theme = { ...base, settings: { ...base.settings, mode: "dark", dark: { ...base.settings.dark, accent: "#0975e2" } } };
+    const look = await call("POST", "themes", writer.token, { title: `Life ${run}`, theme, header: headerId, footer: footerId });
+    expect(look.status, JSON.stringify(look.body)).toBe(201);
+    expect(look.body.data).toMatchObject({ live: false, from_theme: false, mode: "dark", dark: { accent: "#0975e2" }, header: headerId, footer: footerId });
+    const lookId = look.body.data.id as string;
+    const changed = await call("PATCH", `themes/${lookId}`, writer.token, { title: `Life ${run}, renamed`, theme: { ...look.body.data.theme, settings: { ...look.body.data.theme.settings, mode: "auto" } } });
+    expect(changed.body.data).toMatchObject({ title: `Life ${run}, renamed`, mode: "auto", header: headerId, footer: footerId });
+    expect((await call("POST", "themes", writer.token, { title: "Not a header", theme, header: linked.body.data.id })).status).toBe(422);
+    expect((await call("PATCH", `themes/${lookId}`, writer.token, { css: "a { color: red; } <" })).status).toBe(422);
+
+    // Live only with the power; the header and footer go live with the look, and the live look changes in Design settings.
+    const before = ((await call("GET", "themes", writer.token)).body.data as { id: string; live: boolean }[]).find((t) => t.live)!;
+    const refused = await call("POST", `themes/${lookId}/live`, writer.token, {});
+    expect(refused.status).toBe(403);
+    expect(refused.body.error.message).toContain("content:publish");
+    for (const id of [headerId, footerId]) {
+      const published = await call("POST", `pages/${id}/publish`, editor, {});
+      if (published.status === 409) {
+        const issues = [...String(published.body.error.message).matchAll(/([\w-]+:[\w:-]+) \(/g)].map((m) => m[1]);
+        expect((await call("POST", `pages/${id}/publish`, editor, { acknowledged_issues: issues })).status).toBe(200);
+      } else expect(published.status, JSON.stringify(published.body)).toBe(200);
+    }
+    const live = await call("POST", `themes/${lookId}/live`, editor, {});
+    expect(live.status, JSON.stringify(live.body)).toBe(200);
+    expect(live.body.data).toMatchObject({ id: lookId, title: `Life ${run}, renamed`, put_away: expect.any(String) });
+    expect(live.body.data.notes.join(" ")).not.toContain("not published");
+    const [chosen] = await db().execute<Row>(sql`select header_id, footer_id from commerce.stores where id = ${store.storeId}::uuid`);
+    expect(chosen).toMatchObject({ header_id: headerId, footer_id: footerId });
+    expect((await call("PATCH", `themes/${lookId}`, writer.token, { title: "Renamed live" })).status).toBe(409);
+
+    // The live header names the menu: a change to it shows at once, so it takes the power too.
+    const gated = await call("PATCH", `menus/${menuId}`, writer.token, { name: `Site ${run}`, items });
+    expect(gated.status).toBe(403);
+    expect(gated.body.error.code).toBe("gated");
+    expect((await call("PATCH", `menus/${menuId}`, editor, { name: `Site ${run}`, items })).body.data.items).toHaveLength(1);
+
+    // The store's own look back, for the tests after.
+    expect((await call("POST", `themes/${before.id}/live`, editor, {})).status).toBe(200);
+    expect((await call("POST", `themes/${before.id}/live`, editor, {})).status).toBe(409);
+  });
+
+  it("dates an article from the day it first appeared, kept when it is published, changed on the site only with content:publish (D917)", async () => {
+    const { newPageContent } = await import("@/lib/page-content");
+    const writer = await makeApiToken(store.member, { name: "Blog mover", scopes: ["content:write"] });
+    if (!writer.ok) throw new Error(writer.problem);
+    const first = "2026-06-30T08:00:00.000Z";
+    const made = await call("POST", "articles", writer.token, { first_published_at: first, draft: { ...newPageContent(), title: "Dated", slug: `api-dated-${run}`, rows: [] } });
+    expect(made.status, JSON.stringify(made.body)).toBe(201);
+    expect(made.body.data).toMatchObject({ type: "article", state: "draft", published_at: null, first_published_at: first });
+    const id = made.body.data.id as string;
+    expect((await call("POST", "articles", writer.token, { first_published_at: "2999-01-01T00:00:00Z", draft: { ...newPageContent(), title: "Later", slug: `api-later-${run}`, rows: [] } })).status).toBe(422);
+    expect((await call("GET", "articles", writer.token)).body.data.map((a: Answer) => a.slug)).not.toContain(`api-later-${run}`);
+    const published = await call("POST", `articles/${id}/publish`, editor, {});
+    expect(published.status, JSON.stringify(published.body)).toBe(200);
+    expect(published.body.data).toMatchObject({ state: "published", first_published_at: first });
+    expect(published.body.data.published_at).not.toBe(first);
+    const { draft } = published.body.data;
+    const moved = await call("PATCH", `articles/${id}`, writer.token, { draft: { ...draft, title: "Dated, changed" }, first_published_at: "2026-07-01T08:00:00.000Z" });
+    expect(moved.status).toBe(403);
+    expect((await call("GET", `articles/${id}`, writer.token)).body.data.draft.title).toBe("Dated");
+    expect((await call("PATCH", `articles/${id}`, editor, { draft, first_published_at: null })).status).toBe(422);
+    expect((await call("PATCH", `articles/${id}`, editor, { draft, first_published_at: "2026-07-01T08:00:00.000Z" })).body.data.first_published_at).toBe("2026-07-01T08:00:00.000Z");
+    expect((await call("PATCH", `articles/${id}`, writer.token, { draft: { ...draft, title: "Dated, words only" } })).body.data.first_published_at).toBe("2026-07-01T08:00:00.000Z");
+  });
+
   it("reads the store's A/B tests as their pages do, figures only once there is an answer (phase 15)", async () => {
     const admin = await import("./experiment-admin");
     const page = (await admin.testablePages(store.storeId)).find((p) => p.kind === "page")!;

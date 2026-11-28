@@ -68,8 +68,8 @@ the background); checked rows are an icon list.
 - **Small text in Life's blue** uses `#0a84ff` (Life's own text blue) and the glow `#0a1a33`: the button blue `#0975e2` reads at 3.4:1 on
   the glow, and the page check asks 4.5:1.
 
-- **Articles' dates**: Flow dates an article when it is published, so the 38 articles would all carry the day they are published unless
-  the API takes a first-published date; Life's dates are 30 June to 23 November 2026.
+- **Articles' dates**: Flow dates an article when it is first published, so the API takes a first date (D917) and each of the 38
+  articles keeps Life's (30 June to 23 November 2026).
 - **Header and footer, as Life has them** (its `nav.*` and `footer.*` words, in all three languages): the header holds the logo
   (`site`, logo), a menu (Features `/features`, Use cases `/use-cases`, Integrations `/integrations`, Pricing `/plans`, Blog `/blog`,
   About `/about`), the languages part, Sign in (to the app) and a Get started button to `/plans`; the footer holds the name with
@@ -85,8 +85,9 @@ the background); checked rows are an icon list.
    `#a9a9b0`, lines `#38383a`, accent `#0975e2`, text on accent `#ffffff`; light palette (unused while always dark) `#f4f5f8`,
    `#ffffff`, `#0b0d12`, `#59595f`, `#ebecf0`, `#0068da`, `#ffffff`; Geist for headings and text, headings bold, filled pill buttons,
    cards medium (8 px, Life's 9 px), fields small, content 1152 px wide. Tried on a local copy of the store 28 November 2026 with the
-   Cards and App preview pages. On the real store it is set in Design settings (the Admin API has no write for a theme); header and
-   footer pages come with the import.
+   Cards and App preview pages. On the real store the importer makes it a look of the theme library (`POST /themes`, D917) with Life's
+   header and footer, and makes it live with `POST /themes/{id}/live` when its token holds `content:publish`; else the owner makes it
+   live in Design settings.
 4. The importer (`scripts/life-site/`, run with `node scripts/life-site/run.mjs`, its header has the arguments): builds each page once
    per language from the message files with the same ids, keeps English and makes Norwegian and Swedish translations with the builder's
    `translationOf()`, checks it as the editor's save does (`pageInput`, `pageIssues()`, `cleanTranslations()`; a search engine's text
@@ -97,8 +98,8 @@ the background); checked rows are an icon list.
    the importer as dated copies (`scripts/life-site/data/`: the plans' features, the integrations, the about page's story and team, the
    legal documents, read with `htmlToRichText()`). The blog's 38 articles are read at import time from kaizenalife.com (its RSS feed and
    each article's page: body, picture, author, the AI disclosure) and saved as draft articles (`--only blog`, or `blog:slug`).
-   The header and footer are not the API's to make (it makes pages and articles; menus it only reads): they are built in the admin
-   from Life's (below), or the Admin API gains headers, footers and menus first. The token is the owner's (`content:read`, `content:write`,
+   The header, footer and their menus are made over the Admin API too (D917: `POST /pages` with `type`, `POST /menus`), and each
+   article keeps the date Life published it (`first_published_at`). The token is the owner's (`content:read`, `content:write`,
    `products:manage`), a network secret of the session for `kaizena-life.kaizenstore.site` (kaizenaflow.com's `Authorization` holds the
    incident log's). Before the real import the owner makes English the store's main language with Norwegian and Swedish offered
    (Settings, Languages and currencies; Norway shows Norwegian, Sweden Swedish) and switches on Languages (Settings, Features).

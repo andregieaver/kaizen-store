@@ -53,10 +53,10 @@ export const SCOPE_TEXT: Record<ApiScope, string> = {
   "discounts:write": "Make discount codes.",
   "checkout:read": "Read checkout rules and questions.",
   "checkout:write": "Change checkout rules and questions.",
-  "content:read": "Read pages, blog articles, content types and entries, and menus.",
+  "content:read": "Read pages, headers, footers, blog articles, content types and entries, menus and the theme library.",
   "forms:read": "Read forms; with the right to read customers, their responses.",
   "forms:write": "Make forms and change them.",
-  "content:write": "Write drafts of pages, blog articles and content entries; nothing on the site changes.",
+  "content:write": "Write drafts of pages, headers, footers, blog articles and content entries, menus visitors do not see yet, and looks of the theme library that are not live; nothing on the site changes.",
   "settings:read": "Read the store's countries, currencies, languages, shipping, tax profile and price display.",
   "reports:read": "Run saved reports on the data as it is now.",
   "products:publish":
@@ -66,7 +66,7 @@ export const SCOPE_TEXT: Record<ApiScope, string> = {
   "customers:email": "A power: change the email a customer signs in with (codes to sign in are sent to it).",
   "discounts:publish": "A power: change discount codes and switch them off.",
   "gift_cards:write": "A power: issue, read and deactivate gift cards. A card's code is answered once, when it is issued.",
-  "content:publish": "A power: publish pages, blog articles and content entries, and change the address of one on the site (or of pages under it).",
+  "content:publish": "A power: publish pages, headers, footers, blog articles and content entries; change the address of one on the site (or of pages under it), a menu visitors see or a published article's date; make a look live.",
   "webhooks:write": "A power: add, change and remove the owner's webhook endpoints, read their deliveries and send one again, as on the Integrations page.",
 };
 

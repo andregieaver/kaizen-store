@@ -9,8 +9,8 @@ features: []
 plans: []
 admin: /admin/{store}/settings/api
 order: 20
-checked: 2026-11-03
-sources: [D355, D314, D440]
+checked: 2026-11-28
+sources: [D355, D314, D440, D917]
 ---
 
 ## Tokens
@@ -52,7 +52,7 @@ products.
 | `customers:manage` | Add customers and change their name, phone, address and company |
 | `discounts:read`, `discounts:write` | Read discount codes; make discount codes |
 | `checkout:read`, `checkout:write` | Read and change checkout rules and checkout questions |
-| `content:read`, `content:write` | Read pages, blog articles, content entries and menus; write their drafts (nothing on the site changes) |
+| `content:read`, `content:write` | Read pages, headers, footers, blog articles, content entries, menus and the theme library; write drafts of them, menus visitors do not see yet and looks that are not live (nothing on the site changes) |
 | `settings:read` | Read the store's countries, currencies, languages, shipping, tax profile and price display |
 | `reports:read` | Run saved reports |
 
@@ -67,7 +67,7 @@ that must do that without asking:
 | `customers:email` | Change the email a customer signs in with |
 | `discounts:publish` | Change discount codes and switch them off |
 | `gift_cards:write` | Issue, read and deactivate gift cards |
-| `content:publish` | Publish pages, blog articles and content entries, and change the address of one on the site |
+| `content:publish` | Publish pages, headers, footers, blog articles and content entries; change the address of one on the site, a menu visitors see or a published article's date; make a look live |
 | `webhooks:write` | The owner's webhook endpoints: add, change, remove, read their deliveries and send one again |
 
 A token made before version 1.1 keeps what its scopes allowed then: each new write has a scope of its own, so it gains nothing new beyond

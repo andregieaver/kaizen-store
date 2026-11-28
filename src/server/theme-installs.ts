@@ -5,10 +5,13 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { cssProblem } from "@/lib/custom-css";
 
+import { z } from "zod";
+
 import { audit } from "./auth";
 import { log } from "./log";
 import { CHARGE_CHANGED, isChargeRefusal, setThemeCharge } from "./theme-prices";
 import { checkStoreTheme } from "./themes";
+import { col, typedRow } from "./typed-rows";
 
 /**
  * The themes installed in a store (theme store phase 1, D241, `docs/theme-phase-1.md`): several, one live. The live install's look is the
@@ -294,53 +297,96 @@ export async function installLook(storeId: string, installId: string): Promise<I
   };
 }
 
+/** What a look keeps beside its theme settings (D917): its own CSS, and the store's header and footer it shows (null: the standard one). */
+export type LookParts = { css?: string; headerId?: string | null; footerId?: string | null };
+
+/** The words for a look's header or footer that is not one of the store's own. */
+const notOwnLayout = (type: "header" | "footer") => `That ${type} is not one of this store's ${type}s.`;
+
+/** A look's parts checked (D917): the CSS as Design settings check it, a header or footer only one of the store's own (published or not). */
+async function partsProblem(storeId: string, parts: LookParts): Promise<string | null> {
+  if (parts.css !== undefined) {
+    const problem = cssProblem(parts.css);
+    if (problem) return problem;
+  }
+  for (const [type, id] of [
+    ["header", parts.headerId],
+    ["footer", parts.footerId],
+  ] as const) {
+    if (id === undefined || id === null) continue;
+    if (!isUuid(id)) return notOwnLayout(type);
+    const own = await typedRow(
+      z.object({ id: col.uuid }),
+      sql`select id from commerce.pages where id = ${id}::uuid and store_id = ${storeId}::uuid and type = ${type}`,
+    );
+    if (!own) return notOwnLayout(type);
+  }
+  return null;
+}
+
+/** The parts given, as the look keeps them: only those named. */
+const keptParts = (parts: LookParts): Record<string, unknown> =>
+  Object.fromEntries(Object.entries({ css: parts.css, headerId: parts.headerId, footerId: parts.footerId }).filter(([, value]) => value !== undefined));
+
 /**
  * Changes the look an installed theme that is not live keeps (D244, `docs/theme-phase-2.md` step 3): its theme settings (checked as the live
- * theme's are, `checkStoreTheme()`) or its own CSS (`cssProblem()`). Visitors see nothing of it until the owner switches to it; the live theme
- * is edited where it always was. Audited `store.theme_customised`.
+ * theme's are, `checkStoreTheme()`), its own CSS (`cssProblem()`), and (D917, the Admin API's `PATCH /themes/{id}`) its header, footer and
+ * name. Visitors see nothing of it until the owner switches to it; the live theme is edited where it always was. Audited
+ * `store.theme_customised`.
  */
 export async function saveInstallLook(
   storeId: string,
   installId: string,
   accountId: string,
-  change: { theme: unknown } | { css: string },
+  change: { theme?: unknown; title?: string } & LookParts,
 ): Promise<InstallResult<{ theme?: unknown; css?: string }>> {
   if (!isUuid(storeId) || !isUuid(installId) || !isUuid(accountId)) return refuse(UNKNOWN);
   const refusal = await lookChangeRefusal(storeId, accountId);
   if (refusal) return refuse(refusal);
-  let patch: Record<string, unknown>;
-  if ("theme" in change) {
+  const patch: Record<string, unknown> = {};
+  if (change.theme !== undefined) {
     const checked = await checkStoreTheme(storeId, change.theme);
     if (!checked.ok) return checked;
-    patch = { theme: checked.theme };
-  } else {
-    const css = typeof change.css === "string" ? change.css : "";
-    const problem = cssProblem(css);
-    if (problem) return refuse(problem);
-    patch = { css };
+    patch.theme = checked.theme;
   }
+  const problem = await partsProblem(storeId, change);
+  if (problem) return refuse(problem);
+  Object.assign(patch, keptParts(change));
+  const title = change.title === undefined ? null : change.title.trim().slice(0, 80);
+  if (title === "") return refuse("Give the look a name.");
+  if (Object.keys(patch).length === 0 && title === null) return refuse("Nothing to change.");
   const [row] = await db().execute<Row>(sql`
-    update commerce.store_theme_installs set look = coalesce(look, '{}'::jsonb) || ${JSON.stringify(patch)}::jsonb
+    update commerce.store_theme_installs set look = coalesce(look, '{}'::jsonb) || ${JSON.stringify(patch)}::jsonb, title = coalesce(${title}, title)
     where id = ${installId}::uuid and store_id = ${storeId}::uuid and not live
     returning title
   `);
   if (!row) {
     const [exists] = await db().execute<Row>(sql`select live from commerce.store_theme_installs where id = ${installId}::uuid and store_id = ${storeId}::uuid`);
-    return refuse(exists ? "This theme is live: change it in Design settings, where its changes reach visitors at once." : UNKNOWN);
+    return refuse(exists ? LIVE_LOOK : UNKNOWN);
   }
-  await audit(accountId, storeId, "store.theme_customised", { install: installId, title: String(row.title), changed: Object.keys(patch) }, {
+  await audit(accountId, storeId, "store.theme_customised", { install: installId, title: String(row.title), changed: [...Object.keys(patch), ...(title ? ["title"] : [])] }, {
     area: "website",
     target: { type: "theme_install", id: installId },
   });
-  return { ok: true, ...patch };
+  return { ok: true, ...(patch.theme !== undefined ? { theme: patch.theme } : {}), ...(typeof patch.css === "string" ? { css: patch.css } : {}) };
 }
+
+/** The refusal of a change to the live look outside Design settings. */
+export const LIVE_LOOK = "This theme is live: change it in Design settings, where its changes reach visitors at once.";
 
 /**
  * Adds a look of the store's own to its theme library, not live (D330, `docs/ai-autopilot.md` 14.2): the designed theme settings (checked as
- * the live theme's are) with the live look's header, footer, product page and CSS, so only colours, fonts and styles differ. Visitors see
- * nothing until the owner switches to it. Audited `store.theme_designed`.
+ * the live theme's are) with the live look's header, footer, product page and CSS, so only colours, fonts and styles differ, unless `parts`
+ * names its own CSS, header or footer (D917, the Admin API's `POST /themes`). Visitors see nothing until the owner switches to it. Audited
+ * `store.theme_designed`.
  */
-export async function addOwnLook(storeId: string, accountId: string, title: string, theme: unknown): Promise<InstallResult<{ id: string; title: string }>> {
+export async function addOwnLook(
+  storeId: string,
+  accountId: string,
+  title: string,
+  theme: unknown,
+  parts: LookParts = {},
+): Promise<InstallResult<{ id: string; title: string }>> {
   if (!isUuid(storeId) || !isUuid(accountId)) return refuse(UNKNOWN);
   const refusal = await lookChangeRefusal(storeId, accountId);
   if (refusal) return refuse(refusal);
@@ -349,9 +395,11 @@ export async function addOwnLook(storeId: string, accountId: string, title: stri
   if ((await installCount(storeId)) >= INSTALLS_MAX) return refuse(INSTALLS_FULL);
   const checked = await checkStoreTheme(storeId, theme);
   if (!checked.ok) return checked;
+  const problem = await partsProblem(storeId, parts);
+  if (problem) return refuse(problem);
   const live = await liveLook(storeId);
   if (!live) return refuse(UNKNOWN);
-  const look = { theme: checked.theme, css: live.css, headerId: live.headerId, footerId: live.footerId, productLayoutId: live.productLayoutId };
+  const look = { theme: checked.theme, css: live.css, headerId: live.headerId, footerId: live.footerId, productLayoutId: live.productLayoutId, ...keptParts(parts) };
   const [row] = await db().execute<Row>(sql`
     insert into commerce.store_theme_installs (store_id, preset_id, version_id, title, look, live, installed_by)
     values (${storeId}::uuid, null, null, ${name}, ${JSON.stringify(look)}::jsonb, false, ${accountId}::uuid)

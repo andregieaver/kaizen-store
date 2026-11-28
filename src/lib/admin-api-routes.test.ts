@@ -190,6 +190,7 @@ describe("the scopes a token holds (D440 review)", () => {
     "pages.publish": "publish_page",
     "articles.publish": "publish_page",
     "content.entry_publish": "publish_entry",
+    "themes.live": "make_theme_live",
   };
 
   it("keeps every operation a token could call before D440 on the scope it had", () => {
