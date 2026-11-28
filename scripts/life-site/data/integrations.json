@@ -1,0 +1,192 @@
+{
+ "source": "Kaizena Life's lib/integrations/display.ts (INTEGRATION_DISPLAY_LIST), read 28 November 2026",
+ "categories": {
+  "calendar_email": "Calendar & Email",
+  "social": "Social",
+  "health_fitness": "Health & Fitness",
+  "business": "Business"
+ },
+ "integrations": [
+  {
+   "name": "Google",
+   "category": "calendar_email",
+   "blurb": "Connect Google Calendar and Gmail so your day stays in sync and the assistant can read and send mail on your behalf.",
+   "capabilities": [
+    "Two-way calendar sync",
+    "Read & send Gmail",
+    "Multiple accounts"
+   ],
+   "brandColor": "#4285F4",
+   "monogram": "G"
+  },
+  {
+   "name": "YouTube",
+   "category": "social",
+   "blurb": "Connect one or more YouTube channels so the assistant can search YouTube and help publish and manage your videos.",
+   "capabilities": [
+    "Search YouTube",
+    "List your videos",
+    "Publish & edit videos",
+    "Multiple channels"
+   ],
+   "brandColor": "#FF0000",
+   "monogram": "▶"
+  },
+  {
+   "name": "X",
+   "category": "social",
+   "blurb": "Link your X account to surface and publish posts from one place.",
+   "capabilities": [
+    "Read profile & posts",
+    "Publish updates"
+   ],
+   "brandColor": "#15171a",
+   "monogram": "X"
+  },
+  {
+   "name": "LinkedIn",
+   "category": "social",
+   "blurb": "Bring your professional identity in to keep work updates aligned.",
+   "capabilities": [
+    "Verified profile",
+    "Email & identity"
+   ],
+   "brandColor": "#0A66C2",
+   "monogram": "in"
+  },
+  {
+   "name": "Meta",
+   "category": "social",
+   "blurb": "Connect your Meta profile for unified social presence.",
+   "capabilities": [
+    "Public profile",
+    "Email & identity"
+   ],
+   "brandColor": "#0866FF",
+   "monogram": "M"
+  },
+  {
+   "name": "Spotify",
+   "category": "social",
+   "blurb": "Connect Spotify so the assistant can DJ for you live — play, pause, skip, queue, and manage playlists by voice or chat.",
+   "capabilities": [
+    "Voice-controlled playback",
+    "Search & queue",
+    "Playlist management",
+    "Device switching"
+   ],
+   "brandColor": "#1DB954",
+   "monogram": "♫"
+  },
+  {
+   "name": "Strava",
+   "category": "health_fitness",
+   "blurb": "Import your activities and see planned-vs-actual training right alongside your plan.",
+   "capabilities": [
+    "Activity import",
+    "Planned vs actual",
+    "Auto-sync"
+   ],
+   "brandColor": "#FC4C02",
+   "monogram": "S"
+  },
+  {
+   "name": "WHOOP",
+   "category": "health_fitness",
+   "blurb": "Pull recovery, strain, and sleep to inform your training and health.",
+   "capabilities": [
+    "Recovery & strain",
+    "Sleep",
+    "Workouts"
+   ],
+   "brandColor": "#16161a",
+   "monogram": "W"
+  },
+  {
+   "name": "Oura",
+   "category": "health_fitness",
+   "blurb": "Sync sleep, readiness, and heart-rate trends from your Oura ring.",
+   "capabilities": [
+    "Sleep & readiness",
+    "Heart rate",
+    "Daily summaries"
+   ],
+   "brandColor": "#0b0b0c",
+   "monogram": "O"
+  },
+  {
+   "name": "Garmin",
+   "category": "health_fitness",
+   "blurb": "Bring in activities, heart rate, VO₂ max, and sleep from Garmin Connect.",
+   "capabilities": [
+    "Activities & VO₂ max",
+    "Heart rate & HRV",
+    "Sleep"
+   ],
+   "brandColor": "#0b7fab",
+   "monogram": "G"
+  },
+  {
+   "name": "Polar",
+   "category": "health_fitness",
+   "blurb": "Sync training, recovery, and sleep from Polar Flow.",
+   "capabilities": [
+    "Training sessions",
+    "Heart rate",
+    "Sleep & recovery"
+   ],
+   "brandColor": "#d4112b",
+   "monogram": "P"
+  },
+  {
+   "name": "COROS",
+   "category": "health_fitness",
+   "blurb": "Import activities, heart rate, and sleep from your COROS watch.",
+   "capabilities": [
+    "Activities",
+    "Heart rate",
+    "Sleep"
+   ],
+   "brandColor": "#1a1a1a",
+   "monogram": "C"
+  },
+  {
+   "name": "Fitbit",
+   "category": "health_fitness",
+   "blurb": "Sync steps, heart rate, sleep, and cardio fitness score from Fitbit.",
+   "capabilities": [
+    "Heart rate & HRV",
+    "Sleep",
+    "Cardio fitness (VO₂ max)"
+   ],
+   "brandColor": "#00b0b9",
+   "monogram": "F"
+  },
+  {
+   "name": "Samsung Health",
+   "category": "health_fitness",
+   "blurb": "Connect Samsung Health on your Android device to sync activity, heart rate, and sleep.",
+   "capabilities": [
+    "Activity",
+    "Heart rate",
+    "Sleep"
+   ],
+   "brandColor": "#1428a0",
+   "monogram": "S",
+   "mobile": true
+  },
+  {
+   "name": "Apple Health",
+   "category": "health_fitness",
+   "blurb": "Connect Apple Health on your iPhone to sync activity, heart rate, VO₂ max, and sleep.",
+   "capabilities": [
+    "Activity & VO₂ max",
+    "Heart rate & HRV",
+    "Sleep"
+   ],
+   "brandColor": "#0b0b0c",
+   "monogram": "♥",
+   "mobile": true
+  }
+ ]
+}

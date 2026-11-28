@@ -56,6 +56,18 @@ Made with what the builder has: the hero's badge is an icon list of one line ins
 the glow behind heroes and call-outs is a row's radial blur (`GRADIENT_STYLES.radial`, focus at the top centre, the accent's tint on
 the background); checked rows are an icon list.
 
+## Found while importing (28 November 2026)
+
+- **Add-ons**: Running Analyzer and Podcast Studio are sold in Life; the Flow store sells Free, Plus and a draft Pro only. As plan products in
+  a category of their own they would show in a second Plans component on `/plans`; until then that page has no add-ons and no prices are
+  written into it.
+- **Questions on `/plans`** are the FAQ component (boxed, the first open), not every answer shown as Life does: it keeps the FAQPage data
+  Life's page carries for search engines.
+- **About** is English in every language, as Life's is. Its pictures are copied into the store's library on the real import
+  (`--copy-pictures`).
+- **Small text in Life's blue** uses `#0a84ff` (Life's own text blue) and the glow `#0a1a33`: the button blue `#0975e2` reads at 3.4:1 on
+  the glow, and the page check asks 4.5:1.
+
 ## Steps
 
 1. Inventory and this plan. Done 28 November 2026.
@@ -72,7 +84,10 @@ the background); checked rows are an icon list.
    `translationOf()`, checks it as the editor's save does (`pageInput`, `pageIssues()`, `cleanTranslations()`; a search engine's text
    over its length is cut at a word), and saves it as a draft through the Admin API (`POST /pages`, `PATCH` for a page of the same
    address made before); pictures through the media endpoints. The front page is done and checked on a local copy of the store beside
-   kaizenalife.com, 28 November 2026; the other pages follow in it. The token is the owner's (`content:read`, `content:write`,
+   kaizenalife.com, 28 November 2026, and so are features, plans, Running Analyzer, integrations, the use cases with their five pages, about
+   and the five legal pages (17 pages, each checked locally beside its Life page). What Life builds from its database or code is kept beside
+   the importer as dated copies (`scripts/life-site/data/`: the plans' features, the integrations, the about page's story and team, the
+   legal documents, read with `htmlToRichText()`). Still to come: the header and footer, and the blog's 38 articles. The token is the owner's (`content:read`, `content:write`,
    `products:manage`), a network secret of the session for `kaizena-life.kaizenstore.site` (kaizenaflow.com's `Authorization` holds the
    incident log's). Before the real import the owner makes English the store's main language with Norwegian and Swedish offered
    (Settings, Languages and currencies; Norway shows Norwegian, Sweden Swedish) and switches on Languages (Settings, Features).

@@ -1,0 +1,51 @@
+{
+  "source": "Kaizena Life's database (subscription_plans, subscription_feature_registry, plan_entitlements), read 28 November 2026",
+  "plans": [
+    { "slug": "free", "name": "Free" },
+    { "slug": "plus", "name": "Plus" },
+    { "slug": "running-analyzer", "name": "Running Analyzer" },
+    { "slug": "podcast-studio", "name": "Podcast Studio" }
+  ],
+  "features": [
+    { "key": "page.today", "label": "Today", "description": "Today board", "category": "page" },
+    { "key": "page.library", "label": "Library", "description": "Tasks, reminders, checklists hub", "category": "page" },
+    { "key": "page.tasks.lists", "label": "Task lists", "description": "Lightweight lists of tasks", "category": "page" },
+    { "key": "page.contacts", "label": "Contacts", "description": "Contacts CRM", "category": "page" },
+    { "key": "page.tasks", "label": "Tasks", "description": "Task list and detail", "category": "page" },
+    { "key": "page.video", "label": "Video call", "description": "Photoreal video avatar call with the assistant", "category": "page" },
+    { "key": "page.tasks.projects", "label": "Task projects", "description": "Projects, Kanban, Gantt", "category": "page" },
+    { "key": "page.reminders", "label": "Reminders", "description": "Reminders", "category": "page" },
+    { "key": "page.media", "label": "Media library", "description": "Photo and file library", "category": "page" },
+    { "key": "page.checklists", "label": "Checklists", "description": "Checklists", "category": "page" },
+    { "key": "page.notes", "label": "Notes", "description": "Notebooks and notes", "category": "page" },
+    { "key": "page.notifications", "label": "Notifications", "description": "Inbox", "category": "page" },
+    { "key": "page.longevity", "label": "Longevity", "description": "Longevity tracker under Health", "category": "page" },
+    { "key": "page.life.email", "label": "Email & Calendar", "description": "Email digest and calendar on Life", "category": "page" },
+    { "key": "page.life.chores", "label": "Chores", "description": "Household-tagged chores on Life", "category": "page" },
+    { "key": "page.activity", "label": "Activity", "description": "Activity log", "category": "page" },
+    { "key": "page.analytics", "label": "Analytics", "description": "Activity charts and trends", "category": "page" },
+    { "key": "page.finances", "label": "Finances", "description": "Finance module", "category": "page" },
+    { "key": "spaces.custom", "label": "Custom spaces", "description": "Create spaces beyond the built-in Personal and Work. The limit is the number allowed.", "category": "capability" },
+    { "key": "page.work", "label": "Work", "description": "Freelance work module", "category": "page" },
+    { "key": "page.training", "label": "Training", "description": "Training programs and expense planning", "category": "page" },
+    { "key": "page.health", "label": "Health & Nutrition", "description": "Health providers and expense planning", "category": "page" },
+    { "key": "page.household", "label": "Household", "description": "Household categories and expense planning", "category": "page" },
+    { "key": "page.assistant", "label": "Assistant", "description": "AI assistant", "category": "page" },
+    { "key": "page.community", "label": "Community", "description": "Social feed: profiles, posts, comments, reposts", "category": "page" },
+    { "key": "community.groups", "label": "Community groups", "description": "Create and run community groups", "category": "capability" },
+    { "key": "community.events", "label": "Community events", "description": "Create and host community events", "category": "capability" },
+    { "key": "api.ai.chat", "label": "AI chat", "description": "AI chat API", "category": "api" },
+    { "key": "addon.running_analyzer", "label": "Running Analyzer", "description": "AI running-form analysis: live camera sessions, voice coaching, and post-run reports", "category": "addon" },
+    { "key": "api.ai.capture", "label": "AI capture", "description": "AI capture API", "category": "api" },
+    { "key": "addon.podcast_studio", "label": "Podcast Studio", "description": "Podcast production: episode planning, AI co-host recording, and (arriving in phases) multi-guest rooms, multitrack recording, post-production, and publishing", "category": "addon" },
+    { "key": "api.integrations", "label": "Integrations", "description": "OAuth integrations", "category": "api" },
+    { "key": "capability.sharing", "label": "Sharing", "description": "Share items with others", "category": "capability" },
+    { "key": "capability.tasks.gantt", "label": "Gantt view", "description": "Project Gantt scheduling", "category": "capability" }
+  ],
+  "includes": {
+    "free": ["addon.podcast_studio", "page.reminders", "page.checklists", "page.community", "community.groups", "community.events", "api.ai.chat", "page.today", "page.library", "page.tasks.lists", "page.contacts", "page.media", "page.notes", "page.longevity", "page.tasks", "page.notifications", "page.life.email", "page.life.chores", "page.tasks.projects", "page.assistant"],
+    "plus": ["page.today", "page.tasks.projects", "page.reminders", "page.life.chores", "page.activity", "page.assistant", "capability.sharing", "capability.tasks.gantt", "page.checklists", "page.media", "page.analytics", "page.finances", "page.work", "page.community", "community.groups", "community.events", "api.ai.chat", "addon.podcast_studio", "page.library", "page.tasks.lists", "page.contacts", "page.notes", "page.training", "addon.running_analyzer", "page.video", "page.longevity", "page.notifications", "page.life.email", "page.health", "page.household", "api.ai.capture", "api.integrations", "page.tasks"],
+    "running-analyzer": ["addon.running_analyzer"],
+    "podcast-studio": ["addon.podcast_studio"]
+  }
+}

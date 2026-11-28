@@ -18,9 +18,11 @@ export const LOCALES: Record<Exclude<Lang, "en">, string> = { nb: "nb-NO", sv: "
 export const LIFE = {
   muted: "#a9a9b0",
   accent: "#0975e2",
+  /** Life's blue for words (its `--ios-blue`): the button blue is too dark for small text on black and on the surface. */
+  accentText: "#0a84ff",
   surface: "#1c1c1e",
   border: "#38383a",
-  glow: "#0d2547",
+  glow: "#0a1a33",
   black: "#000000",
   success: "#30d158",
 } as const;
@@ -99,7 +101,7 @@ const pad = (top: number, right: number, bottom: number, left: number) => ({ pad
 /** Muted text in Life's secondary colour, at a size. */
 export const mutedText = (size?: number) => ({ text: { color: LIFE.muted, ...(size ? { size: px(size) } : {}) } });
 /** A small line in capitals over a title, in the accent. */
-export const eyebrowText = { text: { color: LIFE.accent, size: px(12), weight: 600, transform: "uppercase", letterSpacing: { value: 0.18, unit: "em" } } };
+export const eyebrowText = { text: { color: LIFE.accentText, size: px(12), weight: 600, transform: "uppercase", letterSpacing: { value: 0.18, unit: "em" } } };
 
 export function heading(id: string, text: string, level: 1 | 2 | 3, extra: Json = {}): Json {
   return { id, type: "heading", text, level, ...extra };
@@ -119,7 +121,7 @@ export function badge(id: string, line: string, icon = "sparkles"): Json {
     id,
     type: "iconList",
     items: [{ id: `${id}-line`, icon, text: line, href: "" }],
-    iconColor: LIFE.accent,
+    iconColor: LIFE.accentText,
     iconSize: "sm",
     border: { style: "solid", color: LIFE.border, width: { top: 1, right: 1, bottom: 1, left: 1 } },
     radius: 200,
@@ -128,9 +130,10 @@ export function badge(id: string, line: string, icon = "sparkles"): Json {
   };
 }
 
-export type Card = { id: string; icon?: string; letters?: string; color?: string; eyebrow?: string; title?: string; text?: string; points?: string[]; badge?: string; badgeTone?: string; group?: string; linkLabel?: string; href?: string };
+export type Card = { id: string; icon?: string; letters?: string; color?: string; picture?: { url: string; width: number; height: number; alt: string }; eyebrow?: string; title?: string; text?: string; points?: string[]; badge?: string; badgeTone?: string; group?: string; linkLabel?: string; href?: string };
 
 export function cards(id: string, items: Card[], options: Json = {}): Json {
+  const { typography, ...rest } = options;
   return {
     id,
     type: "cards",
@@ -141,6 +144,7 @@ export function cards(id: string, items: Card[], options: Json = {}): Json {
       ...(item.icon ? { icon: item.icon } : {}),
       ...(item.letters ? { letters: item.letters } : {}),
       ...(item.color ? { color: item.color } : {}),
+      ...(item.picture ? { picture: item.picture } : {}),
       ...(item.badgeTone ? { badgeTone: item.badgeTone } : {}),
       eyebrow: item.eyebrow ?? "",
       title: item.title ?? "",
@@ -151,7 +155,8 @@ export function cards(id: string, items: Card[], options: Json = {}): Json {
       linkLabel: item.linkLabel ?? "",
       href: item.href ?? "",
     })),
-    ...options,
+    typography: { meta: { color: LIFE.accentText }, ...((typography as Json | undefined) ?? {}) },
+    ...rest,
   };
 }
 

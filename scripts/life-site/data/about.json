@@ -1,0 +1,121 @@
+{
+ "source": "kaizenalife.com/about as it showed 28 November 2026 (app_settings' narrative and team bios, the assistant personas)",
+ "title": "About Kaizena Life",
+ "story": [
+  "About us: We are a Norwegian-based called HumanWeb. As part of the AI revolution, we created KaizenaLabs as a mission-driven initiative to stay on top of the development, and to leverage the new technology to uplift and enhance peoples' lives with AI by their side. That ended up becoming this app, The Kaizen Life Tracker.",
+  "What makes this this app different is that bridges all aspects of both your personal and work life. The founder, André Giæver, saw the need in his own life to have one coherent space to manage personal everyday stuff, his entrepreneurial side-hustles, and to organize his 9 to 5 day job.",
+  "The Kaizen Life Tracker became the answer. An AI-native ecosystem that covers all aspects of life, integrates with all common tools and services, and that is managed together with your personal, configurable AI agent. This agent learns about who you are, your life, your preferences, your goals. It works proactively to simplify your life by off-loading and automating tasks, monitor progress in areas such as health, finance, everyday logistics, etc. All of it. The app adapts and scales based on your needs."
+ ],
+ "team": [
+  {
+   "name": "André",
+   "role": "Founder & CEO",
+   "bio": "André is creator behind Kaizen Life. He's extremely passionate about helping people leverage AI in meaningful ways.",
+   "picture": {
+    "url": "https://ugljipgbugzilpfmeprc.supabase.co/storage/v1/object/public/avatars/d8d4160c-fb82-45d4-8be8-125f554936b1/avatar.jpg",
+    "width": 1831,
+    "height": 1834
+   },
+   "x": null
+  },
+  {
+   "name": "Greg Archer",
+   "role": "COO",
+   "bio": "Greg Archer handles the daily logistics and is responsible for all things operational.",
+   "picture": {
+    "url": "https://ugljipgbugzilpfmeprc.supabase.co/storage/v1/object/public/branding/personas/1785843213346-2fu3t5.png",
+    "width": 385,
+    "height": 384
+   },
+   "x": "https://x.com/GregA_KLT"
+  },
+  {
+   "name": "Hannah Leigh",
+   "role": "CFO",
+   "bio": "Hannah Leigh is our trusted financial adviser, responsible for keeping the ship afloat.",
+   "picture": {
+    "url": "https://ugljipgbugzilpfmeprc.supabase.co/storage/v1/object/public/branding/personas/1786124524921-0smpnr.jpg",
+    "width": 1079,
+    "height": 1111
+   },
+   "x": "https://x.com/HannahL_KLT"
+  },
+  {
+   "name": "Joshua Dawson",
+   "role": "CTO",
+   "bio": "Joshua Dawson is one handling all things technical., making everything run smoothly.",
+   "picture": {
+    "url": "https://ugljipgbugzilpfmeprc.supabase.co/storage/v1/object/public/branding/personas/1785860106632-bd1tn7.jpg",
+    "width": 865,
+    "height": 951
+   },
+   "x": "https://x.com/JoshuaD_KLT"
+  },
+  {
+   "name": "Annabelle Watson",
+   "role": "Head of Product and Customer Insight",
+   "bio": "Annabelle Watson is the one making sure that we deliver products and features the give true value to our customers.",
+   "picture": {
+    "url": "https://ugljipgbugzilpfmeprc.supabase.co/storage/v1/object/public/branding/personas/1786358274925-zlnmij.jpg",
+    "width": 1079,
+    "height": 1183
+   },
+   "x": null
+  },
+  {
+   "name": "Jason Bradford",
+   "role": "Revenue and Growth Lead",
+   "bio": "Jason Bradford runs our growth and expansion initiatives, and makes sure we are relevant in all the right places.",
+   "picture": {
+    "url": "https://ugljipgbugzilpfmeprc.supabase.co/storage/v1/object/public/branding/personas/1786879978274-ho9tso.jpg",
+    "width": 966,
+    "height": 1034
+   },
+   "x": null
+  },
+  {
+   "name": "Vicky Braxton",
+   "role": "Content Creator",
+   "bio": "Vicky Braxton is a wizzard with words. She handles the blog, and all of Social Media.",
+   "picture": {
+    "url": "https://ugljipgbugzilpfmeprc.supabase.co/storage/v1/object/public/branding/personas/1785831939485-6qarfs.jpg",
+    "width": 844,
+    "height": 833
+   },
+   "x": "https://x.com/VickyB_KLT"
+  },
+  {
+   "name": "Abby Gibson",
+   "role": "Podcast Co-host",
+   "bio": "Abby Gibson is the voice you'll hear when tuning into the Kaizen Life Podcast.",
+   "picture": {
+    "url": "https://ugljipgbugzilpfmeprc.supabase.co/storage/v1/object/public/branding/personas/1785837310851-n9p9a7.jpg",
+    "width": 906,
+    "height": 939
+   },
+   "x": "https://x.com/AbbyG_KLT"
+  },
+  {
+   "name": "Darren Hill",
+   "role": "Data Analyst",
+   "bio": "Darren Hill is a wizzard with numbers and statistics, finding the signal in the noise.",
+   "picture": {
+    "url": "https://ugljipgbugzilpfmeprc.supabase.co/storage/v1/object/public/branding/personas/1785842163692-7vk110.png",
+    "width": 340,
+    "height": 339
+   },
+   "x": "https://x.com/DarrenH_KLT"
+  },
+  {
+   "name": "Emma Bright",
+   "role": "Customer Care",
+   "bio": "Emma Bright is the friendly face and helpful voice you'll encounter whenever you need help.",
+   "picture": {
+    "url": "https://ugljipgbugzilpfmeprc.supabase.co/storage/v1/object/public/branding/personas/1785831129403-7pmx7p.jpg",
+    "width": 897,
+    "height": 1004
+   },
+   "x": null
+  }
+ ]
+}
