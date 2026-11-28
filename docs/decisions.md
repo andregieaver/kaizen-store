@@ -918,6 +918,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D913 | **A price of nothing is shown as Free, and a free order or subscription never goes to a payment provider** | 2026-11-27 | [text](decisions/D913.md) |
 | D914 | **A pricing table shows all plans or the plans of one product category** | 2026-11-27 | [text](decisions/D914.md) |
 | D915 | **Buy now goes straight to payment, past the cart page, where the store, a category, a tag or the product chooses so** | 2026-11-27 | [text](decisions/D915.md) |
+| D916 | **Kaizena Life's site moves into its Flow store, and the builder gets the parts it lacked** | 2026-11-28 | [text](decisions/D916.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
