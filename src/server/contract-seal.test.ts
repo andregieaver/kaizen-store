@@ -22,6 +22,16 @@ async function onePage(text: string): Promise<Uint8Array> {
   return doc.save();
 }
 
+/** A DER value's whole length in bytes, from its tag and length bytes (short form, or long form with the count of length bytes). */
+function derLength(bytes: string): number {
+  const first = bytes.charCodeAt(1);
+  if (first < 0x80) return 2 + first;
+  const count = first & 0x7f;
+  let length = 0;
+  for (let i = 0; i < count; i++) length = length * 256 + bytes.charCodeAt(2 + i);
+  return 2 + count + length;
+}
+
 /** The signed bytes and the signature of a sealed PDF, read as a reader does: by its /ByteRange. */
 function signatureOf(pdf: Uint8Array) {
   const text = Buffer.from(pdf).toString("latin1");
@@ -31,8 +41,8 @@ function signatureOf(pdf: Uint8Array) {
   const signed = Buffer.concat([Buffer.from(pdf.subarray(a, a + b)), Buffer.from(pdf.subarray(c, c + d))]);
   // The signature is DER in a placeholder padded with zeros: read it by its own length, never by stripping zeros, which would cut a
   // signature that happens to end in a zero digit (one run in sixteen, as the seal's key is new each run).
-  const hex = text.slice(a + b + 1, c - 1);
-  const p7 = forge.pkcs7.messageFromAsn1(forge.asn1.fromDer(forge.util.hexToBytes(hex), { parseAllBytes: false })) as forge.pkcs7.PkcsSignedData & {
+  const padded = forge.util.hexToBytes(text.slice(a + b + 1, c - 1));
+  const p7 = forge.pkcs7.messageFromAsn1(forge.asn1.fromDer(padded.slice(0, derLength(padded)))) as forge.pkcs7.PkcsSignedData & {
     rawCapture: { authenticatedAttributes: forge.asn1.Asn1[] };
   };
   const digestAttr = p7.rawCapture.authenticatedAttributes.find((attr) => forge.asn1.derToOid((attr.value as forge.asn1.Asn1[])[0].value as string) === forge.pki.oids.messageDigest);
