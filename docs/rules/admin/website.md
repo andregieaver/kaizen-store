@@ -1047,7 +1047,7 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `sideTitle`, `side.{item}`, `alt`, `block.{id}.{part}.title`/`aside`/`captionStart`/`captionEnd`/`legendFirst`/`legendSecond`/`caption`,
   `block.{id}.{part}.{line}` and a board's `block.{id}.{part}.{column}.{card}`. The view uses only classes the stylesheet already holds and
   inline styles for its colours (the stylesheet budget, `e2e/performance.spec.ts`); its fields are their own module, loaded when the
-  settings open (`lazy/builder-fields.tsx`). Tests: `src/components/app-preview-view.test.ts`.
+  settings open (`lazy/block-editors.tsx`). Tests: `src/components/app-preview-view.test.ts`.
 
 ## Icon list descriptions (D414, `IconListItem.description`)
 
