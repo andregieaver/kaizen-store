@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { EventEmitter } from "node:events";
+import { createRequire } from "node:module";
+
+import { describe, expect, it, vi } from "vitest";
 
 import { adminManifest, adminServiceWorker, ADMIN_OFFLINE_PATH } from "./admin-sw";
 import { vapidEnv } from "./env";
@@ -53,5 +56,43 @@ describe("the installable admin and its notifications (D361)", () => {
     expect(vapidEnv({ VAPID_PUBLIC_KEY: "B".repeat(87), VAPID_PRIVATE_KEY: "A".repeat(43) })).toEqual({ publicKey: "B".repeat(87), privateKey: "A".repeat(43), subject: "https://kaizenaflow.com" });
     expect(() => vapidEnv({ VAPID_PUBLIC_KEY: "short", VAPID_PRIVATE_KEY: "A".repeat(43) })).toThrow();
     expect(() => vapidEnv({ VAPID_PUBLIC_KEY: "B".repeat(87), VAPID_PRIVATE_KEY: "A".repeat(43), VAPID_SUBJECT: "http://x" })).toThrow();
+  });
+});
+
+describe("web-push reads a device's address without url.parse() (patches/web-push.patch, incident 1d8e0e66)", () => {
+  it("signs for the push service's origin and sends to its host and path, with no DEP0169", async () => {
+    const require = createRequire(import.meta.url);
+    const url = require("node:url") as typeof import("node:url");
+    const https = require("node:https") as typeof import("node:https");
+    const webpush = require("web-push") as typeof import("web-push");
+    const parse = vi.spyOn(url, "parse");
+    let sent: { hostname?: string | null; port?: unknown; path?: string | null } = {};
+    const request = vi.spyOn(https, "request").mockImplementation(((options: typeof sent, done: (res: EventEmitter & { statusCode: number }) => void) => {
+      sent = options;
+      const req = new EventEmitter() as EventEmitter & { write: () => void; end: () => void; setTimeout: () => void };
+      req.write = () => {};
+      req.setTimeout = () => {};
+      req.end = () => {
+        const res = Object.assign(new EventEmitter(), { statusCode: 201, headers: {} });
+        done(res);
+        res.emit("end");
+      };
+      return req;
+    }) as never);
+    try {
+      const keys = webpush.generateVAPIDKeys();
+      const endpoint = "https://fcm.googleapis.com/fcm/send/abc?x=1";
+      const vapidDetails = { subject: "mailto:ops@example.com", publicKey: keys.publicKey, privateKey: keys.privateKey };
+      const details = webpush.generateRequestDetails({ endpoint, keys: { p256dh: "", auth: "" } }, null, { vapidDetails });
+      const jwt = String(details.headers.Authorization).match(/t=([^,]+)/)?.[1] ?? "";
+      expect(JSON.parse(Buffer.from(jwt.split(".")[1] ?? "", "base64url").toString()).aud).toBe("https://fcm.googleapis.com");
+      await webpush.sendNotification({ endpoint, keys: { p256dh: "", auth: "" } }, null, { vapidDetails });
+      expect(sent).toMatchObject({ hostname: "fcm.googleapis.com", path: "/fcm/send/abc?x=1" });
+      expect(sent.port).toBeUndefined();
+      expect(parse).not.toHaveBeenCalled();
+    } finally {
+      parse.mockRestore();
+      request.mockRestore();
+    }
   });
 });

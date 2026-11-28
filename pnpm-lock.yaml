@@ -22,6 +22,9 @@ patchedDependencies:
   next:
     hash: 9d7a8145e233988144d12c30a38c140f8c1afe90b80759a44753f66e90fa6cf2
     path: patches/next.patch
+  web-push:
+    hash: fd73a1e893f1cba8f5e4473d7d483cb0b1f90c45175409ce3b06afaec4c08ef7
+    path: patches/web-push.patch
 
 importers:
 
@@ -224,7 +227,7 @@ importers:
         version: 2.1.0
       web-push:
         specifier: 3.6.7
-        version: 3.6.7
+        version: 3.6.7(patch_hash=fd73a1e893f1cba8f5e4473d7d483cb0b1f90c45175409ce3b06afaec4c08ef7)
       web-vitals:
         specifier: 5.1.0
         version: 5.1.0
@@ -8324,7 +8327,7 @@ snapshots:
     dependencies:
       argparse: 2.0.1
 
-  web-push@3.6.7:
+  web-push@3.6.7(patch_hash=fd73a1e893f1cba8f5e4473d7d483cb0b1f90c45175409ce3b06afaec4c08ef7):
     dependencies:
       asn1.js: 5.4.1
       http_ece: 1.2.0

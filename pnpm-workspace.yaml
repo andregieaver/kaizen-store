@@ -31,3 +31,7 @@ overrides:
 # Move up once the events route no longer needs that header, or a release keeps it.
 patchedDependencies:
   next: patches/next.patch
+  # web-push 3.6.7 (its latest) reads a device's address with url.parse(), which Node deprecates (DEP0169) and warns about at each
+  # cold start that sends a push (incident 1d8e0e66); the patch reads it with the WHATWG URL instead, the same origin, host and path.
+  # Drop it once a release of web-push no longer calls url.parse() (src/lib/push.test.ts fails while it does).
+  web-push: patches/web-push.patch
