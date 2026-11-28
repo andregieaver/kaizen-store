@@ -919,6 +919,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D914 | **A pricing table shows all plans or the plans of one product category** | 2026-11-27 | [text](decisions/D914.md) |
 | D915 | **Buy now goes straight to payment, past the cart page, where the store, a category, a tag or the product chooses so** | 2026-11-27 | [text](decisions/D915.md) |
 | D916 | **Kaizena Life's site moves into its Flow store, and the builder gets the parts it lacked** | 2026-11-28 | [text](decisions/D916.md) |
+| D917 | **Admin API: headers, footers, menus, looks from settings, and an article's first date** | 2026-11-28 | [text](decisions/D917.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
