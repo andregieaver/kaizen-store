@@ -88,6 +88,7 @@ export function lifeHeader(w: Words, menuId: string): LifePage {
       {
         id: "life-header-row",
         type: "row",
+        width: "full",
         layout: "fit-sides",
         stack: false,
         align: "middle",
@@ -102,7 +103,16 @@ export function lifeHeader(w: Words, menuId: string): LifePage {
             "life-header-tools",
             [
               part("life-header-languages", "languages", { switcher: "dropdown", langText: "code", ...muted(14, 500) }),
-              { id: "life-header-sign-in", type: "button", label: m("nav.signIn"), href: APP_SIGN_IN, variant: "text", size: "sm", ...PHONES_HIDDEN, ...muted(14, 500) },
+              {
+                id: "life-header-sign-in",
+                type: "button",
+                label: m("nav.signIn"),
+                href: APP_SIGN_IN,
+                variant: "text",
+                size: "sm",
+                ...PHONES_HIDDEN,
+                typography: { text: { color: LIFE.muted, size: px(14), weight: 500, decoration: "none" } },
+              },
               { id: "life-header-start", type: "button", label: m("nav.getStarted"), href: "/plans", variant: "filled", size: "sm", shape: "pill", ...PHONES_HIDDEN },
             ],
             { inline: true, justify: "end" },
@@ -127,7 +137,9 @@ export function lifeFooter(w: Words, menuId: string): LifePage {
       {
         id: "life-footer-row",
         type: "row",
-        layout: "fit-end",
+        width: "full",
+        background: { type: "color", color: LIFE.black },
+        layout: "left-sidebar",
         align: "middle",
         contentMax: 1152,
         style: sides(40, 20),
@@ -152,6 +164,8 @@ export function lifeFooter(w: Words, menuId: string): LifePage {
       {
         id: "life-footer-rights",
         type: "row",
+        width: "full",
+        background: { type: "color", color: LIFE.black },
         layout: "1",
         contentMax: 1152,
         style: sides(16, 20),

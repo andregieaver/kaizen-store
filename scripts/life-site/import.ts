@@ -333,7 +333,13 @@ async function importSite(a: Args, words: Record<Lang, Words>, locales: Record<L
   }
   if (!a.makeLive || look?.live) return;
   for (const kind of ["header", "footer"] as const) {
-    await api(a, `/pages/${layoutIds[kind]}/publish`, { method: "POST", body: "{}" });
+    try {
+      await api(a, `/pages/${layoutIds[kind]}/publish`, { method: "POST", body: "{}" });
+    } catch (error) {
+      if (!(error instanceof ApiRefused && error.status === 403)) throw error;
+      console.log(`  not made live: that takes a token with content:publish. Or publish ${HEADER_SLUG} and ${FOOTER_SLUG} and make the look live in Design settings.`);
+      return;
+    }
     console.log(`  ${kind} published`);
   }
   const live = (await api(a, `/themes/${lookId}/live`, { method: "POST", body: "{}" })) as { data: { put_away: string; notes: string[] } };
