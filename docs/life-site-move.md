@@ -68,6 +68,14 @@ the background); checked rows are an icon list.
 - **Small text in Life's blue** uses `#0a84ff` (Life's own text blue) and the glow `#0a1a33`: the button blue `#0975e2` reads at 3.4:1 on
   the glow, and the page check asks 4.5:1.
 
+- **Articles' dates**: Flow dates an article when it is published, so the 38 articles would all carry the day they are published unless
+  the API takes a first-published date; Life's dates are 30 June to 23 November 2026.
+- **Header and footer, as Life has them** (its `nav.*` and `footer.*` words, in all three languages): the header holds the logo
+  (`site`, logo), a menu (Features `/features`, Use cases `/use-cases`, Integrations `/integrations`, Pricing `/plans`, Blog `/blog`,
+  About `/about`), the languages part, Sign in (to the app) and a Get started button to `/plans`; the footer holds the name with
+  "Continuous improvement, one day at a time.", a menu (Features, Use cases, Integrations, Pricing, Sign in, Cookie settings, Privacy,
+  Terms, Support, Accessibility) and "© 2026 Kaizena Life. All rights reserved.".
+
 ## Steps
 
 1. Inventory and this plan. Done 28 November 2026.
@@ -87,7 +95,10 @@ the background); checked rows are an icon list.
    kaizenalife.com, 28 November 2026, and so are features, plans, Running Analyzer, integrations, the use cases with their five pages, about
    and the five legal pages (17 pages, each checked locally beside its Life page). What Life builds from its database or code is kept beside
    the importer as dated copies (`scripts/life-site/data/`: the plans' features, the integrations, the about page's story and team, the
-   legal documents, read with `htmlToRichText()`). Still to come: the header and footer, and the blog's 38 articles. The token is the owner's (`content:read`, `content:write`,
+   legal documents, read with `htmlToRichText()`). The blog's 38 articles are read at import time from kaizenalife.com (its RSS feed and
+   each article's page: body, picture, author, the AI disclosure) and saved as draft articles (`--only blog`, or `blog:slug`).
+   The header and footer are not the API's to make (it makes pages and articles; menus it only reads): they are built in the admin
+   from Life's (below), or the Admin API gains headers, footers and menus first. The token is the owner's (`content:read`, `content:write`,
    `products:manage`), a network secret of the session for `kaizena-life.kaizenstore.site` (kaizenaflow.com's `Authorization` holds the
    incident log's). Before the real import the owner makes English the store's main language with Norwegian and Swedish offered
    (Settings, Languages and currencies; Norway shows Norwegian, Sweden Swedish) and switches on Languages (Settings, Features).

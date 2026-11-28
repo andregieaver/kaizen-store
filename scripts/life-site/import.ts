@@ -11,6 +11,7 @@ import { pageIssues } from "@/lib/page-a11y";
 import { pageInput, type PageContent, type PageTranslation } from "@/lib/page-content";
 import { cleanTranslations, pageTexts, translationOf, withTranslation } from "@/lib/page-translation";
 
+import { lifeArticles } from "./blog";
 import { LANGS, LOCALES, Words, type Json } from "./kit";
 import { PAGES, type LifePage, type StoreFacts } from "./pages";
 
@@ -83,12 +84,12 @@ async function api(a: Args, path: string, init: RequestInit = {}): Promise<unkno
   return body;
 }
 
-/** The store's pages by address, every page of the list. */
-async function pagesBySlug(a: Args): Promise<Map<string, string>> {
+/** The store's pages (or articles) by address, every page of the list. */
+async function pagesBySlug(a: Args, kind: "pages" | "articles" = "pages"): Promise<Map<string, string>> {
   const found = new Map<string, string>();
   let after: string | null = null;
   do {
-    const page = (await api(a, `/pages?limit=100${after ? `&after=${encodeURIComponent(after)}` : ""}`)) as { data: { id: string; slug: string }[]; next?: string | null };
+    const page = (await api(a, `/${kind}?limit=100${after ? `&after=${encodeURIComponent(after)}` : ""}`)) as { data: { id: string; slug: string }[]; next?: string | null };
     for (const entry of page.data) found.set(entry.slug, entry.id);
     after = page.next ?? null;
   } while (after);
@@ -172,7 +173,10 @@ async function withOwnPictures(a: Args, library: Map<string, Media>, draft: Page
 async function main() {
   const a = args(process.argv.slice(2));
   const words = Object.fromEntries(LANGS.map((lang) => [lang, new Words(a.life, lang)])) as Record<(typeof LANGS)[number], Words>;
-  const names = a.only ?? Object.keys(PAGES);
+  // `--only blog` (or blog:slug,...) imports the blog's articles; without --only, every page and then the blog.
+  const blogOnly = a.only?.filter((name) => name.startsWith("blog:")).map((name) => name.slice(5)) ?? [];
+  const wantsBlog = !a.only || a.only.includes("blog") || blogOnly.length > 0;
+  const names = (a.only ?? Object.keys(PAGES)).filter((name) => name !== "blog" && !name.startsWith("blog:"));
   const existing = a.dry || !a.base ? new Map<string, string>() : await pagesBySlug(a);
   const facts: StoreFacts = a.dry || !a.base ? { plans: null, plansCategory: null } : await storeFacts(a, existing);
   let library: Map<string, Media> | null = null;
@@ -197,6 +201,46 @@ async function main() {
     if (id) await api(a, `/pages/${id}`, { method: "PATCH", body: JSON.stringify({ draft: saved }) });
     else await api(a, "/pages", { method: "POST", body: JSON.stringify({ draft: saved }) });
     console.log(`  saved as a draft (${id ? "updated" : "new"})`);
+  }
+  if (wantsBlog) await importBlog(a, blogOnly.length > 0 ? blogOnly : null);
+}
+
+/** Life's blog: each published article as a draft article of the store (`POST /articles`, or `PATCH` for one of the same address). */
+async function importBlog(a: Args, only: string[] | null) {
+  const articles = await lifeArticles(only);
+  const existing = a.dry || !a.base ? new Map<string, string>() : await pagesBySlug(a, "articles");
+  let library: Map<string, Media> | null = null;
+  for (const article of articles) {
+    const parsed = pageInput.safeParse({
+      title: article.title,
+      slug: article.slug,
+      thumbnail: article.thumbnail,
+      excerpt: article.excerpt,
+      seo: { title: article.title, description: article.excerpt.length > 160 ? `${article.excerpt.slice(0, 159).replace(/\s+\S*$/, "")}…` : article.excerpt },
+      searchEngines: true,
+      aiAssistants: true,
+      categories: [],
+      tags: [],
+      author: article.author,
+      rows: article.rows,
+    });
+    if (!parsed.success) throw new Error(`blog/${article.slug}: ${parsed.error.issues.slice(0, 3).map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; ")}`);
+    const draft = parsed.data as PageContent;
+    const issues = pageIssues(draft);
+    const blocking = issues.filter((issue) => issue.severity === "blocking");
+    console.log(`blog/${article.slug}: ${article.published}; ${article.picturesLeftOut} pictures in the body left out; ${issues.length} notes, ${blocking.length} blocking`);
+    for (const issue of issues) console.log(`  ${issue.severity}: ${issue.where}: ${issue.message}`);
+    if (blocking.length > 0) throw new Error(`blog/${article.slug} has notes that would stop its publishing; nothing saved.`);
+    if (a.dry) {
+      mkdirSync(join(a.dry, "blog"), { recursive: true });
+      writeFileSync(join(a.dry, "blog", `${article.slug}.json`), JSON.stringify(draft, null, 2));
+      continue;
+    }
+    const saved = a.copyPictures ? await withOwnPictures(a, (library ??= await mediaByName(a)), draft) : draft;
+    const id = existing.get(draft.slug);
+    if (id) await api(a, `/articles/${id}`, { method: "PATCH", body: JSON.stringify({ draft: saved }) });
+    else await api(a, "/articles", { method: "POST", body: JSON.stringify({ draft: saved }) });
+    console.log(`  saved as a draft article (${id ? "updated" : "new"})`);
   }
 }
 
