@@ -93,8 +93,10 @@ describe("the ad budget tools (D585)", () => {
     await setAdMonthlyLimit(store.id, actor.id, "5000");
     expect(await adBudgetAutopilotProblem(store, { budget: "300001", daily: "110" }, 20)).toBeNull();
     expect(await adBudgetAutopilotProblem(store, { budget: "300001", daily: "150" }, 20)).toBe("It raises a daily budget by 50 %, more than your limit of 20 %.");
-    await setAdMonthlyLimit(store.id, actor.id, "1500");
-    expect(await adBudgetAutopilotProblem(store, { budget: "300002", on: true }, 20)).toMatch(/more than your limit of €1,500.00/);
+    // Over the limit whatever the day (ci-red #77): €1,000 spent, and with "Brand" on €150 a day for at least today (`daysLeftInMonth()` counts
+    // today), so at least €1,150 against €1,100. A limit of €1,500 held only while four days or more were left in the month.
+    await setAdMonthlyLimit(store.id, actor.id, "1100");
+    expect(await adBudgetAutopilotProblem(store, { budget: "300002", on: true }, 20)).toMatch(/more than your limit of €1,100.00/);
   });
 
   it("changes the budget in Meta on a yes", async () => {
