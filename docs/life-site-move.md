@@ -99,7 +99,12 @@ the background); checked rows are an icon list.
    legal documents, read with `htmlToRichText()`). The blog's 38 articles are read at import time from kaizenalife.com (its RSS feed and
    each article's page: body, picture, author, the AI disclosure) and saved as draft articles (`--only blog`, or `blog:slug`).
    The header, footer and their menus are made over the Admin API too (D917: `POST /pages` with `type`, `POST /menus`), and each
-   article keeps the date Life published it (`first_published_at`). The token is the owner's (`content:read`, `content:write`,
+   article keeps the date Life published it (`first_published_at`). `scripts/life-site/site.ts` builds them after the pages (`--only
+   site`): the menus *Kaizena Life main* and *Kaizena Life footer*, the header `life-header` and footer `life-footer` as drafts (the footer
+   with the business details and withdrawal link a store's footer needs, which Life's lacks), and the look *Kaizena Life* with them, not
+   live; `--make-live` publishes the header and footer and makes the look live, which takes `content:publish`. Life's header is sticky
+   and translucent; Flow's header has no such setting, so it scrolls with the page. The importer stops before saving anything while the
+   store's main language is not English. The token is the owner's (`content:read`, `content:write`,
    `products:manage`), a network secret of the session for `kaizena-life.kaizenstore.site` (kaizenaflow.com's `Authorization` holds the
    incident log's). Before the real import the owner makes English the store's main language with Norwegian and Swedish offered
    (Settings, Languages and currencies; Norway shows Norwegian, Sweden Swedish) and switches on Languages (Settings, Features).
