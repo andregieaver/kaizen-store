@@ -3,7 +3,6 @@
 import type { PageSummary } from "@/server/pages";
 import { adminDate } from "@/lib/admin-date";
 import type { DuplicateResult } from "@/lib/page-duplicate";
-import { ROLE_COPY, type PageRole } from "@/lib/page-role-copy";
 import { fillWords } from "@/lib/admin-fill";
 import type { ScheduleChip } from "@/lib/page-schedules";
 
@@ -29,7 +28,6 @@ export function PagesTable({
   siteBase,
   frontPageId = null,
   productsPageId = null,
-  roles = {},
   placed = {},
   schedules = {},
   duplicate,
@@ -42,8 +40,6 @@ export function PagesTable({
   frontPageId?: string | null;
   /** A store's All products page (D83), marked in the list. */
   productsPageId?: string | null;
-  /** The pages chosen for the blog, search and 404 places (D112), by page id. */
-  roles?: Record<string, PageRole>;
   /** Kaizen's pages with a place of their own (D143), by page id: the place's name and address, which the page is at instead of its own. */
   placed?: Record<string, { name: string; address: string }>;
   /** What is scheduled for each page or did not happen (D340), by page id. */
@@ -79,9 +75,7 @@ export function PagesTable({
                           ? fillWords(w.productsPage, { address: `${siteBase}/products` })
                           : placed[page.id]
                             ? `${placed[page.id].name}${placed[page.id].address ? ` · ${siteBase}${placed[page.id].address}` : ""}`
-                            : roles[page.id]
-                              ? `${w.roles[roles[page.id]]}${ROLE_COPY[roles[page.id]].address ? ` · ${siteBase}${ROLE_COPY[roles[page.id]].address}` : ""}`
-                              : `${siteBase}/${page.slug}`}
+                            : `${siteBase}/${page.slug}`}
                     </span>
                   }
                 />

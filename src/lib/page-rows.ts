@@ -85,6 +85,15 @@ export function newBlock(type: BlockType, id: NewId, part: ProductPart | SitePar
       return { id: id(), type, html: "", title: "" };
     case "table":
       return { id: id(), type, header: true, mobile: "stack", rows: [["", "", ""], ["", "", ""], ["", "", ""]] };
+    case "cards":
+      // Three cards to write in, each led by an icon (D916).
+      return {
+        id: id(),
+        type,
+        marker: "icon",
+        columns: 3,
+        items: (["sparkles", "zap", "shieldCheck"] as const).map((icon) => ({ id: id(), icon, eyebrow: "", title: "", text: "", points: [], badge: "", group: "", linkLabel: "", href: "" })),
+      };
     case "timeline":
       // Three events to write in, as a story starts, goes on and gets here (D414).
       return { id: id(), type, items: [0, 1, 2].map(() => ({ id: id(), date: "", title: "", text: "" })) };

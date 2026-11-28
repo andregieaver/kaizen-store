@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 
-import { countAt, statText } from "@/lib/stats-count";
+import { STAT_DURATION_DEFAULT, countAt, statText } from "@/lib/stats-count";
 
 export type StatShown = { id: string; value: number; decimals: number; prefix: string; suffix: string; label: string };
 
@@ -14,7 +14,8 @@ const useBeforePaint = typeof window === "undefined" ? useEffect : useLayoutEffe
  * rests on the figure as typed. The server's HTML holds the figures, so without scripts, for search engines and for visitors who prefer less
  * motion they are there as typed; a screen reader is given the figure, never the count.
  */
-export function StatsView({ items, columns, duration }: { items: StatShown[]; columns: number; duration: number }) {
+/** `duration` in seconds; the standard where the owner set none, read here so the page's server view need not load the counting. */
+export function StatsView({ items, columns, duration = STAT_DURATION_DEFAULT }: { items: StatShown[]; columns: number; duration?: number }) {
   const ref = useRef<HTMLUListElement>(null);
   const [progress, setProgress] = useState<number | null>(null);
   const [locale, setLocale] = useState("en");

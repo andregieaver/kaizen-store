@@ -1019,6 +1019,18 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   and Texts. Settings are `BLOCK_EDITORS.timeline` (General: the events, each duplicable; Style: layout and colour). Tests:
   `src/lib/timeline.test.ts`, `src/components/timeline-view.test.ts`, `e2e/timeline.spec.ts`.
 
+## Cards (D916, `src/components/cards-view.tsx`, `CardsBlock` in `src/lib/page-content.ts`)
+
+- **Cards (D916)**: a grid of cards alike, each led by the block's `marker` (an icon in a soft circle of its colour, its number on the
+  accent, letters on their own colour, a round picture, or nothing), then a small line, a title with an optional badge (neutral,
+  accent, green or orange), words, points (each `{id, text}`, ticks or dots in the accent or `pointColor`) and a link with its words.
+  `columns` on wide screens, at most two on a tablet and one on a phone; boxed in the theme's surface, border and card corners, or
+  plain; `centred` for a team or steps. Drawn on the server (`CardsView`); with `filters` and more than one group, chips (`CardsFilter`,
+  the only script) hide the other groups' cards, and all show without script; the first chip's words are the owner's (`allLabel`), so
+  they translate with the page. A card with no title, words or points is left out (`cardShows()`). Texts are translated as
+  `block.{id}.{card}.eyebrow`/`title`/`text`/`badge`/`group`/`linkLabel`/`alt` and `block.{id}.{card}.{point}`. One block of N cards
+  in place of N styled columns keeps a page well under its hundred components. Tests: `src/components/cards-view.test.ts`.
+
 ## Icon list descriptions (D414, `IconListItem.description`)
 
 - **Icon list descriptions (D414, `IconListItem.description`)**: an icon list line can have a description under its words

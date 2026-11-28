@@ -33,6 +33,7 @@ vi.mock("@/components/lazy/blocks", async () => ({
   ThemePreviewStage: await pick(() => import("@/components/theme-preview-stage"), "ThemePreviewStage"),
   LanguageSwitch: await pick(() => import("@/components/language-switch"), "LanguageSwitch"),
   CarouselControls: await pick(() => import("@/components/carousel-controls"), "CarouselControls"),
+  CardsFilter: await pick(() => import("@/components/cards-filter"), "CardsFilter"),
 }));
 
 // The shop's stand-ins, one module per group (bloat review step 2.9, commit 3).

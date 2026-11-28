@@ -1483,6 +1483,73 @@ export type TimelineBlock = PartBase & {
 /** An event that shows: it has a title or words. */
 export const timelineItemShows = (item: TimelineItem) => item.title.trim() !== "" || item.text.trim() !== "";
 
+export const CARD_EYEBROW_MAX = 60;
+export const CARD_TITLE_MAX = 200;
+export const CARD_TEXT_MAX = 1000;
+export const CARD_POINT_MAX = 200;
+export const CARD_POINTS_MAX = 12;
+export const CARD_BADGE_MAX = 40;
+export const CARD_LETTER_MAX = 3;
+export const CARD_COLUMNS = [1, 2, 3, 4] as const;
+/** What leads each card (D916): an icon in a soft circle, its number, a letter or two on a colour of its own, a round picture, or nothing. */
+export const CARD_MARKERS = { icon: "Icon", number: "Number", letter: "Letters", picture: "Picture", none: "None" } as const;
+export type CardMarker = keyof typeof CARD_MARKERS;
+export const CARD_LOOKS = { boxed: "Boxed", plain: "Plain" } as const;
+export type CardLook = keyof typeof CARD_LOOKS;
+/** How a card's points are marked: a tick, or a dot. */
+export const CARD_POINT_MARKS = { check: "Ticks", dot: "Dots" } as const;
+export type CardPointMark = keyof typeof CARD_POINT_MARKS;
+/** A badge's colour, from the theme or the usual signal colours (live, planned, on demand). */
+export const CARD_BADGE_TONES = { neutral: "Neutral", accent: "Accent", success: "Green", warning: "Orange" } as const;
+export type CardBadgeTone = keyof typeof CARD_BADGE_TONES;
+
+/**
+ * One card (D916): its marker (the block's kind: an icon, letters with their colour, or a picture), a small line over the title, the
+ * title, words, points each a line of its own with an id its translations are kept by, a badge, the group a filter chip shows it in, and
+ * a link with its words.
+ */
+export type CardItem = {
+  id: string;
+  icon?: IconName;
+  letters?: string;
+  color?: string;
+  picture?: { url: string; width: number; height: number; alt: string } | null;
+  eyebrow: string;
+  title: string;
+  text: string;
+  points: { id: string; text: string }[];
+  badge: string;
+  badgeTone?: CardBadgeTone;
+  group: string;
+  linkLabel: string;
+  href: string;
+};
+
+/**
+ * Cards (D916, the owner's Kaizena Life pages): a grid of cards alike, each led by its marker, as feature lists, numbered steps, a team,
+ * a roadmap with its states or a directory of integrations need. Columns on wide screens (at most two on a tablet, one on a phone); boxed
+ * in the theme's surface and border, or plain; filter chips by the cards' groups when `filters` is on (all shown without script). `allLabel`
+ * is the first chip's words, the owner's own, so it is translated with the page.
+ */
+export type CardsBlock = PartBase & {
+  id: string;
+  type: "cards";
+  items: CardItem[];
+  marker: CardMarker;
+  columns: (typeof CARD_COLUMNS)[number];
+  look?: CardLook;
+  pointMark?: CardPointMark;
+  /** The cards' contents centred (a team, steps), else from the start. */
+  centred?: boolean;
+  /** The ticks' or dots' colour; the theme's accent unless chosen. */
+  pointColor?: string;
+  filters?: boolean;
+  allLabel?: string;
+};
+
+/** A card that shows: a title, words or points. */
+export const cardShows = (item: CardItem) => item.title.trim() !== "" || item.text.trim() !== "" || item.points.some((point) => point.text.trim() !== "");
+
 export const TABLE_ROWS_MAX = 60;
 export const TABLE_COLUMNS_MAX = 12;
 export const TABLE_CELL_MAX = 500;
@@ -1914,6 +1981,7 @@ export type PageBlock =
   | SocialLinksBlock
   | IconListBlock
   | TimelineBlock
+  | CardsBlock
   | TableBlock
   | BrandsBlock
   | GalleryBlock
@@ -2142,6 +2210,8 @@ export function blockOwnContent(block: PageBlock): boolean {
       return block.items.some(iconItemShows);
     case "timeline":
       return block.items.some(timelineItemShows);
+    case "cards":
+      return block.items.some(cardShows);
     case "table":
       return tableShows(block);
     case "brands":
@@ -2201,6 +2271,11 @@ export function blockText(block: PageBlock): string {
       return block.items
         .filter(timelineItemShows)
         .map((item) => [item.date, item.title, item.text].map((t) => t.trim()).filter(Boolean).join(" "))
+        .join(" ");
+    case "cards":
+      return block.items
+        .filter(cardShows)
+        .map((item) => [item.eyebrow, item.title, item.text, ...item.points.map((point) => point.text), item.badge].map((t) => t.trim()).filter(Boolean).join(" "))
         .join(" ");
     case "iconList":
       return block.items
@@ -3371,6 +3446,62 @@ const timelineBlock = z.object({
   ...partBase,
 });
 
+const cardText = (max: number, what: string) => z.string().trim().max(max, `Keep a card's ${what} under ${max} characters.`).default("");
+const cardsBlock = z.object({
+  id: itemId,
+  type: z.literal("cards"),
+  items: z
+    .array(
+      z.object({
+        id: itemId,
+        icon: z.enum(Object.keys(ICONS) as [IconName, ...IconName[]]).optional(),
+        letters: z.string().trim().max(CARD_LETTER_MAX, `A card's letters are at most ${CARD_LETTER_MAX}.`).optional(),
+        color: color.optional(),
+        picture: z
+          .object({
+            url: z.url({ protocol: /^https?$/, error: "A card's picture has an invalid address." }).max(1000),
+            width: z.number().int().min(1).max(10_000),
+            height: z.number().int().min(1).max(10_000),
+            alt: z.string().trim().max(300).default(""),
+          })
+          .nullable()
+          .optional(),
+        eyebrow: cardText(CARD_EYEBROW_MAX, "small line"),
+        title: cardText(CARD_TITLE_MAX, "title"),
+        text: cardText(CARD_TEXT_MAX, "words"),
+        points: z
+          .array(z.object({ id: itemId, text: cardText(CARD_POINT_MAX, "point") }))
+          .max(CARD_POINTS_MAX, `A card has at most ${CARD_POINTS_MAX} points.`)
+          .refine((points) => new Set(points.map((point) => point.id)).size === points.length, "Two points have the same id. Reload the page and try again.")
+          .default([]),
+        badge: cardText(CARD_BADGE_MAX, "badge"),
+        badgeTone: z.enum(Object.keys(CARD_BADGE_TONES) as [CardBadgeTone, ...CardBadgeTone[]]).optional(),
+        group: cardText(CARD_BADGE_MAX, "group"),
+        linkLabel: cardText(CARD_BADGE_MAX, "link words"),
+        href: z
+          .string()
+          .trim()
+          .refine((href) => href === "" || isLinkAddress(href), "A card's address must be https://…, a page like /about, an anchor like #contact, mailto: or tel:.")
+          .default(""),
+      }),
+    )
+    .max(ITEMS_MAX, `A component holds at most ${ITEMS_MAX} items.`)
+    .refine((items) => new Set(items.map((item) => item.id)).size === items.length, "Two items have the same id. Reload the page and try again."),
+  marker: z.enum(Object.keys(CARD_MARKERS) as [CardMarker, ...CardMarker[]]),
+  columns: z
+    .number()
+    .int()
+    .refine((value) => (CARD_COLUMNS as readonly number[]).includes(value), "Show cards in 1 to 4 columns.")
+    .transform((value) => value as (typeof CARD_COLUMNS)[number]),
+  look: z.enum(Object.keys(CARD_LOOKS) as [CardLook, ...CardLook[]]).optional(),
+  pointMark: z.enum(Object.keys(CARD_POINT_MARKS) as [CardPointMark, ...CardPointMark[]]).optional(),
+  centred: z.boolean().optional(),
+  pointColor: color.optional(),
+  filters: z.boolean().optional(),
+  allLabel: z.string().trim().max(CARD_BADGE_MAX).optional(),
+  ...partBase,
+});
+
 const tableColour = z.string().regex(/^#[0-9a-fA-F]{6}$/, "A colour is written as # and six hex digits, like #1f2937.").transform((v) => v.toLowerCase()).optional();
 
 const galleryPicture = z
@@ -3650,6 +3781,7 @@ const BLOCK_KINDS = [
   socialLinksBlock,
   iconListBlock,
   timelineBlock,
+  cardsBlock,
   tableBlock,
   brandsBlock,
   galleryBlock,

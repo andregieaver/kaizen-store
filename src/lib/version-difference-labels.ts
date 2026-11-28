@@ -38,6 +38,7 @@ export const BLOCK_NAMES_EN = {
   beforeAfter: "Before and after",
   animation: "Animation",
   timeline: "Timeline",
+  cards: "Cards",
   button: "Button",
   contentGrid: "Content grid",
   product: "Product",

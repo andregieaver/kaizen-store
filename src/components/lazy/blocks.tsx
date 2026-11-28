@@ -30,6 +30,8 @@ export const DomainSearchBox = lazyView(dynamic(() => import("../domain-search-b
 export const TileShop = lazyView(dynamic(() => import("../tile-shop").then((m) => m.TileShop)));
 /** A countdown to a fixed moment (D561): drawn in the browser only, gone at zero. */
 export const CountdownView = lazyView(dynamic(() => import("../countdown-view").then((m) => m.CountdownView)));
+/** Cards' filter chips (D916): every card is in the server's HTML, shown, until the chips are here. */
+export const CardsFilter = lazyView(dynamic(() => import("../cards-filter").then((m) => m.CardsFilter)));
 /** Figures that count up as they come into view (D561); the server's HTML holds them as typed. */
 export const StatsView = lazyView(dynamic(() => import("../stats-view").then((m) => m.StatsView)));
 /** The theme store's preview stage (D247): drawn only on the theme pages. */

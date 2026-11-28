@@ -670,6 +670,8 @@ function blockWords(block: PageBlock): string[] {
       return block.items.flatMap((item) => [item.text, item.description ?? ""]);
     case "timeline":
       return block.items.flatMap((item) => [item.date, item.title, item.text]);
+    case "cards":
+      return block.items.flatMap((item) => [item.eyebrow, item.title, item.text, ...item.points.map((point) => point.text), item.badge, item.linkLabel]);
     case "table":
       return [block.caption ?? "", ...block.rows.flat().map((cell) => withoutIcons(cell, true)), ...(block.sections ?? []).filter((s): s is string => Boolean(s))];
     case "gallery":

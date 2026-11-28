@@ -260,14 +260,14 @@ function slotOnRow(row: PageRow, move: Move): { slot: ColumnSlot; anchor: { id: 
 }
 
 /** The palette's components, in order. */
-const BLOCK_TYPES = ["richText", "heading", "image", "beforeAfter", "animation", "video", "button", "dualButton", "columns", "tabs", "accordion", "faq", "testimonials", "iconList", "timeline", "table", "brands", "gallery", "socialLinks", "form", "instagram", "countdown", "stats", "contentGrid", "menu", "separator", "html"] as const satisfies readonly BlockType[];
+const BLOCK_TYPES = ["richText", "heading", "image", "beforeAfter", "animation", "video", "button", "dualButton", "columns", "tabs", "accordion", "faq", "testimonials", "iconList", "timeline", "cards", "table", "brands", "gallery", "socialLinks", "form", "instagram", "countdown", "stats", "contentGrid", "menu", "separator", "html"] as const satisfies readonly BlockType[];
 
 /**
  * Components that get what they lack in their settings: the canvas says what each lacks (`emptyBlock`) and then, once for all
  * of them, how to open the settings (`emptyHow`), so the sentence is in the words once (the admin's first scripts carry them).
  */
 const OPENED_TO_FILL: ReadonlySet<BlockType> = new Set<BlockType>([
-  "beforeAfter", "animation", "timeline", "button", "dualButton", "accordion", "tabs", "faq", "testimonials", "socialLinks", "iconList", "brands", "gallery", "table", "emailForm", "newsletter", "form",
+  "beforeAfter", "animation", "timeline", "cards", "button", "dualButton", "accordion", "tabs", "faq", "testimonials", "socialLinks", "iconList", "brands", "gallery", "table", "emailForm", "newsletter", "form",
 ]);
 /** What the canvas shows for a component with nothing to show yet. */
 const emptyWords = (w: { emptyBlock: Record<BlockType, string>; emptyHow: string }, type: BlockType): string =>

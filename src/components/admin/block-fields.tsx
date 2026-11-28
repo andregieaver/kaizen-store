@@ -172,6 +172,20 @@ import {
   ICON_LIST_DESCRIPTION_MAX,
   TIMELINE_DATE_MAX,
   TIMELINE_LAYOUTS,
+  CARD_BADGE_MAX,
+  CARD_BADGE_TONES,
+  CARD_COLUMNS,
+  CARD_EYEBROW_MAX,
+  CARD_LETTER_MAX,
+  CARD_LOOKS,
+  CARD_MARKERS,
+  CARD_POINT_MARKS,
+  CARD_POINT_MAX,
+  CARD_POINTS_MAX,
+  CARD_TEXT_MAX,
+  CARD_TITLE_MAX,
+  type CardItem,
+  type CardsBlock,
   TIMELINE_TEXT_MAX,
   TIMELINE_TITLE_MAX,
   type TimelineBlock,
@@ -248,6 +262,12 @@ export const BLOCK_EDITORS: Editors = {
     font: { label: "Font", fallback: "The site's body font" },
     General: TimelineFields,
     Style: TimelineStyleFields,
+  },
+  cards: {
+    title: "Cards",
+    font: { label: "Font", fallback: "The site's body font" },
+    General: CardsFields,
+    Style: CardsStyleFields,
   },
   animation: { title: "Animation", General: AnimationBlockFields, Style: AnimationStyleFields },
   beforeAfter: {
@@ -3853,6 +3873,130 @@ function TimelineFields({ block, onChange }: BlockEditorProps<TimelineBlock>) {
         )}
       </ItemsEditor>
       <p className="text-xs text-muted">{w.leftOut}</p>
+    </>
+  );
+}
+
+/**
+ * Cards (D916): what leads each card, then the cards, each with the fields its marker needs; a point per line (each kept by its id, so a
+ * point's translation stays with it while it is not moved); the group's field only while the filter chips are on.
+ */
+function CardsFields({ block, onChange, context }: BlockEditorProps<CardsBlock>) {
+  const words = useAdminText("blocks");
+  const w = words.cards;
+  // The timeline's words, as true here: the theme's accent unless chosen.
+  const accentHint = words.timeline.colourHint;
+  const pointsOf = (item: CardItem, text: string): CardItem["points"] =>
+    text.split("\n").slice(0, CARD_POINTS_MAX).map((line, index) => ({ id: item.points[index]?.id ?? newItemId(), text: line }));
+  return (
+    <>
+      <Choices
+        legend={w.marker}
+        options={optionsOf(CARD_MARKERS, w.markers)}
+        value={block.marker}
+        onChange={(marker) => onChange({ marker })}
+      />
+      <ItemsEditor<CardItem>
+        label={w.items}
+        items={block.items}
+        max={ITEMS_MAX}
+        addLabel={w.add}
+        nameOf={(item, index) => item.title.trim() || fillWords(w.unnamed, { n: index + 1 })}
+        duplicate={(item) => ({ ...item, id: newItemId(), points: item.points.map((point) => ({ ...point, id: newItemId() })) })}
+        newItem={() => ({
+          id: newItemId(),
+          ...(block.marker === "icon" ? { icon: block.items.at(-1)?.icon ?? "sparkles" } : {}),
+          eyebrow: "",
+          title: "",
+          text: "",
+          points: [],
+          badge: "",
+          group: "",
+          linkLabel: "",
+          href: "",
+        })}
+        onChange={(items) => onChange({ items })}
+      >
+        {(item, change) => (
+          <>
+            {block.marker === "icon" && <IconPicker value={item.icon ?? "sparkles"} onChange={(icon) => change({ icon })} />}
+            {block.marker === "letter" && (
+              <TextField label={w.letters} value={item.letters ?? ""} max={CARD_LETTER_MAX} onChange={(letters) => change({ letters: letters || undefined })} />
+            )}
+            {(block.marker === "icon" || block.marker === "letter") && (
+              <OptionalColor label={w.colour} hint={accentHint} value={item.color} fallback="#2563eb" onChange={(color) => change({ color })} />
+            )}
+            {block.marker === "picture" && (
+              <div className="flex flex-wrap items-center gap-3">
+                {item.picture && (
+                  // eslint-disable-next-line @next/next/no-img-element -- the site's own picture, shown as it is
+                  <img src={item.picture.url} alt="" className="size-12 rounded-full object-cover" />
+                )}
+                <ImageUploadButton
+                  upload={context.upload}
+                  label={w.markers.picture}
+                  current={item.picture ?? null}
+                  onUploaded={(picture, made) => change({ picture: { ...picture, alt: made?.alt ?? item.picture?.alt ?? "" } })}
+                />
+              </div>
+            )}
+            <TextField label={w.eyebrow} value={item.eyebrow} max={CARD_EYEBROW_MAX} onChange={(eyebrow) => change({ eyebrow })} />
+            <TextField label={w.title} value={item.title} max={CARD_TITLE_MAX} onChange={(title) => change({ title })} />
+            <TextField label={w.text} multiline value={item.text} max={CARD_TEXT_MAX} onChange={(text) => change({ text })} />
+            <TextField
+              label={w.points}
+              multiline
+              value={item.points.map((point) => point.text).join("\n")}
+              max={CARD_POINT_MAX * CARD_POINTS_MAX}
+              onChange={(text) => change({ points: pointsOf(item, text) })}
+            />
+            <TextField label={w.badge} value={item.badge} max={CARD_BADGE_MAX} onChange={(badge) => change({ badge })} />
+            {item.badge.trim() && (
+              <Choices
+                legend={w.tone}
+                options={optionsOf(CARD_BADGE_TONES, w.tones)}
+                value={item.badgeTone ?? "neutral"}
+                onChange={(tone) => change({ badgeTone: tone === "neutral" ? undefined : tone })}
+              />
+            )}
+            {block.filters && <TextField label={w.group} value={item.group} max={CARD_BADGE_MAX} onChange={(group) => change({ group })} />}
+            <TextField label={w.href} value={item.href} max={1000} onChange={(href) => change({ href })} />
+            {item.href.trim() && <TextField label={w.linkLabel} value={item.linkLabel} max={CARD_BADGE_MAX} onChange={(linkLabel) => change({ linkLabel })} />}
+          </>
+        )}
+      </ItemsEditor>
+      <p className="text-xs text-muted">{w.leftOut}</p>
+    </>
+  );
+}
+
+/** Cards' look (D916): columns, boxed or plain, the points' marks and colour, the contents centred, and the filter chips. */
+function CardsStyleFields({ block, onChange }: BlockEditorProps<CardsBlock>) {
+  const w = useAdminText("blocks").cards;
+  return (
+    <>
+      <Choices
+        legend={w.columns}
+        hint={w.columnsHint}
+        options={CARD_COLUMNS.map((n) => ({ value: String(n), label: String(n) }))}
+        value={String(block.columns)}
+        onChange={(value) => onChange({ columns: Number(value) as CardsBlock["columns"] })}
+      />
+      <Choices legend={w.look} options={optionsOf(CARD_LOOKS, w.looks)} value={block.look ?? "boxed"} onChange={(look) => onChange({ look: look === "boxed" ? undefined : look })} />
+      <Choices
+        legend={w.pointMark}
+        options={optionsOf(CARD_POINT_MARKS, w.pointMarks)}
+        value={block.pointMark ?? "check"}
+        onChange={(pointMark) => onChange({ pointMark: pointMark === "check" ? undefined : pointMark })}
+      />
+      <OptionalColor label={w.pointColour} hint={useAdminText("blocks").timeline.colourHint} value={block.pointColor} fallback="#22a04b" onChange={(pointColor) => onChange({ pointColor })} />
+      <Check label={w.centred} checked={block.centred === true} onChange={(on) => onChange({ centred: on || undefined })} />
+      <Check
+        label={w.filters}
+        checked={block.filters === true}
+        onChange={(on) => onChange({ filters: on || undefined, allLabel: on ? (block.allLabel ?? w.allDefault) : undefined })}
+      />
+      {block.filters && <TextField label={w.allLabel} value={block.allLabel ?? ""} max={CARD_BADGE_MAX} onChange={(allLabel) => onChange({ allLabel })} />}
     </>
   );
 }

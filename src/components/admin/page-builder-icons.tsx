@@ -21,6 +21,8 @@ export function BlockIcon({ type }: { type: BlockType }) {
       return <AnimationIcon />;
     case "timeline":
       return <TimelineIcon />;
+    case "cards":
+      return <GridIcon />;
     case "heading":
       return <LetterIcon letter="H" bold />;
     case "button":

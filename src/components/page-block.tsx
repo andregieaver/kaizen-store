@@ -37,10 +37,10 @@ import { embedUrl } from "@/lib/video-embed";
 import { BlockLink } from "./block-link";
 import { SHAPES, buttonLook } from "./button-look";
 import { AnimationPlayer, BeforeAfterSlider, EmbeddedVideo, HtmlFrame, TabsView, UploadedVideo, CountdownView, StatsView } from "./lazy/blocks";
-import { STAT_DURATION_DEFAULT } from "@/lib/stats-count";
 import { blockBox } from "./page-parts";
 import { IconListView } from "./icon-list-view";
 import { TimelineView } from "./timeline-view";
+import { CardsView } from "./cards-view";
 import { TableView } from "./table-view";
 import { BrandsView } from "./brands-view";
 import { GalleryView } from "./gallery-view";
@@ -106,7 +106,7 @@ export function PageBlockView({
         <StatsView
           items={block.items.map((item) => ({ ...item, decimals: item.decimals ?? 0 }))}
           columns={block.columns}
-          duration={block.duration ?? STAT_DURATION_DEFAULT}
+          duration={block.duration}
         />
       );
     case "search":
@@ -151,6 +151,8 @@ export function PageBlockView({
       return <IconListView block={block} />;
     case "timeline":
       return <TimelineView block={block} />;
+    case "cards":
+      return <CardsView block={block} />;
     case "table":
       return <TableView block={block} />;
     case "brands":

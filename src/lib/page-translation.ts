@@ -163,6 +163,22 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
     case "brands":
       // A brand's name is its own in every language; only the logos' alternative texts could differ, and they are the names.
       return b;
+    case "cards":
+      return {
+        ...b,
+        allLabel: b.allLabel === undefined ? undefined : str("allLabel", b.allLabel, 40, "Filter: the chip showing all"),
+        items: b.items.map((item, index) => ({
+          ...item,
+          eyebrow: str(`${item.id}.eyebrow`, item.eyebrow, 60, `Card ${index + 1}: small line`),
+          title: str(`${item.id}.title`, item.title, 200, `Card ${index + 1}: title`),
+          text: str(`${item.id}.text`, item.text, 1000, `Card ${index + 1}: words`),
+          points: item.points.map((point, at) => ({ ...point, text: str(`${item.id}.${point.id}`, point.text, 200, `Card ${index + 1}: point ${at + 1}`) })),
+          badge: str(`${item.id}.badge`, item.badge, 40, `Card ${index + 1}: badge`),
+          group: str(`${item.id}.group`, item.group, 40, `Card ${index + 1}: group`),
+          linkLabel: str(`${item.id}.linkLabel`, item.linkLabel, 40, `Card ${index + 1}: link words`),
+          picture: item.picture ? { ...item.picture, alt: str(`${item.id}.alt`, item.picture.alt, 300, `Card ${index + 1}: picture description`) } : item.picture,
+        })),
+      };
     case "timeline":
       return {
         ...b,
